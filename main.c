@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int start_time;
+
 static struct file_info
 {
 	char *path;
@@ -64,9 +66,15 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		int ret = stat(name_to_path(file+1+7), st);
+		char buf[20] = "0";
+		char *name = strdup(file+1);
+		int ret = stat(name_to_path(name), st);
+		int err = -errno;
+		getxattr (name_to_path (name), "user.count", buf, sizeof(buf));
+		st->st_nlink = atoi(buf);
+		free (name);
 		if (ret < 0)
-			return -errno;
+			return err;
 	} else {
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
@@ -172,7 +180,8 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 * return an arbitrary filehandle in the fuse_file_info structure,
 	 * which will be passed to all file operations.
 	 */
-	 return 0;
+	start_time = time(NULL);
+	return 0;
 }
 
 static int atrfs_read(const char *file, char *buf, size_t len,
@@ -189,9 +198,12 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * this operation.
 	 */
 	int ret = 0;
-	int fd = open(name_to_path(file+1+7), O_RDONLY);
+	char *name = strdup(file+1);
+	int fd = open(name_to_path(name), O_RDONLY);
+	ret = -errno;
+	free (name);
 	if (fd < 0)
-		return -errno;
+		return ret;
 	ret = pread(fd, buf, len, off);
 	if (ret < 0)
 		ret = -errno;
@@ -260,9 +272,7 @@ static int atrfs_readdir(const char *file, void *buf,
 
 	while (tmp)
 	{
-		char name[128];
-		sprintf(name, "%.4d - %s", tmp->refcount, basename(tmp->path));
-		if (filler(buf, name, NULL, offset + 1) == 1)
+		if (filler(buf, basename(tmp->path), NULL, offset + 1) == 1)
 			break;
 		tmp = tmp->next;
 	}
@@ -312,14 +322,15 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	struct file_info *tmp;
-	for (tmp = files; tmp; tmp = tmp->next)
+	if (time(NULL) - start_time >= 45)
 	{
-		if (strcmp(basename(tmp->path), file+1+7) == 0)
-		{
-			tmp->refcount++;
-			break;
-		}
+		int val = 1;
+		char buf[20];
+		if (getxattr (name_to_path(file+1), "user.count", buf, sizeof (buf)) > 0)
+			val = atoi (buf) + 1;
+
+		sprintf (buf, "%d", val);
+		setxattr (name_to_path(file+1), "user.count", buf, strlen(buf)+1, 0);
 	}
 	return 0;
 }
