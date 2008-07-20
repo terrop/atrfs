@@ -1,8 +1,55 @@
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
+#define _GNU_SOURCE
+#include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
+#include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+static struct file_info
+{
+	char *path;
+	struct file_info *next;
+} *files = NULL;
+
+static void setup_atrfs(char *filelist)
+{
+	FILE *fp = fopen(filelist, "r");
+	if (fp)
+	{
+		char buf[256];
+
+		while (fgets(buf, sizeof(buf), fp))
+		{
+			struct file_info *fi = malloc(sizeof(*fi));
+			if (fi)
+			{
+				*strchr(buf, '\n') = '\0';
+				fi->path = canonicalize_file_name(buf);
+				fi->next = files;
+				files = fi;
+			}
+		}
+
+		fclose(fp);
+	}
+}
+
+/* Return the real path to file */
+static char *name_to_path(const char *name)
+{
+	struct file_info *tmp;
+	for (tmp = files; tmp; tmp = tmp->next)
+	{
+		if (strcmp(name, basename(tmp->path)) == 0)
+			return tmp->path;
+	}
+
+	return NULL;
+}
 
 static int atrfs_getattr(const char *file, struct stat *st)
 {
@@ -13,17 +60,22 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 * ignored. The 'st_ino' field is ignored except if the 'use_ino'
 	 * mount option is given.
 	 */
-	st->st_mode = S_IFREG | S_IRUSR | S_IWUSR;
-	st->st_nlink = 1;
-	st->st_uid = getuid();
-	st->st_gid = getgid();
-	st->st_size = 34;
-	st->st_atime = time(NULL);
-	st->st_mtime = time(NULL);
-	st->st_ctime = time(NULL);
-
-	if (strcmp(file, "/") == 0)
+	if (strcmp(file, "/"))
+	{
+		int ret = stat(name_to_path(file+1), st);
+		if (ret < 0)
+			return -errno;
+	} else {
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+		st->st_nlink = 1;
+		st->st_uid = getuid();
+		st->st_gid = getgid();
+		st->st_size = 34;
+		st->st_atime = time(NULL);
+		st->st_mtime = time(NULL);
+		st->st_ctime = time(NULL);
+	}
+
 	return 0;
 }
 
@@ -134,11 +186,16 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * value of the read system call will reflect the return value of
 	 * this operation.
 	 */
-	int l = strlen(file);
-	if (l > len)
-		l = len;
-	strncpy(buf, file, l);
-	return l;
+	int ret = 0;
+	int fd = open(name_to_path(file+1), O_RDONLY);
+	if (fd < 0)
+		return -errno;
+	ret = pread(fd, buf, len, off);
+	if (ret < 0)
+		ret = -errno;
+
+	close(fd);
+	return ret;
 }
 
 static int atrfs_write(const char *file, const char *buf, size_t len,
@@ -194,23 +251,16 @@ static int atrfs_readdir(const char *file, void *buf,
 	fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
 	/* Read directory */
-	static char *files[] =
+	static struct file_info *tmp;
+
+	if (offset == 0)
+		tmp = files;
+
+	while (tmp)
 	{
-		"ari.txt",
-		"tero.txt",
-		"risto.txt",
-		"asmo.txt",
-	};
-
-	for(;;)
-	{
-		if (offset >= sizeof(files) / sizeof(files[0]))
+		if (filler(buf, basename(tmp->path), NULL, offset + 1) == 1)
 			break;
-
-		if (filler(buf, files[offset], NULL, offset + 1) == 1)
-			break;
-
-		offset++;
+		tmp = tmp->next;
 	}
 
 	return 0;
@@ -348,7 +398,7 @@ static int atrfs_create(const char *file, mode_t mode, struct fuse_file_info *fi
 	 * versions earlier than 2.6.15, the mknod() and open() methods
 	 * will be called instead.
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 static int atrfs_ftruncate(const char *file, off_t len, struct fuse_file_info *fi)
@@ -365,7 +415,7 @@ static int atrfs_ftruncate(const char *file, off_t len, struct fuse_file_info *f
 	 *
 	 * Introduced in version 2.5
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 static int atrfs_fgetattr(const char *file, struct stat *st, struct fuse_file_info *fi)
@@ -380,7 +430,7 @@ static int atrfs_fgetattr(const char *file, struct stat *st, struct fuse_file_in
 	 * is implemented (see above).  Later it may be called for
 	 * invocations of fstat() too.
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 static int atrfs_lock(const char *file, struct fuse_file_info *fi, int cmd, struct flock *fl)
@@ -415,7 +465,7 @@ static int atrfs_lock(const char *file, struct fuse_file_info *fi, int cmd, stru
 	 * allow file locking to work locally.  Hence it is only
 	 * interesting for network filesystems and similar.
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 static int atrfs_utimens(const char *file, const struct timespec tv[2])
@@ -426,7 +476,7 @@ static int atrfs_utimens(const char *file, const struct timespec tv[2])
 	 *
 	 * Introduced in version 2.6
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 static int atrfs_bmap(const char *file, size_t blocksize, uint64_t *idx)
@@ -437,7 +487,7 @@ static int atrfs_bmap(const char *file, size_t blocksize, uint64_t *idx)
 	 * Note: This makes sense only for block device backed filesystems
 	 * mounted with the 'blkdev' option
 	 */
-	return 0;
+	return -ENOSYS;
 }
 
 int main(int argc, char *argv[])
@@ -481,6 +531,8 @@ int main(int argc, char *argv[])
 		.utimens = atrfs_utimens,
 		.bmap = atrfs_bmap,
 	};
+
+	setup_atrfs("piccolocoro.txt");
 
 	return fuse_main(argc, argv, &atrfs_operations, NULL);
 }
