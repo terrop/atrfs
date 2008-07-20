@@ -12,6 +12,7 @@
 static struct file_info
 {
 	char *path;
+	int refcount;
 	struct file_info *next;
 } *files = NULL;
 
@@ -29,6 +30,7 @@ static void setup_atrfs(char *filelist)
 			{
 				*strchr(buf, '\n') = '\0';
 				fi->path = canonicalize_file_name(buf);
+				fi->refcount = 0;
 				fi->next = files;
 				files = fi;
 			}
@@ -62,7 +64,7 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		int ret = stat(name_to_path(file+1), st);
+		int ret = stat(name_to_path(file+1+7), st);
 		if (ret < 0)
 			return -errno;
 	} else {
@@ -187,7 +189,7 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * this operation.
 	 */
 	int ret = 0;
-	int fd = open(name_to_path(file+1), O_RDONLY);
+	int fd = open(name_to_path(file+1+7), O_RDONLY);
 	if (fd < 0)
 		return -errno;
 	ret = pread(fd, buf, len, off);
@@ -258,7 +260,9 @@ static int atrfs_readdir(const char *file, void *buf,
 
 	while (tmp)
 	{
-		if (filler(buf, basename(tmp->path), NULL, offset + 1) == 1)
+		char name[128];
+		sprintf(name, "%.4d - %s", tmp->refcount, basename(tmp->path));
+		if (filler(buf, name, NULL, offset + 1) == 1)
 			break;
 		tmp = tmp->next;
 	}
@@ -308,7 +312,16 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	return -ENOSYS;
+	struct file_info *tmp;
+	for (tmp = files; tmp; tmp = tmp->next)
+	{
+		if (strcmp(basename(tmp->path), file+1+7) == 0)
+		{
+			tmp->refcount++;
+			break;
+		}
+	}
+	return 0;
 }
 
 static int atrfs_fsync(const char *file, int datasync, struct fuse_file_info *fi)
