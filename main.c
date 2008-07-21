@@ -12,29 +12,45 @@
 
 static GHashTable *filemap;
 
+struct file_info
+{
+	char *real_name;
+};
+
+static struct file_info *new_file (void)
+{
+	struct file_info *fi = malloc (sizeof (*fi));
+	if (! fi)
+		abort ();
+	fi->real_name = NULL;
+	return fi;
+}
+
 static void add_file (char *abs_name)
 {
 	char *name = strdup (abs_name);
 	char *base = basename (name);
+	struct file_info *fi = new_file ();
+	fi->real_name = name;
 
 	if (! g_hash_table_lookup (filemap, base))
 	{
-		g_hash_table_replace (filemap, base, name);
+		g_hash_table_replace (filemap, base, fi);
 		return;
 	}
 
-	char buf[strlen (base) + 10];
+	char buf[strlen (base) + 5];
 	char *ext = strrchr (base, '.');
 	int i;
 	if (! ext)
 		ext = base + strlen (base);
 	for (i = 2;; i++)
 	{
-		sprintf (buf, "%.*s (%d)%s", ext - base, base, i, ext);
+		sprintf (buf, "%.*s %d%s", ext - base, base, i, ext);
 		if (! g_hash_table_lookup (filemap, buf))
 		{
 			base = strdup (buf);
-			g_hash_table_replace (filemap, base, name);
+			g_hash_table_replace (filemap, base, fi);
 			break;
 		}
 	}
@@ -64,7 +80,10 @@ static void setup_atrfs(char *filelist)
 /* Return the real path to file */
 static char *name_to_path(const char *name)
 {
-	return g_hash_table_lookup (filemap, name);
+	struct file_info *fi = g_hash_table_lookup (filemap, name);
+	if (fi)
+		return fi->real_name;
+	return NULL;
 }
 
 static int atrfs_getattr(const char *file, struct stat *st)
