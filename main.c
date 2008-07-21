@@ -123,12 +123,11 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		int ret = stat(name_to_path(file + 1), st);
-		int err = -errno;
+		if (stat(name_to_path(file + 1), st) < 0)
+			return -errno;
 
 		st->st_nlink = get_value(name_to_path (file + 1), "user.count", 0);
-		if (ret < 0)
-			return err;
+		st->st_mtime = get_value(name_to_path (file + 1), "user.watchtime", 946677600);
 	} else {
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
@@ -180,7 +179,10 @@ static int atrfs_unlink(const char *file)
 	/* Remove a file */
 	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
 	if (fin)
+	{
 		set_value(fin->real_name, "user.count", 0);
+		set_value(fin->real_name, "user.watchtime", 946677600);
+	}
 	return 0;
 }
 
@@ -402,12 +404,17 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	if (fin && fin->start_time)
 	{
 		int delta = time(NULL) - fin->start_time;
+		int watchtime = get_value(fin->real_name, "user.watchtime", 946677600);
+
+		set_value (fin->real_name, "user.watchtime", watchtime + delta);
 
 		if (delta >= 45)
 		{
 			int val = get_value(fin->real_name, "user.count", 0) + 1;
 			set_value (fin->real_name, "user.count", val);
 		}
+
+		fin->start_time = 0;
 	}
 
 	return 0;
