@@ -177,8 +177,17 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	set_value (file, "user.count", 0);
-	set_value (file, "user.watchtime", 946677600);
+	struct file_info *fin = get_file_info(file);
+	if (fin)
+	{
+		if (strcmp(fin->dir, "/skipped") == 0)
+		{
+			fin->dir = "/";
+		} else {
+			set_value (file, "user.count", 0);
+			set_value (file, "user.watchtime", 946677600);
+		}
+	}
 	return 0;
 }
 
