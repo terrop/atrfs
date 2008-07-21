@@ -96,7 +96,7 @@ static void add_file(char *real_name)
 	struct file_info *fi = malloc(sizeof(*fi));
 	if (fi)
 	{
-		fi->real_name = name;
+		fi->real_name = real_name;
 		fi->start_time = 0;
 		fi->hidden = false;
 
