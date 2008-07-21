@@ -319,18 +319,6 @@ static int atrfs_readdir(const char *file, void *buf,
 		cur = first;
 	}
 
-	if (offset == 1)
-	{
-		if (filler (buf, ".", NULL, offset + 1) == 1)
-			goto out;
-	}
-
-	if (offset == 2)
-	{
-		if (filler (buf, "..", NULL, offset + 1) == 1)
-			goto out;
-	}
-
 	if (! cur)
 		return 0;
 
@@ -341,7 +329,6 @@ static int atrfs_readdir(const char *file, void *buf,
 		cur = cur->next;
 	} while (cur && cur != first);
 
-out:
 	if (! cur || (cur == first))
 	{
 		g_list_free (first);
@@ -478,6 +465,9 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 */
 
 	filemap = g_hash_table_new (g_str_hash, g_str_equal);
+
+	add_file(".");
+	add_file("..");
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
