@@ -24,10 +24,13 @@ static void add_file (char *abs_name)
 	}
 
 	char buf[strlen (base) + 10];
+	char *ext = strrchr (base, '.');
 	int i;
-	for (i = 1;; i++)
+	if (! ext)
+		ext = base + strlen (base);
+	for (i = 2;; i++)
 	{
-		sprintf (buf, "%s (%d)", base, i);
+		sprintf (buf, "%.*s (%d)%s", ext - base, base, i, ext);
 		if (! g_hash_table_lookup (filemap, buf))
 		{
 			base = strdup (buf);
