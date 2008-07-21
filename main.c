@@ -133,6 +133,8 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	if (strcmp(file, "/"))
 	{
 		char *real = get_real_name (file);
+		if (!real)
+			return -ENOENT;
 		if (stat (real, st) < 0)
 			return -errno;
 
@@ -342,6 +344,18 @@ static int atrfs_readdir(const char *file, void *buf,
 		cur = first;
 	}
 
+	if (offset == 1)
+	{
+		if (filler (buf, ".", NULL, offset + 1) == 1)
+			goto out;
+	}
+
+	if (offset == 2)
+	{
+		if (filler (buf, "..", NULL, offset + 1) == 1)
+			goto out;
+	}
+
 	if (! cur)
 		return 0;
 
@@ -352,6 +366,7 @@ static int atrfs_readdir(const char *file, void *buf,
 		cur = cur->next;
 	} while (cur && cur != first);
 
+out:
 	if (! cur || (cur == first))
 	{
 		g_list_free (first);
