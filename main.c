@@ -64,38 +64,43 @@ static void set_value (const char *file, char *attr, int value)
 	setxattr (real, attr, buf, strlen (buf) + 1, 0);
 }
 
-static void add_file (char *abs_name)
+static char *insert_as_unique(char *base, struct file_info *fi)
 {
-	char *name = abs_name;
-	char *base = basename (name);
-	struct file_info *fi = malloc (sizeof (*fi));
-	if (! fi)
-		abort ();
-
-	fi->real_name = name;
-	fi->start_time = 0;
-	fi->hidden = false;
-
-	if (! g_hash_table_lookup (filemap, base))
+	if (!g_hash_table_lookup (filemap, base))
 	{
 		g_hash_table_replace (filemap, base, fi);
-		return;
-	}
+	} else {
+		char buf[strlen (base) + 5];
+		char *ext = strrchr (base, '.');
+		int i;
+		if (! ext)
+			ext = base + strlen (base);
 
-	char buf[strlen (base) + 5];
-	char *ext = strrchr (base, '.');
-	int i;
-	if (! ext)
-		ext = base + strlen (base);
-	for (i = 2;; i++)
-	{
-		sprintf (buf, "%.*s %d%s", ext - base, base, i, ext);
-		if (! g_hash_table_lookup (filemap, buf))
+		for (i = 2;; i++)
 		{
-			base = strdup (buf);
-			g_hash_table_replace (filemap, base, fi);
-			break;
+			sprintf (buf, "%.*s %d%s", ext - base, base, i, ext);
+
+			if (! g_hash_table_lookup (filemap, buf))
+			{
+				base = strdup (buf);
+				g_hash_table_replace (filemap, base, fi);
+				break;
+			}
 		}
+	}
+}
+
+static void add_file(char *real_name)
+{
+	char *base = basename(real_name);
+	struct file_info *fi = malloc(sizeof(*fi));
+	if (fi)
+	{
+		fi->real_name = name;
+		fi->start_time = 0;
+		fi->hidden = false;
+
+		insert_as_unique(base, fi);
 	}
 }
 
