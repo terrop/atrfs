@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static char *datafile;
 static GHashTable *filemap;
 
 struct file_info
@@ -61,23 +62,16 @@ static void set_value (const char *file, char *attr, int value)
 	setxattr (real, attr, buf, strlen (buf) + 1, 0);
 }
 
-
-static struct file_info *new_file (void)
-{
-	struct file_info *fi = malloc (sizeof (*fi));
-	if (! fi)
-		abort ();
-	fi->real_name = NULL;
-	fi->start_time = 0;
-	return fi;
-}
-
 static void add_file (char *abs_name)
 {
 	char *name = abs_name;
 	char *base = basename (name);
-	struct file_info *fi = new_file ();
+	struct file_info *fi = malloc (sizeof (*fi));
+	if (! fi)
+		abort ();
+
 	fi->real_name = name;
+	fi->start_time = 0;
 
 	if (! g_hash_table_lookup (filemap, base))
 	{
@@ -99,25 +93,6 @@ static void add_file (char *abs_name)
 			g_hash_table_replace (filemap, base, fi);
 			break;
 		}
-	}
-}
-
-static void setup_atrfs(char *filelist)
-{
-	filemap = g_hash_table_new (g_str_hash, g_str_equal);
-
-	FILE *fp = fopen(filelist, "r");
-	if (fp)
-	{
-		char buf[256];
-
-		while (fgets(buf, sizeof(buf), fp))
-		{
-			*strchr(buf, '\n') = '\0';
-			add_file (canonicalize_file_name(buf));
-		}
-
-		fclose(fp);
 	}
 }
 
@@ -486,7 +461,26 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 * destroy() method.
 	 *
 	 */
-	return NULL;
+
+	filemap = g_hash_table_new (g_str_hash, g_str_equal);
+
+	FILE *fp = fopen (datafile, "r");
+	if (fp)
+	{
+		char buf[256];
+
+		while (fgets (buf, sizeof (buf), fp))
+		{
+			*strchr(buf, '\n') = '\0';
+			add_file (canonicalize_file_name (buf));
+		}
+
+		fclose (fp);
+	}
+	free (datafile);
+	datafile = NULL;
+
+	return filemap;
 }
 
 static void atrfs_destroy(void *data)
@@ -496,6 +490,9 @@ static void atrfs_destroy(void *data)
 	 *
 	 * Called on filesystem exit.
 	 */
+	GHashTable *ht = data;
+	if (ht)
+		g_hash_table_destroy (ht);
 }
 
 static int atrfs_create(const char *file, mode_t mode, struct fuse_file_info *fi)
@@ -644,7 +641,6 @@ int main(int argc, char *argv[])
 		.bmap = atrfs_bmap,
 	};
 
-	setup_atrfs("piccolocoro.txt");
-
-	return fuse_main(argc, argv, &atrfs_operations, NULL);
+	datafile = canonicalize_file_name ("piccolocoro.txt");
+	return fuse_main (argc, argv, &atrfs_operations, NULL);
 }
