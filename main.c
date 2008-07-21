@@ -22,7 +22,7 @@ struct file_info
 static struct file_info *get_file_info (const char *file)
 {
 	if (filemap)
-		return g_hash_table_lookup (filemap, file);
+		return g_hash_table_lookup (filemap, file + 1); /* +1 == skip '/' */
 	return NULL;
 }
 
@@ -34,15 +34,16 @@ static char *get_real_name (const char *file)
 	return NULL;
 }
 
-static int get_value(char *file, char *attr, int def)
+static int get_value (const char *file, char *attr, int def)
 {
+	char *real = get_real_name (file);
 	int ret = def;
-	int len = getxattr(file, attr, NULL, 0);
+	int len = getxattr (real, attr, NULL, 0);
 	if (len)
 	{
 		char *tail;
 		char buf[len];
-		if (getxattr(file, attr, buf, len) > 0)
+		if (getxattr (real, attr, buf, len) > 0)
 			ret = strtol(buf, &tail, 10);
 		if (tail && *tail)
 			ret = def;
@@ -52,11 +53,12 @@ static int get_value(char *file, char *attr, int def)
 }
 
 
-static void set_value(char *file, char *attr, int value)
+static void set_value (const char *file, char *attr, int value)
 {
+	char *real = get_real_name (file);
 	char buf[10];
 	sprintf (buf, "%d", value);
-	setxattr(file, attr, buf, strlen(buf)+1, 0);
+	setxattr (real, attr, buf, strlen (buf) + 1, 0);
 }
 
 
@@ -130,12 +132,12 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		char *real = get_real_name (file + 1);
+		char *real = get_real_name (file);
 		if (stat (real, st) < 0)
 			return -errno;
 
-		st->st_nlink = get_value (real, "user.count", 0);
-		st->st_mtime = get_value (real, "user.watchtime", 946677600);
+		st->st_nlink = get_value (file, "user.count", 0);
+		st->st_mtime = get_value (file, "user.watchtime", 946677600);
 	} else {
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
@@ -185,12 +187,8 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	char *real = get_real_name (file + 1);
-	if (real)
-	{
-		set_value (real, "user.count", 0);
-		set_value (real, "user.watchtime", 946677600);
-	}
+	set_value (file, "user.count", 0);
+	set_value (file, "user.watchtime", 946677600);
 	return 0;
 }
 
@@ -247,7 +245,7 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 * return an arbitrary filehandle in the fuse_file_info structure,
 	 * which will be passed to all file operations.
 	 */
-	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
+	struct file_info *fin = get_file_info (file);
 	if (fin)
 	{
 		if (fin->start_time == 0)
@@ -270,7 +268,7 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * this operation.
 	 */
 	int ret = 0;
-	int fd = open (get_real_name (file + 1), O_RDONLY);
+	int fd = open (get_real_name (file), O_RDONLY);
 	if (fd < 0)
 		return -errno;
 	ret = pread(fd, buf, len, off);
@@ -405,18 +403,18 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	struct file_info *fin = get_file_info (file + 1);
+	struct file_info *fin = get_file_info (file);
 	if (fin && fin->start_time)
 	{
 		int delta = time(NULL) - fin->start_time;
-		int watchtime = get_value(fin->real_name, "user.watchtime", 946677600);
+		int watchtime = get_value (file, "user.watchtime", 946677600);
 
-		set_value (fin->real_name, "user.watchtime", watchtime + delta);
+		set_value (file, "user.watchtime", watchtime + delta);
 
 		if (delta >= 45)
 		{
-			int val = get_value(fin->real_name, "user.count", 0) + 1;
-			set_value (fin->real_name, "user.count", val);
+			int val = get_value (file, "user.count", 0) + 1;
+			set_value (file, "user.count", val);
 		}
 
 		fin->start_time = 0;
