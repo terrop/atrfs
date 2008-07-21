@@ -1,3 +1,4 @@
+/* main.c - 20.7.2008 - 21.7.2008 Ari & Tero Roponen */
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
@@ -17,6 +18,21 @@ struct file_info
 	char *real_name;
 	time_t start_time;
 };
+
+static struct file_info *get_file_info (const char *file)
+{
+	if (filemap)
+		return g_hash_table_lookup (filemap, file);
+	return NULL;
+}
+
+static char *get_real_name (const char *file)
+{
+	struct file_info *fi = get_file_info (file);
+	if (fi)
+		return fi->real_name;
+	return NULL;
+}
 
 static int get_value(char *file, char *attr, int def)
 {
@@ -103,15 +119,6 @@ static void setup_atrfs(char *filelist)
 	}
 }
 
-/* Return the real path to file */
-static char *name_to_path(const char *name)
-{
-	struct file_info *fi = g_hash_table_lookup (filemap, name);
-	if (fi)
-		return fi->real_name;
-	return NULL;
-}
-
 static int atrfs_getattr(const char *file, struct stat *st)
 {
 	/*
@@ -123,10 +130,11 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		int ret = stat(name_to_path(file + 1), st);
+		char *real = get_real_name (file + 1);
+		int ret = stat (real, st);
 		int err = -errno;
 
-		st->st_nlink = get_value(name_to_path (file + 1), "user.count", 0);
+		st->st_nlink = get_value (real, "user.count", 0);
 		if (ret < 0)
 			return err;
 	} else {
@@ -178,9 +186,9 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
-	if (fin)
-		set_value(fin->real_name, "user.count", 0);
+	char *real = get_real_name (file + 1);
+	if (real)
+		set_value (real, "user.count", 0);
 	return 0;
 }
 
@@ -260,12 +268,9 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * this operation.
 	 */
 	int ret = 0;
-	char *name = strdup(file+1);
-	int fd = open(name_to_path(name), O_RDONLY);
-	ret = -errno;
-	free (name);
+	int fd = open (get_real_name (file + 1), O_RDONLY);
 	if (fd < 0)
-		return ret;
+		return -errno;
 	ret = pread(fd, buf, len, off);
 	if (ret < 0)
 		ret = -errno;
@@ -398,7 +403,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
+	struct file_info *fin = get_file_info (file + 1);
 	if (fin && fin->start_time)
 	{
 		int delta = time(NULL) - fin->start_time;
