@@ -44,7 +44,7 @@ static int get_value (const char *file, char *attr, int def)
 	int len = getxattr (real, attr, NULL, 0);
 	if (len)
 	{
-		char *tail;
+		char *tail = NULL;
 		char buf[len];
 		if (getxattr (real, attr, buf, len) > 0)
 			ret = strtol(buf, &tail, 10);
@@ -176,7 +176,7 @@ static int atrfs_unlink(const char *file)
 	struct file_info *fin = get_file_info(file);
 	if (fin)
 	{
-		if (strcmp(fin->dir, "/skipped") == 0)
+		if (strcmp(fin->dir, "/"))
 		{
 			fin->dir = "/";
 		} else {
@@ -262,15 +262,20 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * value of the read system call will reflect the return value of
 	 * this operation.
 	 */
-	int ret = 0;
-	int fd = open (get_real_name (file), O_RDONLY);
-	if (fd < 0)
-		return -errno;
-	ret = pread(fd, buf, len, off);
-	if (ret < 0)
-		ret = -errno;
+	int ret = -EINVAL;
+	char *name = get_real_name(file);
+	if (name)
+	{
+		int fd = open (get_real_name (file), O_RDONLY);
+		if (fd < 0)
+			return -errno;
+		ret = pread(fd, buf, len, off);
+		if (ret < 0)
+			ret = -errno;
 
-	close(fd);
+		close(fd);
+	}
+
 	return ret;
 }
 
@@ -416,8 +421,18 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 			set_value (file, "user.count", val);
 		}
 
-		if ((delta >= 1) && (delta < 5)) /* skipped */
-			fin->dir = "/skipped";
+		delta /= 15;
+		delta++;
+		delta *= 15;
+		char buf[20];
+		sprintf (buf, "/time_%d", delta);
+		char *n = strdup (buf);
+		if (!get_file_info (n))
+		{
+			add_file (n);
+			get_file_info(n)->dir = NULL;
+		}
+		fin->dir = n;
 
 		fin->start_time = 0;
 	}
@@ -493,9 +508,6 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 
 	add_file(".");
 	add_file("..");
-
-	add_file("/skipped");
-	get_file_info("/skipped")->dir = NULL;
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
