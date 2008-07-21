@@ -7,6 +7,7 @@
 #include <fuse.h>
 #include <glib.h>
 #include <libgen.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,7 @@ struct file_info
 {
 	char *real_name;
 	time_t start_time;
+	bool hidden;
 };
 
 static struct file_info *get_file_info (const char *file)
@@ -72,6 +74,7 @@ static void add_file (char *abs_name)
 
 	fi->real_name = name;
 	fi->start_time = 0;
+	fi->hidden = false;
 
 	if (! g_hash_table_lookup (filemap, base))
 	{
@@ -310,6 +313,7 @@ static int atrfs_readdir(const char *file, void *buf,
 {
 	/* Read directory */
 	static GList *first, *cur;
+	struct file_info *fin;
 
 	if (offset == 0)
 	{
@@ -336,8 +340,10 @@ static int atrfs_readdir(const char *file, void *buf,
 
 	do
 	{
-		if (filler (buf, cur->data, NULL, offset + 1) == 1)
-			break;
+		fin = get_file_info (cur->data - 1); /* XXX Hack! */
+		if (! fin->hidden)
+			if (filler (buf, cur->data, NULL, offset + 1) == 1)
+				break;
 		cur = cur->next;
 	} while (cur && cur != first);
 
@@ -406,6 +412,9 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 			int val = get_value (file, "user.count", 0) + 1;
 			set_value (file, "user.count", val);
 		}
+
+		if ((delta >= 1) && (delta < 5)) /* skipped */
+			fin->hidden = true;
 
 		fin->start_time = 0;
 	}
