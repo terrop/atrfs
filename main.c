@@ -15,7 +15,34 @@ static GHashTable *filemap;
 struct file_info
 {
 	char *real_name;
+	time_t start_time;
 };
+
+static int get_value(char *file, char *attr, int def)
+{
+	int ret = def;
+	int len = getxattr(file, attr, NULL, 0);
+	if (len)
+	{
+		char *tail;
+		char buf[len];
+		if (getxattr(file, attr, buf, len) > 0)
+			ret = strtol(buf, &tail, 10);
+		if (tail && *tail)
+			ret = def;
+	}
+
+	return ret;
+}
+
+
+static void set_value(char *file, char *attr, int value)
+{
+	char buf[10];
+	sprintf (buf, "%d", value);
+	setxattr(file, attr, buf, strlen(buf)+1, 0);
+}
+
 
 static struct file_info *new_file (void)
 {
@@ -23,12 +50,13 @@ static struct file_info *new_file (void)
 	if (! fi)
 		abort ();
 	fi->real_name = NULL;
+	fi->start_time = 0;
 	return fi;
 }
 
 static void add_file (char *abs_name)
 {
-	char *name = strdup (abs_name);
+	char *name = abs_name;
 	char *base = basename (name);
 	struct file_info *fi = new_file ();
 	fi->real_name = name;
@@ -56,8 +84,6 @@ static void add_file (char *abs_name)
 	}
 }
 
-static int start_time;
-
 static void setup_atrfs(char *filelist)
 {
 	filemap = g_hash_table_new (g_str_hash, g_str_equal);
@@ -70,7 +96,7 @@ static void setup_atrfs(char *filelist)
 		while (fgets(buf, sizeof(buf), fp))
 		{
 			*strchr(buf, '\n') = '\0';
-			add_file (buf);
+			add_file (canonicalize_file_name(buf));
 		}
 
 		fclose(fp);
@@ -97,13 +123,10 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	if (strcmp(file, "/"))
 	{
-		char buf[20] = "0";
-		char *name = strdup(file+1);
-		int ret = stat(name_to_path(name), st);
+		int ret = stat(name_to_path(file + 1), st);
 		int err = -errno;
-		getxattr (name_to_path (name), "user.count", buf, sizeof(buf));
-		st->st_nlink = atoi(buf);
-		free (name);
+
+		st->st_nlink = get_value(name_to_path (file + 1), "user.count", 0);
 		if (ret < 0)
 			return err;
 	} else {
@@ -155,7 +178,10 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	return -ENOSYS;
+	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
+	if (fin)
+		set_value(fin->real_name, "user.count", 0);
+	return 0;
 }
 
 static int atrfs_rmdir(const char *name)
@@ -211,7 +237,12 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 * return an arbitrary filehandle in the fuse_file_info structure,
 	 * which will be passed to all file operations.
 	 */
-	start_time = time(NULL);
+	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
+	if (fin)
+	{
+		if (fin->start_time == 0)
+			fin->start_time = time(NULL);
+	}
 	return 0;
 }
 
@@ -367,16 +398,18 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	if (time(NULL) - start_time >= 45)
+	struct file_info *fin = g_hash_table_lookup (filemap, file + 1);
+	if (fin && fin->start_time)
 	{
-		int val = 1;
-		char buf[20];
-		if (getxattr (name_to_path(file+1), "user.count", buf, sizeof (buf)) > 0)
-			val = atoi (buf) + 1;
+		int delta = time(NULL) - fin->start_time;
 
-		sprintf (buf, "%d", val);
-		setxattr (name_to_path(file+1), "user.count", buf, strlen(buf)+1, 0);
+		if (delta >= 45)
+		{
+			int val = get_value(fin->real_name, "user.count", 0) + 1;
+			set_value (fin->real_name, "user.count", val);
+		}
 	}
+
 	return 0;
 }
 
