@@ -7,7 +7,6 @@
 #include <fuse.h>
 #include <glib.h>
 #include <libgen.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,13 +18,14 @@ struct file_info
 {
 	char *real_name;
 	time_t start_time;
-	bool hidden;
+	char *dir;
 };
 
 static struct file_info *get_file_info (const char *file)
 {
+	char *name = basename ((char *)file) - 1; /* skip subdirs */
 	if (filemap)
-		return g_hash_table_lookup (filemap, file + 1); /* +1 == skip '/' */
+		return g_hash_table_lookup (filemap, name + 1); /* +1 == skip '/' */
 	return NULL;
 }
 
@@ -98,7 +98,7 @@ static void add_file(char *real_name)
 	{
 		fi->real_name = real_name;
 		fi->start_time = 0;
-		fi->hidden = false;
+		fi->dir = "/";
 
 		insert_as_unique(base, fi);
 	}
@@ -113,17 +113,22 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 * ignored. The 'st_ino' field is ignored except if the 'use_ino'
 	 * mount option is given.
 	 */
+	struct file_info *fi = get_file_info (file);
+
+	if (fi && ! fi->dir)	/* Subdirectory */
+		goto dir;
+
 	if (strcmp(file, "/"))
 	{
-		char *real = get_real_name (file);
-		if (!real)
+		if (!fi || !fi->real_name)
 			return -ENOENT;
-		if (stat (real, st) < 0)
+		if (stat (fi->real_name, st) < 0)
 			return -errno;
 
 		st->st_nlink = get_value (file, "user.count", 0);
 		st->st_mtime = get_value (file, "user.watchtime", 946677600);
 	} else {
+dir:
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
 		st->st_uid = getuid();
@@ -334,7 +339,8 @@ static int atrfs_readdir(const char *file, void *buf,
 	do
 	{
 		fin = get_file_info (cur->data - 1); /* XXX Hack! */
-		if (! fin->hidden)
+		if ((fin->dir && ! strcmp (fin->dir, file))
+		    || (! fin->dir && ! strcmp (file, "/")))
 			if (filler (buf, cur->data, NULL, offset + 1) == 1)
 				break;
 		cur = cur->next;
@@ -406,7 +412,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		}
 
 		if ((delta >= 1) && (delta < 5)) /* skipped */
-			fin->hidden = true;
+			fin->dir = "/skipped";
 
 		fin->start_time = 0;
 	}
@@ -482,6 +488,9 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 
 	add_file(".");
 	add_file("..");
+
+	add_file("/skipped");
+	get_file_info("/skipped")->dir = NULL;
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
