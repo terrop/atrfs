@@ -115,20 +115,8 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	struct file_info *fi = get_file_info (file);
 
-	if (fi && ! fi->dir)	/* Subdirectory */
-		goto dir;
-
-	if (strcmp(file, "/"))
+	if ((fi && !fi->dir) || !strcmp(file, "/")) /* Subdir or rootdir */
 	{
-		if (!fi || !fi->real_name)
-			return -ENOENT;
-		if (stat (fi->real_name, st) < 0)
-			return -errno;
-
-		st->st_nlink = get_value (file, "user.count", 0);
-		st->st_mtime = get_value (file, "user.watchtime", 946677600);
-	} else {
-dir:
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
 		st->st_uid = getuid();
@@ -137,6 +125,14 @@ dir:
 		st->st_atime = time(NULL);
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
+	} else {
+		if (!fi || !fi->real_name)
+			return -ENOENT;
+		if (stat (fi->real_name, st) < 0)
+			return -errno;
+
+		st->st_nlink = get_value (file, "user.count", 0);
+		st->st_mtime = get_value (file, "user.watchtime", 946677600);
 	}
 
 	return 0;
