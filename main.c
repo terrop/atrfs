@@ -4,22 +4,45 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
+#include <glib.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int start_time;
+static GHashTable *filemap;
 
-static struct file_info
+static void add_file (char *abs_name)
 {
-	char *path;
-	int refcount;
-	struct file_info *next;
-} *files = NULL;
+	char *name = strdup (abs_name);
+	char *base = basename (name);
+
+	if (! g_hash_table_lookup (filemap, base))
+	{
+		g_hash_table_replace (filemap, base, name);
+		return;
+	}
+
+	char buf[strlen (base) + 10];
+	int i;
+	for (i = 1;; i++)
+	{
+		sprintf (buf, "%s (%d)", base, i);
+		if (! g_hash_table_lookup (filemap, buf))
+		{
+			base = strdup (buf);
+			g_hash_table_replace (filemap, base, name);
+			break;
+		}
+	}
+}
+
+static int start_time;
 
 static void setup_atrfs(char *filelist)
 {
+	filemap = g_hash_table_new (g_str_hash, g_str_equal);
+
 	FILE *fp = fopen(filelist, "r");
 	if (fp)
 	{
@@ -27,15 +50,8 @@ static void setup_atrfs(char *filelist)
 
 		while (fgets(buf, sizeof(buf), fp))
 		{
-			struct file_info *fi = malloc(sizeof(*fi));
-			if (fi)
-			{
-				*strchr(buf, '\n') = '\0';
-				fi->path = canonicalize_file_name(buf);
-				fi->refcount = 0;
-				fi->next = files;
-				files = fi;
-			}
+			*strchr(buf, '\n') = '\0';
+			add_file (buf);
 		}
 
 		fclose(fp);
@@ -45,14 +61,7 @@ static void setup_atrfs(char *filelist)
 /* Return the real path to file */
 static char *name_to_path(const char *name)
 {
-	struct file_info *tmp;
-	for (tmp = files; tmp; tmp = tmp->next)
-	{
-		if (strcmp(name, basename(tmp->path)) == 0)
-			return tmp->path;
-	}
-
-	return NULL;
+	return g_hash_table_lookup (filemap, name);
 }
 
 static int atrfs_getattr(const char *file, struct stat *st)
@@ -265,16 +274,30 @@ static int atrfs_readdir(const char *file, void *buf,
 	fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
 	/* Read directory */
-	static struct file_info *tmp;
+	static GList *first, *cur;
 
 	if (offset == 0)
-		tmp = files;
-
-	while (tmp)
 	{
-		if (filler(buf, basename(tmp->path), NULL, offset + 1) == 1)
+		if (first)
+			g_list_free (first);
+		first = g_hash_table_get_keys (filemap);
+		cur = first;
+	}
+
+	if (! cur)
+		return 0;
+
+	do
+	{
+		if (filler (buf, cur->data, NULL, offset + 1) == 1)
 			break;
-		tmp = tmp->next;
+		cur = cur->next;
+	} while (cur && cur != first);
+
+	if (! cur || (cur == first))
+	{
+		g_list_free (first);
+		first = cur = NULL;
 	}
 
 	return 0;
