@@ -344,25 +344,20 @@ static int atrfs_readdir(const char *file, void *buf,
 	fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
 	/* Read directory */
-	static GList *first, *cur;
+	static GList *files, *cur;
 
 	if (offset == 0)
 	{
-		if (first)
-			g_list_free (first);
-		first = g_hash_table_get_keys (filemap);
-		cur = first;
+		if (files)
+			g_list_free (files);
+		files = g_hash_table_get_keys (filemap);
+		cur = files;
 	}
 
-	if (! cur)
-		return 0;
-
-	struct file_info *fil;
-	char *dir = bare_name (file);
-
-	do
+	while (cur)
 	{
-		fil = get_file_info (cur->data);
+		char *dir = bare_name(file);
+		struct file_info *fil = get_file_info (cur->data);
 
 		/* Fill only items that are in current directory */
 		if (! strcmp (fil->dir, dir))
@@ -370,13 +365,8 @@ static int atrfs_readdir(const char *file, void *buf,
 			if (filler (buf, cur->data, NULL, offset + 1) == 1)
 				break;
 		}
-		cur = cur->next;
-	} while (cur && cur != first);
 
-	if (! cur || (cur == first))
-	{
-		g_list_free (first);
-		first = cur = NULL;
+		cur = cur->next;
 	}
 
 	return 0;
