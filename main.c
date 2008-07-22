@@ -23,13 +23,14 @@ struct atrfs_entry
 {
 	enum atrfs_entry_type e_type;
 	struct atrfs_entry *parent;
+	char *name;
 
 	union
 	{
 		struct
 		{
 			char *e_real_file_name;
-			int start_time;
+			time_t start_time;
 		};
 		GHashTable *e_contents;
 		struct
@@ -88,33 +89,16 @@ void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 {
 	if (dir->e_type != ATRFS_DIRECTORY_ENTRY)
 		abort ();
-	g_hash_table_replace (dir->e_contents, name, ent);
+	ent->name = strdup (name);
+	g_hash_table_replace (dir->e_contents, ent->name, ent);
 	ent->parent = dir;
-}
-
-char *entry_name (struct atrfs_entry *ent)
-{
-	struct atrfs_entry *e;
-	char *name = NULL;
-	GList *it, *list = g_hash_table_get_keys (ent->parent->e_contents);
-	for (it = list; it; it = it->next)
-	{
-		e = g_hash_table_lookup (ent->parent->e_contents, it->data);
-		if (e == ent)
-		{
-			name = it->data;
-			break;
-		}
-	}
-	g_list_free (list);
-	return name;
 }
 
 void remove_entry (struct atrfs_entry *ent)
 {
 	if (! ent->parent || ent->parent->e_type != ATRFS_DIRECTORY_ENTRY)
 		abort ();
-	char *name = entry_name (ent);
+	char *name = ent->name;
 	if (name)
 		g_hash_table_remove (ent->parent->e_contents, name);
 	ent->parent = NULL;
@@ -124,9 +108,10 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 {
 	if (to->e_type != ATRFS_DIRECTORY_ENTRY)
 		abort ();
-	char *name = entry_name (ent);
+	char *name = ent->name;
 	remove_entry (ent);
 	insert_entry (ent, name, to);
+	free (name);
 }
 
 static int get_value (struct atrfs_entry *ent, char *attr, int def)
@@ -157,7 +142,7 @@ static void set_value (struct atrfs_entry *ent, char *attr, int value)
 	if (ent->e_type != ATRFS_FILE_ENTRY)
 		abort ();
 
-	char buf[10];
+	char buf[30];	     /* XXX: this caused 5h+ debugging :-/  */
 	sprintf (buf, "%d", value);
 	setxattr (ent->e_real_file_name, attr, buf, strlen (buf) + 1, 0);
 }
@@ -177,7 +162,8 @@ static char *add_file(char *real_name, bool is_subdir)
 		if (! lookup_entry_by_name (root, name))
 		{
 			insert_entry (ent, name, root);
-			return name; /* exit here */
+			free (name);
+			return ent->name; /* exit here */
 		} else {
 			char buf[strlen (name) + 5];
 			char *ext = strrchr (name, '.');
@@ -339,8 +325,11 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	if (! ent)
 		return -ENOENT;
 
-	if (ent->start_time == 0)
-		ent->start_time = time (NULL);
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+	{
+		if (ent->start_time == 0)
+			ent->start_time = time (NULL);
+	}
 
 	return 0;
 }
@@ -532,12 +521,11 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		delta *= 15;
 		char buf[20];
 		sprintf (buf, "time_%d", delta);
-		char *n = strdup (buf);
-		struct atrfs_entry *dir = lookup_entry_by_path (n);
+		struct atrfs_entry *dir = lookup_entry_by_path (buf);
 		if (! dir)
 		{
 			dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-			insert_entry (dir, n, root);
+			insert_entry (dir, buf, root);
 		}
 		move_entry (ent, dir);
 #endif
@@ -645,6 +633,7 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 				ent->e_data.data = data;
 				ent->e_data.size = strlen (data);
 				insert_entry (ent, srtname, root);
+				free (srtname);
 			}
 #endif
 		}
