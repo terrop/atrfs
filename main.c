@@ -325,6 +325,7 @@ static int atrfs_access(const char *file, int acc)
 	 * 'default_permissions' mount option is given, this method is not
 	 * called.
 	 */
+	return 0;
 }
 
 static int atrfs_opendir(const char *file, struct fuse_file_info *fi)
@@ -432,7 +433,6 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	{
 		int delta = time (NULL) - fil->start_time;
 		int watchtime = get_value (name, "user.watchtime", 946677600);
-
 		set_value (name, "user.watchtime", watchtime + delta);
 
 		if (delta >= 45)
@@ -445,11 +445,12 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		delta++;
 		delta *= 15;
 		char buf[20];
-		sprintf (buf, "time_%d", delta);
+		sprintf (buf, "/time_%d", delta);
 		char *n = strdup (buf);
-		if (!get_file_info (n))
+
+		if (! get_file_info (n + 1))
 			add_file (n, true);
-		fil->dir = n;
+		fil->dir = n+1;
 
 		fil->start_time = 0;
 	}
