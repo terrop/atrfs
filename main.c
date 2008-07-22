@@ -91,9 +91,10 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 			}
 		}
 	}
+	return base;
 }
 
-static void add_file(char *real_name, bool is_subdir)
+static char *add_file(char *real_name, bool is_subdir)
 {
 	if (real_name[0] != '/')
 		abort ();
@@ -111,8 +112,9 @@ static void add_file(char *real_name, bool is_subdir)
 		fi->data = NULL;
 		fi->data_size = 0;
 
-		insert_as_unique (name, fi);
+		return insert_as_unique (name, fi);
 	}
+	return NULL;
 }
 
 static int atrfs_getattr(const char *file, struct stat *st)
@@ -542,22 +544,35 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	if (fp)
 	{
 		char buf[256];
+		char *file, *ext, *name;
 
 		while (fgets (buf, sizeof (buf), fp))
 		{
 			*strchr(buf, '\n') = '\0';
-			add_file (canonicalize_file_name (buf), false);
+			file = canonicalize_file_name (buf);
+			name = add_file (file, false);
+
+			/* Add subtitles for flv-files. */
+			ext = strrchr (name, '.');
+			if (ext && !strcmp (ext, ".flv"))
+			{
+				char *srt;
+				asprintf (&srt, "/%.*s.srt", ext - name, name);
+				char *n = add_file (srt, false);
+				char *data;
+				asprintf (&data,
+					  "1\n00:00:00,00 --> 00:00:05,00\n"
+					  "%.*s\n", ext - name, name);
+				struct file_info *fi = get_file_info (n);
+				fi->data = data;
+				fi->data_size = strlen (data);
+			}
 		}
 
 		fclose (fp);
 	}
 	free (datafile);
 	datafile = NULL;
-
-	add_file ("/README", false);
-	struct file_info *fil = get_file_info ("README");
-	fil->data = "This text file is automatically created.\nLook at atrfs_init()\n";
-	fil->data_size = strlen (fil->data);
 
 	return filemap;
 }
