@@ -2,7 +2,6 @@
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
-#include <assert.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
@@ -12,19 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifndef NDEBUG
-#include <stdarg.h>
-static void log_err (char *fmt, ...)
-{
-	char *buf;
-	va_list (list);
-	va_start (list, fmt);
-	vasprintf (&buf, fmt, list);
-	va_end (list);
-	write (2, buf, strlen (buf));
-}
-#endif
 
 static char *datafile;
 static GHashTable *filemap;
@@ -39,35 +25,19 @@ struct file_info
 
 static char *bare_name (const char *name)
 {
-	assert (name);
 	char *s = strrchr (name, '/');
 	return s ? s + 1 : (char *) name;
 }
 
 static struct file_info *get_file_info (const char *file)
 {
-	assert (file == bare_name (file));
-
-	assert (filemap);
-	struct file_info *fi = g_hash_table_lookup (filemap, file);
-	if (fi)
-		return fi;
-
-	assert (file[0] == '\0'); /* root dir */
-	return NULL;
+	return g_hash_table_lookup (filemap, file);
 }
 
 static int get_value (const char *file, char *attr, int def)
 {
-	assert (file == bare_name (file));
-	assert (attr);
-
 	struct file_info *fi = get_file_info (file);
-	assert (fi);
-	assert (! fi->subdir);
-
 	char *name = fi->real_name;
-	assert (name);
 
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
@@ -87,23 +57,15 @@ static int get_value (const char *file, char *attr, int def)
 
 static void set_value (const char *file, char *attr, int value)
 {
-	assert (file == bare_name (file));
-
 	struct file_info *fi = get_file_info (file);
-	assert (fi);
-
-	char *name = fi->real_name;
-	assert (name);
-
 	char buf[10];
+
 	sprintf (buf, "%d", value);
-	setxattr (name, attr, buf, strlen (buf) + 1, 0);
+	setxattr (fi->real_name, attr, buf, strlen (buf) + 1, 0);
 }
 
 static char *insert_as_unique(char *base, struct file_info *fi)
 {
-	assert (base);
-
 	if (!g_hash_table_lookup (filemap, base))
 	{
 		g_hash_table_replace (filemap, base, fi);
@@ -121,7 +83,6 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 			if (! g_hash_table_lookup (filemap, buf))
 			{
 				base = strdup (buf);
-				assert (base);
 				g_hash_table_replace (filemap, base, fi);
 				break;
 			}
@@ -131,12 +92,12 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 
 static void add_file(char *real_name, bool is_subdir)
 {
-	assert (real_name);
-	assert (real_name[0] == '/');
+	if (real_name[0] != '/')
+		abort ();
 
 	char *name = bare_name (real_name);
 
-	struct file_info *fi = malloc(sizeof(*fi));
+	struct file_info *fi = malloc (sizeof (*fi));
 	if (fi)
 	{
 		fi->real_name = real_name;
@@ -159,6 +120,10 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 */
 	char *name = bare_name (file);
 	struct file_info *fi = get_file_info (name);
+
+	if (! fi && *name != '\0')
+		return -ENOENT;
+
 	bool root = !fi;
 	bool subdir = fi && fi->subdir;
 
@@ -173,7 +138,6 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
 	} else {
-		assert (fi && fi->real_name);
 		if (stat (fi->real_name, st) < 0)
 			return -errno;
 
@@ -221,7 +185,8 @@ static int atrfs_unlink(const char *file)
 	/* Remove a file */
 	char *name = bare_name (file);
 	struct file_info *fil = get_file_info (name);
-	assert (fil);
+	if (! fil)
+		return -ENOENT;
 
 	if (*fil->dir)
 	{
@@ -288,7 +253,8 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 */
 	char *name = bare_name (file);
 	struct file_info *fil = get_file_info (name);
-	assert (fil);
+	if (! fil)
+		return -ENOENT;
 
 	if (fil->start_time == 0)
 		fil->start_time = time (NULL);
@@ -311,8 +277,8 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 */
 	char *name = bare_name (file);
 	struct file_info *fil = get_file_info (name);
-	assert (fil);
-	assert (fil->real_name);
+	if (! fil)
+		return 0;
 
 	int fd = open (fil->real_name, O_RDONLY);
 	if (fd < 0)
@@ -359,7 +325,6 @@ static int atrfs_access(const char *file, int acc)
 	 * 'default_permissions' mount option is given, this method is not
 	 * called.
 	 */
-	return 0;
 }
 
 static int atrfs_opendir(const char *file, struct fuse_file_info *fi)
@@ -397,7 +362,6 @@ static int atrfs_readdir(const char *file, void *buf,
 	do
 	{
 		fil = get_file_info (cur->data);
-		assert (fil->dir);
 
 		/* Fill only items that are in current directory */
 		if (! strcmp (fil->dir, dir))
@@ -461,7 +425,8 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 */
 	char *name = bare_name (file);
 	struct file_info *fil = get_file_info (name);
-	assert (fil);
+	if (! fil)
+		return 0;
 
 	if (fil->start_time)
 	{
@@ -555,11 +520,6 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 * destroy() method.
 	 *
 	 */
-#ifndef NDEBUG
-	int fd = open ("/tmp/loki.txt", O_WRONLY);
-	if (fd >= 0)
-		dup2 (fd, 2);	/* stderr */
-#endif
 
 	filemap = g_hash_table_new (g_str_hash, g_str_equal);
 
