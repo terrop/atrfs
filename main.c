@@ -1,15 +1,30 @@
-/* main.c - 20.7.2008 - 21.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 22.7.2008 Ari & Tero Roponen */
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
+#include <assert.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
 #include <glib.h>
 #include <libgen.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef NDEBUG
+#include <stdarg.h>
+static void log_err (char *fmt, ...)
+{
+	char *buf;
+	va_list (list);
+	va_start (list, fmt);
+	vasprintf (&buf, fmt, list);
+	va_end (list);
+	write (2, buf, strlen (buf));
+}
+#endif
 
 static char *datafile;
 static GHashTable *filemap;
@@ -19,53 +34,76 @@ struct file_info
 	char *real_name;
 	time_t start_time;
 	char *dir;
+	bool subdir;
 };
+
+static char *bare_name (const char *name)
+{
+	assert (name);
+	char *s = strrchr (name, '/');
+	return s ? s + 1 : (char *) name;
+}
 
 static struct file_info *get_file_info (const char *file)
 {
-	char *name = basename ((char *)file) - 1; /* skip subdirs */
-	if (filemap)
-		return g_hash_table_lookup (filemap, name + 1); /* +1 == skip '/' */
-	return NULL;
-}
+	assert (file == bare_name (file));
 
-static char *get_real_name (const char *file)
-{
-	struct file_info *fi = get_file_info (file);
+	assert (filemap);
+	struct file_info *fi = g_hash_table_lookup (filemap, file);
 	if (fi)
-		return fi->real_name;
+		return fi;
+
+	assert (file[0] == '\0'); /* root dir */
 	return NULL;
 }
 
 static int get_value (const char *file, char *attr, int def)
 {
-	char *real = get_real_name (file);
-	int ret = def;
-	int len = getxattr (real, attr, NULL, 0);
-	if (len)
+	assert (file == bare_name (file));
+	assert (attr);
+
+	struct file_info *fi = get_file_info (file);
+	assert (fi);
+	assert (! fi->subdir);
+
+	char *name = fi->real_name;
+	assert (name);
+
+	int len = getxattr (name, attr, NULL, 0);
+	if (len <= 0)
+		return def;
+
+	char *tail = NULL;
+	char buf[len];
+	if (getxattr (name, attr, buf, len) > 0)
 	{
-		char *tail = NULL;
-		char buf[len];
-		if (getxattr (real, attr, buf, len) > 0)
-			ret = strtol(buf, &tail, 10);
+		int ret = strtol (buf, &tail, 10);
 		if (tail && *tail)
-			ret = def;
+			return def;
+		return ret;
 	}
-
-	return ret;
+	return def;
 }
-
 
 static void set_value (const char *file, char *attr, int value)
 {
-	char *real = get_real_name (file);
+	assert (file == bare_name (file));
+
+	struct file_info *fi = get_file_info (file);
+	assert (fi);
+
+	char *name = fi->real_name;
+	assert (name);
+
 	char buf[10];
 	sprintf (buf, "%d", value);
-	setxattr (real, attr, buf, strlen (buf) + 1, 0);
+	setxattr (name, attr, buf, strlen (buf) + 1, 0);
 }
 
 static char *insert_as_unique(char *base, struct file_info *fi)
 {
+	assert (base);
+
 	if (!g_hash_table_lookup (filemap, base))
 	{
 		g_hash_table_replace (filemap, base, fi);
@@ -83,6 +121,7 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 			if (! g_hash_table_lookup (filemap, buf))
 			{
 				base = strdup (buf);
+				assert (base);
 				g_hash_table_replace (filemap, base, fi);
 				break;
 			}
@@ -90,17 +129,22 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 	}
 }
 
-static void add_file(char *real_name)
+static void add_file(char *real_name, bool is_subdir)
 {
-	char *base = basename(real_name);
+	assert (real_name);
+	assert (real_name[0] == '/');
+
+	char *name = bare_name (real_name);
+
 	struct file_info *fi = malloc(sizeof(*fi));
 	if (fi)
 	{
 		fi->real_name = real_name;
 		fi->start_time = 0;
-		fi->dir = "/";
+		fi->dir = "";	/* Root */
+		fi->subdir = is_subdir;
 
-		insert_as_unique(base, fi);
+		insert_as_unique (name, fi);
 	}
 }
 
@@ -113,9 +157,12 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 * ignored. The 'st_ino' field is ignored except if the 'use_ino'
 	 * mount option is given.
 	 */
-	struct file_info *fi = get_file_info (file);
+	char *name = bare_name (file);
+	struct file_info *fi = get_file_info (name);
+	bool root = !fi;
+	bool subdir = fi && fi->subdir;
 
-	if ((fi && !fi->dir) || !strcmp(file, "/")) /* Subdir or rootdir */
+	if (root || subdir)
 	{
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
@@ -126,13 +173,12 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
 	} else {
-		if (!fi || !fi->real_name)
-			return -ENOENT;
+		assert (fi && fi->real_name);
 		if (stat (fi->real_name, st) < 0)
 			return -errno;
 
-		st->st_nlink = get_value (file, "user.count", 0);
-		st->st_mtime = get_value (file, "user.watchtime", 946677600);
+		st->st_nlink = get_value (name, "user.count", 0);
+		st->st_mtime = get_value (name, "user.watchtime", 946677600);
 	}
 
 	return 0;
@@ -173,16 +219,16 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	struct file_info *fin = get_file_info(file);
-	if (fin)
+	char *name = bare_name (file);
+	struct file_info *fil = get_file_info (name);
+	assert (fil);
+
+	if (*fil->dir)
 	{
-		if (strcmp(fin->dir, "/"))
-		{
-			fin->dir = "/";
-		} else {
-			set_value (file, "user.count", 0);
-			set_value (file, "user.watchtime", 946677600);
-		}
+		fil->dir = "";
+	} else {
+		set_value (name, "user.count", 0);
+		set_value (name, "user.watchtime", 946677600);
 	}
 	return 0;
 }
@@ -240,12 +286,13 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 * return an arbitrary filehandle in the fuse_file_info structure,
 	 * which will be passed to all file operations.
 	 */
-	struct file_info *fin = get_file_info (file);
-	if (fin)
-	{
-		if (fin->start_time == 0)
-			fin->start_time = time(NULL);
-	}
+	char *name = bare_name (file);
+	struct file_info *fil = get_file_info (name);
+	assert (fil);
+
+	if (fil->start_time == 0)
+		fil->start_time = time (NULL);
+
 	return 0;
 }
 
@@ -262,19 +309,18 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * value of the read system call will reflect the return value of
 	 * this operation.
 	 */
-	int ret = -EINVAL;
-	char *name = get_real_name(file);
-	if (name)
-	{
-		int fd = open (get_real_name (file), O_RDONLY);
-		if (fd < 0)
-			return -errno;
-		ret = pread(fd, buf, len, off);
-		if (ret < 0)
-			ret = -errno;
+	char *name = bare_name (file);
+	struct file_info *fil = get_file_info (name);
+	assert (fil);
+	assert (fil->real_name);
 
-		close(fd);
-	}
+	int fd = open (fil->real_name, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+	int ret = pread (fd, buf, len, off);
+	if (ret < 0)
+		ret = -errno;
+	close (fd);
 
 	return ret;
 }
@@ -333,7 +379,6 @@ static int atrfs_readdir(const char *file, void *buf,
 {
 	/* Read directory */
 	static GList *first, *cur;
-	struct file_info *fin;
 
 	if (offset == 0)
 	{
@@ -346,13 +391,20 @@ static int atrfs_readdir(const char *file, void *buf,
 	if (! cur)
 		return 0;
 
+	struct file_info *fil;
+	char *dir = bare_name (file);
+
 	do
 	{
-		fin = get_file_info (cur->data - 1); /* XXX Hack! */
-		if ((fin->dir && ! strcmp (fin->dir, file))
-		    || (! fin->dir && ! strcmp (file, "/")))
+		fil = get_file_info (cur->data);
+		assert (fil->dir);
+
+		/* Fill only items that are in current directory */
+		if (! strcmp (fil->dir, dir))
+		{
 			if (filler (buf, cur->data, NULL, offset + 1) == 1)
 				break;
+		}
 		cur = cur->next;
 	} while (cur && cur != first);
 
@@ -407,34 +459,34 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	struct file_info *fin = get_file_info (file);
-	if (fin && fin->start_time)
-	{
-		int delta = time(NULL) - fin->start_time;
-		int watchtime = get_value (file, "user.watchtime", 946677600);
+	char *name = bare_name (file);
+	struct file_info *fil = get_file_info (name);
+	assert (fil);
 
-		set_value (file, "user.watchtime", watchtime + delta);
+	if (fil->start_time)
+	{
+		int delta = time (NULL) - fil->start_time;
+		int watchtime = get_value (name, "user.watchtime", 946677600);
+
+		set_value (name, "user.watchtime", watchtime + delta);
 
 		if (delta >= 45)
 		{
-			int val = get_value (file, "user.count", 0) + 1;
-			set_value (file, "user.count", val);
+			int val = get_value (name, "user.count", 0) + 1;
+			set_value (name, "user.count", val);
 		}
 
 		delta /= 15;
 		delta++;
 		delta *= 15;
 		char buf[20];
-		sprintf (buf, "/time_%d", delta);
+		sprintf (buf, "time_%d", delta);
 		char *n = strdup (buf);
 		if (!get_file_info (n))
-		{
-			add_file (n);
-			get_file_info(n)->dir = NULL;
-		}
-		fin->dir = n;
+			add_file (n, true);
+		fil->dir = n;
 
-		fin->start_time = 0;
+		fil->start_time = 0;
 	}
 
 	return 0;
@@ -503,11 +555,16 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 * destroy() method.
 	 *
 	 */
+#ifndef NDEBUG
+	int fd = open ("/tmp/loki.txt", O_WRONLY);
+	if (fd >= 0)
+		dup2 (fd, 2);	/* stderr */
+#endif
 
 	filemap = g_hash_table_new (g_str_hash, g_str_equal);
 
-	add_file(".");
-	add_file("..");
+	add_file ("/.", true);
+	add_file ("/..", true);
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
@@ -517,7 +574,7 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 		while (fgets (buf, sizeof (buf), fp))
 		{
 			*strchr(buf, '\n') = '\0';
-			add_file (canonicalize_file_name (buf));
+			add_file (canonicalize_file_name (buf), false);
 		}
 
 		fclose (fp);
