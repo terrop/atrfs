@@ -289,27 +289,28 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * value of the read system call will reflect the return value of
 	 * this operation.
 	 */
+	int ret = -ENOENT;
 	char *name = bare_name (file);
 	struct file_info *fil = get_file_info (name);
-	if (! fil)
-		return 0;
-
-	if (fil->data)
+	if (fil)
 	{
-		size_t count = fil->data_size - off;
-		if (len < count)
-			count = len;
-		memcpy (buf, fil->data + off, count);
-		return count;
-	}
+		if (fil->data)
+		{
+			size_t count = fil->data_size - off;
+			if (len < count)
+				count = len;
+			memcpy (buf, fil->data + off, count);
+			return count;
+		}
 
-	int fd = open (fil->real_name, O_RDONLY);
-	if (fd < 0)
-		return -errno;
-	int ret = pread (fd, buf, len, off);
-	if (ret < 0)
-		ret = -errno;
-	close (fd);
+		int fd = open (fil->real_name, O_RDONLY);
+		if (fd < 0)
+			return -errno;
+		ret = pread (fd, buf, len, off);
+		if (ret < 0)
+			ret = -errno;
+		close (fd);
+	}
 
 	return ret;
 }
