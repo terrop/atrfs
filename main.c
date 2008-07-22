@@ -15,6 +15,8 @@
 static char *datafile;
 static GHashTable *filemap;
 
+static char *root_dir = "";
+
 struct file_info
 {
 	char *real_name;
@@ -106,7 +108,7 @@ static char *add_file(char *real_name, bool is_subdir)
 	{
 		fi->real_name = real_name;
 		fi->start_time = 0;
-		fi->dir = "";	/* Root */
+		fi->dir = root_dir;
 		fi->subdir = is_subdir;
 
 		fi->data = NULL;
@@ -202,9 +204,9 @@ static int atrfs_unlink(const char *file)
 	if (! fil)
 		return -ENOENT;
 
-	if (*fil->dir)
+	if (fil->dir != root_dir)
 	{
-		fil->dir = "";
+		fil->dir = root_dir;
 	} else {
 		set_value (name, "user.count", 0);
 		set_value (name, "user.watchtime", 946677600);
@@ -276,6 +278,29 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	return 0;
 }
 
+static bool file_in_this_dir (const char *file)
+{
+	char *name = bare_name (file);
+	struct file_info *fi = get_file_info (name);
+
+	char *slash = strrchr (file, '/');
+	if (slash == file && fi->dir == root_dir)
+		return true;
+
+	char *dir = strdup (file);
+	*strrchr (dir, '/') = '\0';
+	bool ret = true;
+	if (strcmp (dir + 1, fi->dir))
+		ret = false;
+
+	FILE *fp = fopen ("/tmp/loki.txt", "w+");
+	fprintf (fp, "'%s', '%s'\n", dir, fi->dir);
+	fclose (fp);
+
+	free (dir);
+	return ret;
+}
+
 static int atrfs_read(const char *file, char *buf, size_t len,
 	off_t off, struct fuse_file_info *fi)
 {
@@ -294,6 +319,9 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	struct file_info *fil = get_file_info (name);
 	if (fil)
 	{
+		if (! file_in_this_dir (file))
+			return ret;
+
 		if (fil->data)
 		{
 			size_t count = fil->data_size - off;
