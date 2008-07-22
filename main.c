@@ -1,5 +1,4 @@
 /* main.c - 20.7.2008 - 22.7.2008 Ari & Tero Roponen */
-#define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
 #include <sys/stat.h>
