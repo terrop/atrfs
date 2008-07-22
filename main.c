@@ -90,9 +90,8 @@ static char *insert_as_unique(char *base, struct file_info *fi)
 	}
 }
 
-static void add_file(char *real_name)
+static void add_file(char *name, char *real_name)
 {
-	char *base = basename(real_name);
 	struct file_info *fi = malloc(sizeof(*fi));
 	if (fi)
 	{
@@ -100,7 +99,10 @@ static void add_file(char *real_name)
 		fi->start_time = 0;
 		fi->dir = "/";
 
-		insert_as_unique(base, fi);
+		if (!name)
+			name = basename(real_name);
+
+		insert_as_unique(name, fi);
 	}
 }
 
@@ -429,7 +431,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		char *n = strdup (buf);
 		if (!get_file_info (n))
 		{
-			add_file (n);
+			add_file(NULL, n);
 			get_file_info(n)->dir = NULL;
 		}
 		fin->dir = n;
@@ -506,8 +508,8 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 
 	filemap = g_hash_table_new (g_str_hash, g_str_equal);
 
-	add_file(".");
-	add_file("..");
+	add_file(NULL, ".");
+	add_file(NULL, "..");
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
@@ -517,7 +519,7 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 		while (fgets (buf, sizeof (buf), fp))
 		{
 			*strchr(buf, '\n') = '\0';
-			add_file (canonicalize_file_name (buf));
+			add_file(NULL, canonicalize_file_name (buf));
 		}
 
 		fclose (fp);
