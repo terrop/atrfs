@@ -12,37 +12,129 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *datafile;
-static GHashTable *filemap;
-
-static char *root_dir = "";
-
-struct file_info
+enum atrfs_entry_type
 {
-	char *real_name;
-	time_t start_time;
-	char *dir;
-	bool subdir;
-
-	char *data;
-	size_t data_size;
+	ATRFS_FILE_ENTRY,
+	ATRFS_DIRECTORY_ENTRY,
+	ATRFS_VIRTUAL_FILE_ENTRY,
 };
 
-static char *bare_name (const char *name)
+struct atrfs_entry
 {
-	char *s = strrchr (name, '/');
-	return s ? s + 1 : (char *) name;
+	enum atrfs_entry_type e_type;
+	struct atrfs_entry *parent;
+
+	union
+	{
+		struct
+		{
+			char *e_real_file_name;
+			int start_time;
+		};
+		GHashTable *e_contents;
+		struct
+		{
+			char *data;
+			size_t size;
+		} e_data;
+	};
+};
+
+static struct atrfs_entry *root;
+static char *datafile;
+
+struct atrfs_entry *create_entry (enum atrfs_entry_type type)
+{
+	struct atrfs_entry *ent = malloc (sizeof (*ent));
+	if (! ent)
+		abort ();
+	memset (ent, 0, sizeof (ent));
+
+	ent->e_type = type;
+
+	switch (type)
+	{
+	default:
+		abort ();
+	case ATRFS_DIRECTORY_ENTRY:
+		ent->e_contents = g_hash_table_new (g_str_hash, g_str_equal);
+		break;
+	case ATRFS_FILE_ENTRY:
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		break;
+	}
+	return ent;
 }
 
-static struct file_info *get_file_info (const char *file)
+struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
 {
-	return g_hash_table_lookup (filemap, file);
+	if (dir->e_type != ATRFS_DIRECTORY_ENTRY)
+		abort ();
+	return g_hash_table_lookup (dir->e_contents, name);
 }
 
-static int get_value (const char *file, char *attr, int def)
+struct atrfs_entry *lookup_entry_by_path (const char *path)
 {
-	struct file_info *fi = get_file_info (file);
-	char *name = fi->real_name;
+	struct atrfs_entry *ent = root;
+	char *buf = strdup (path);
+	char *s;
+
+	for (s = strtok (buf, "/"); ent && s; s = strtok (NULL, "/"))
+		ent = lookup_entry_by_name (ent, s);
+	return ent;
+}
+
+void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
+{
+	if (dir->e_type != ATRFS_DIRECTORY_ENTRY)
+		abort ();
+	g_hash_table_replace (dir->e_contents, name, ent);
+	ent->parent = dir;
+}
+
+char *entry_name (struct atrfs_entry *ent)
+{
+	struct atrfs_entry *e;
+	char *name = NULL;
+	GList *it, *list = g_hash_table_get_keys (ent->parent->e_contents);
+	for (it = list; it; it = it->next)
+	{
+		e = g_hash_table_lookup (ent->parent->e_contents, it->data);
+		if (e == ent)
+		{
+			name = it->data;
+			break;
+		}
+	}
+	g_list_free (list);
+	return name;
+}
+
+void remove_entry (struct atrfs_entry *ent)
+{
+	if (! ent->parent || ent->parent->e_type != ATRFS_DIRECTORY_ENTRY)
+		abort ();
+	char *name = entry_name (ent);
+	if (name)
+		g_hash_table_remove (ent->parent->e_contents, name);
+	ent->parent = NULL;
+}
+
+void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
+{
+	if (to->e_type != ATRFS_DIRECTORY_ENTRY)
+		abort ();
+	char *name = entry_name (ent);
+	remove_entry (ent);
+	insert_entry (ent, name, to);
+}
+
+static int get_value (struct atrfs_entry *ent, char *attr, int def)
+{
+	if (ent->e_type != ATRFS_FILE_ENTRY)
+		abort ();
+
+	char *name = ent->e_real_file_name;
 
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
@@ -60,40 +152,14 @@ static int get_value (const char *file, char *attr, int def)
 	return def;
 }
 
-static void set_value (const char *file, char *attr, int value)
+static void set_value (struct atrfs_entry *ent, char *attr, int value)
 {
-	struct file_info *fi = get_file_info (file);
+	if (ent->e_type != ATRFS_FILE_ENTRY)
+		abort ();
+
 	char buf[10];
-
 	sprintf (buf, "%d", value);
-	setxattr (fi->real_name, attr, buf, strlen (buf) + 1, 0);
-}
-
-static char *insert_as_unique(char *base, struct file_info *fi)
-{
-	if (!g_hash_table_lookup (filemap, base))
-	{
-		g_hash_table_replace (filemap, base, fi);
-	} else {
-		char buf[strlen (base) + 5];
-		char *ext = strrchr (base, '.');
-		int i;
-		if (! ext)
-			ext = base + strlen (base);
-
-		for (i = 2;; i++)
-		{
-			sprintf (buf, "%.*s %d%s", ext - base, base, i, ext);
-
-			if (! g_hash_table_lookup (filemap, buf))
-			{
-				base = strdup (buf);
-				g_hash_table_replace (filemap, base, fi);
-				break;
-			}
-		}
-	}
-	return base;
+	setxattr (ent->e_real_file_name, attr, buf, strlen (buf) + 1, 0);
 }
 
 static char *add_file(char *real_name, bool is_subdir)
@@ -101,22 +167,27 @@ static char *add_file(char *real_name, bool is_subdir)
 	if (real_name[0] != '/')
 		abort ();
 
-	char *name = bare_name (real_name);
+	struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
+	ent->e_real_file_name = strdup (real_name);
 
-	struct file_info *fi = malloc (sizeof (*fi));
-	if (fi)
+	char *name = strdup (basename (real_name));
+	int i;
+	for (i = 2;; i++)
 	{
-		fi->real_name = real_name;
-		fi->start_time = 0;
-		fi->dir = root_dir;
-		fi->subdir = is_subdir;
-
-		fi->data = NULL;
-		fi->data_size = 0;
-
-		return insert_as_unique (name, fi);
+		if (! lookup_entry_by_name (root, name))
+		{
+			insert_entry (ent, name, root);
+			return name; /* exit here */
+		} else {
+			char buf[strlen (name) + 5];
+			char *ext = strrchr (name, '.');
+			if (! ext)
+				ext = name + strlen (name);
+			sprintf (buf, "%.*s %d%s", ext - name, name, i, ext);
+			free (name);
+			name = strdup (buf);
+		}
 	}
-	return NULL;
 }
 
 static int atrfs_getattr(const char *file, struct stat *st)
@@ -128,16 +199,12 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	 * ignored. The 'st_ino' field is ignored except if the 'use_ino'
 	 * mount option is given.
 	 */
-	char *name = bare_name (file);
-	struct file_info *fi = get_file_info (name);
+	struct atrfs_entry *ent = lookup_entry_by_path (file);
 
-	if (! fi && *name != '\0')
+	if (! ent)
 		return -ENOENT;
 
-	bool root = !fi;
-	bool subdir = fi && fi->subdir;
-
-	if (root || subdir)
+	if (ent->e_type == ATRFS_DIRECTORY_ENTRY)
 	{
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
@@ -147,18 +214,18 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_atime = time(NULL);
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
-	} else if (fi->data) {
+	} else if (ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY) {
 		st->st_nlink = 1;
-		st->st_size = fi->data_size;
+		st->st_size = ent->e_data.size;
 		st->st_mode = S_IFREG | S_IRUSR;
 		st->st_uid = getuid();
 		st->st_mtime = time(NULL);
 	} else {
-		if (stat (fi->real_name, st) < 0)
+		if (stat (ent->e_real_file_name, st) < 0)
 			return -errno;
 
-		st->st_nlink = get_value (name, "user.count", 0);
-		st->st_mtime = get_value (name, "user.watchtime", 946677600);
+		st->st_nlink = get_value (ent, "user.count", 0);
+		st->st_mtime = get_value (ent, "user.watchtime", 946677600);
 	}
 
 	return 0;
@@ -199,18 +266,19 @@ static int atrfs_mkdir(const char *name, mode_t mode)
 static int atrfs_unlink(const char *file)
 {
 	/* Remove a file */
-	char *name = bare_name (file);
-	struct file_info *fil = get_file_info (name);
-	if (! fil)
+	struct atrfs_entry *ent = lookup_entry_by_path (file);
+
+	if (! ent)
 		return -ENOENT;
 
-	if (fil->dir != root_dir)
+	if (ent->parent != root)
 	{
-		fil->dir = root_dir;
+		move_entry (ent, root);
 	} else {
-		set_value (name, "user.count", 0);
-		set_value (name, "user.watchtime", 946677600);
+		set_value (ent, "user.count", 0);
+		set_value (ent, "user.watchtime", 946677600);
 	}
+
 	return 0;
 }
 
@@ -267,34 +335,14 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	 * return an arbitrary filehandle in the fuse_file_info structure,
 	 * which will be passed to all file operations.
 	 */
-	char *name = bare_name (file);
-	struct file_info *fil = get_file_info (name);
-	if (! fil)
+	struct atrfs_entry *ent = lookup_entry_by_path (file);
+	if (! ent)
 		return -ENOENT;
 
-	if (fil->start_time == 0)
-		fil->start_time = time (NULL);
+	if (ent->start_time == 0)
+		ent->start_time = time (NULL);
 
 	return 0;
-}
-
-static bool file_in_this_dir (const char *file)
-{
-	char *name = bare_name (file);
-	struct file_info *fi = get_file_info (name);
-
-	char *slash = strrchr (file, '/');
-	if (slash == file && fi->dir == root_dir)
-		return true;
-
-	char *dir = strdup (file);
-	*strrchr (dir, '/') = '\0';
-	bool ret = true;
-	if (strcmp (dir + 1, fi->dir))
-		ret = false;
-
-	free (dir);
-	return ret;
 }
 
 static int atrfs_read(const char *file, char *buf, size_t len,
@@ -311,29 +359,36 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * this operation.
 	 */
 	int ret = -ENOENT;
-	char *name = bare_name (file);
-	struct file_info *fil = get_file_info (name);
-	if (fil)
-	{
-		if (! file_in_this_dir (file))
-			return ret;
+	struct atrfs_entry *ent = lookup_entry_by_path (file);
 
-		if (fil->data)
+	if (ent)
+	{
+		switch (ent->e_type)
 		{
-			size_t count = fil->data_size - off;
+		default:
+			abort ();
+
+		case ATRFS_VIRTUAL_FILE_ENTRY:
+		{
+			size_t count = ent->e_data.size;
 			if (len < count)
 				count = len;
-			memcpy (buf, fil->data + off, count);
+			memcpy (buf, ent->e_data.data + off, count);
 			return count;
 		}
 
-		int fd = open (fil->real_name, O_RDONLY);
-		if (fd < 0)
-			return -errno;
-		ret = pread (fd, buf, len, off);
-		if (ret < 0)
-			ret = -errno;
-		close (fd);
+		case ATRFS_FILE_ENTRY:
+		{
+			int fd = open (ent->e_real_file_name, O_RDONLY);
+			if (fd < 0)
+				return -errno;
+			ret = pread (fd, buf, len, off);
+			if (ret < 0)
+				ret = -errno;
+			close (fd);
+			return ret;
+		}
+		}
 	}
 
 	return ret;
@@ -398,22 +453,15 @@ static int atrfs_readdir(const char *file, void *buf,
 	{
 		if (files)
 			g_list_free (files);
-		files = g_hash_table_get_keys (filemap);
+		struct atrfs_entry *ent = lookup_entry_by_path (file);
+		files = g_hash_table_get_keys (ent->e_contents);
 		cur = files;
 	}
 
 	while (cur)
 	{
-		char *dir = bare_name(file);
-		struct file_info *fil = get_file_info (cur->data);
-
-		/* Fill only items that are in current directory */
-		if (! strcmp (fil->dir, dir))
-		{
-			if (filler (buf, cur->data, NULL, offset + 1) == 1)
-				break;
-		}
-
+		if (filler (buf, cur->data, NULL, offset + 1) == 1)
+			break;
 		cur = cur->next;
 	}
 
@@ -462,35 +510,39 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * release will mean, that no more reads/writes will happen on the
 	 * file.  The return value of release is ignored.
 	 */
-	char *name = bare_name (file);
-	struct file_info *fil = get_file_info (name);
-	if (! fil)
+	struct atrfs_entry *ent = lookup_entry_by_path (file);
+	if (! ent)
 		return 0;
 
-	if (fil->start_time)
+	if (ent->e_type == ATRFS_FILE_ENTRY && ent->start_time)
 	{
-		int delta = time (NULL) - fil->start_time;
-		int watchtime = get_value (name, "user.watchtime", 946677600);
-		set_value (name, "user.watchtime", watchtime + delta);
+		int delta = time (NULL) - ent->start_time;
+		int watchtime = get_value (ent, "user.watchtime", 946677600);
+		set_value (ent, "user.watchtime", watchtime + delta);
 
 		if (delta >= 45)
 		{
-			int val = get_value (name, "user.count", 0) + 1;
-			set_value (name, "user.count", val);
+			int val = get_value (ent, "user.count", 0) + 1;
+			set_value (ent, "user.count", val);
 		}
 
+#if 1
 		delta /= 15;
 		delta++;
 		delta *= 15;
 		char buf[20];
-		sprintf (buf, "/time_%d", delta);
+		sprintf (buf, "time_%d", delta);
 		char *n = strdup (buf);
+		struct atrfs_entry *dir = lookup_entry_by_path (n);
+		if (! dir)
+		{
+			dir = create_entry (ATRFS_DIRECTORY_ENTRY);
+			insert_entry (dir, n, root);
+		}
+		move_entry (ent, dir);
+#endif
 
-		if (! get_file_info (n + 1))
-			add_file (n, true);
-		fil->dir = n+1;
-
-		fil->start_time = 0;
+		ent->start_time = 0;
 	}
 
 	return 0;
@@ -559,8 +611,7 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 * destroy() method.
 	 *
 	 */
-
-	filemap = g_hash_table_new (g_str_hash, g_str_equal);
+	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
 	add_file ("/.", true);
 	add_file ("/..", true);
@@ -577,29 +628,31 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 			file = canonicalize_file_name (buf);
 			name = add_file (file, false);
 
+#if 1
 			/* Add subtitles for flv-files. */
 			ext = strrchr (name, '.');
 			if (ext && !strcmp (ext, ".flv"))
 			{
-				char *srt;
-				asprintf (&srt, "/%.*s.srt", ext - name, name);
-				char *n = add_file (srt, false);
+				char *srtname;
+				asprintf (&srtname, "%.*s.srt", ext - name, name);
+
 				char *data;
 				asprintf (&data,
 					  "1\n00:00:00,00 --> 00:00:05,00\n"
 					  "%.*s\n", ext - name, name);
-				struct file_info *fi = get_file_info (n);
-				fi->data = data;
-				fi->data_size = strlen (data);
+
+				struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+				ent->e_data.data = data;
+				ent->e_data.size = strlen (data);
+				insert_entry (ent, srtname, root);
 			}
+#endif
 		}
 
 		fclose (fp);
 	}
 	free (datafile);
 	datafile = NULL;
-
-	return filemap;
 }
 
 static void atrfs_destroy(void *data)
@@ -609,9 +662,6 @@ static void atrfs_destroy(void *data)
 	 *
 	 * Called on filesystem exit.
 	 */
-	GHashTable *ht = data;
-	if (ht)
-		g_hash_table_destroy (ht);
 }
 
 static int atrfs_create(const char *file, mode_t mode, struct fuse_file_info *fi)
