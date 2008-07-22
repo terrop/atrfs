@@ -293,10 +293,6 @@ static bool file_in_this_dir (const char *file)
 	if (strcmp (dir + 1, fi->dir))
 		ret = false;
 
-	FILE *fp = fopen ("/tmp/loki.txt", "w+");
-	fprintf (fp, "'%s', '%s'\n", dir, fi->dir);
-	fclose (fp);
-
 	free (dir);
 	return ret;
 }
