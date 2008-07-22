@@ -21,6 +21,9 @@ struct file_info
 	time_t start_time;
 	char *dir;
 	bool subdir;
+
+	char *data;
+	size_t data_size;
 };
 
 static char *bare_name (const char *name)
@@ -105,6 +108,9 @@ static void add_file(char *real_name, bool is_subdir)
 		fi->dir = "";	/* Root */
 		fi->subdir = is_subdir;
 
+		fi->data = NULL;
+		fi->data_size = 0;
+
 		insert_as_unique (name, fi);
 	}
 }
@@ -137,6 +143,12 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_atime = time(NULL);
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
+	} else if (fi->data) {
+		st->st_nlink = 1;
+		st->st_size = fi->data_size;
+		st->st_mode = S_IFREG | S_IRUSR;
+		st->st_uid = getuid();
+		st->st_mtime = time(NULL);
 	} else {
 		if (stat (fi->real_name, st) < 0)
 			return -errno;
@@ -279,6 +291,15 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	struct file_info *fil = get_file_info (name);
 	if (! fil)
 		return 0;
+
+	if (fil->data)
+	{
+		size_t count = fil->data_size - off;
+		if (len < count)
+			count = len;
+		memcpy (buf, fil->data + off, count);
+		return count;
+	}
 
 	int fd = open (fil->real_name, O_RDONLY);
 	if (fd < 0)
@@ -532,6 +553,11 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	}
 	free (datafile);
 	datafile = NULL;
+
+	add_file ("/README", false);
+	struct file_info *fil = get_file_info ("README");
+	fil->data = "This text file is automatically created.\nLook at atrfs_init()\n";
+	fil->data_size = strlen (fil->data);
 
 	return filemap;
 }
