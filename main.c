@@ -48,9 +48,10 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	struct atrfs_entry *ent = malloc (sizeof (*ent));
 	if (! ent)
 		abort ();
-	memset (ent, 0, sizeof (ent));
 
 	ent->e_type = type;
+	ent->parent = NULL;
+	ent->name = NULL;
 
 	switch (type)
 	{
@@ -60,7 +61,12 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		ent->e_contents = g_hash_table_new (g_str_hash, g_str_equal);
 		break;
 	case ATRFS_FILE_ENTRY:
+		ent->e_real_file_name = NULL;
+		ent->start_time = 0;
+		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
+		ent->e_data.data = NULL;
+		ent->e_data.size = 0;
 		break;
 	}
 	return ent;
@@ -520,7 +526,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		delta *= 15;
 		char buf[20];
 		sprintf (buf, "time_%d", delta);
-		struct atrfs_entry *dir = lookup_entry_by_path (buf);
+		struct atrfs_entry *dir = lookup_entry_by_name (root, buf);
 		if (! dir)
 		{
 			dir = create_entry (ATRFS_DIRECTORY_ENTRY);
