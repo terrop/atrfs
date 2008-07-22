@@ -338,8 +338,11 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	if (! ent)
 		return -ENOENT;
 
-	if (ent->start_time == 0)
-		ent->start_time = time (NULL);
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+	{
+		if (ent->start_time == 0)
+			ent->start_time = time (NULL);
+	}
 
 	return 0;
 }
