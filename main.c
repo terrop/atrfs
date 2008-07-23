@@ -178,6 +178,45 @@ static char *uniquify_in_directory (char *name, struct atrfs_entry *dir)
 	}
 }
 
+static void handle_srt_for_file (struct atrfs_entry *file, bool insert)
+{
+	if (file->e_type != ATRFS_FILE_ENTRY)
+		return;
+
+	char *name = file->name;
+
+	/* Add/remove subtitles for flv-files. */
+	char *ext = strrchr (name, '.');
+	if (ext && !strcmp (ext, ".flv"))
+	{
+		struct atrfs_entry *ent;
+		char srtname[strlen (name) + 1];
+		sprintf (srtname, "%.*s.srt", ext - name, name);
+
+		if (insert)
+		{
+			char *data;
+			asprintf (&data,
+				  "1\n00:00:00,00 --> 00:00:05,00\n"
+				  "%.*s\n", ext - name, name);
+
+			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+			ent->virtual.data = data;
+			ent->virtual.size = strlen (data);
+			insert_entry (ent, srtname, root);
+		} else {
+			ent = lookup_entry_by_name (file->parent, srtname);
+			if (ent && ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
+			{
+				remove_entry (ent);
+				free (ent->virtual.data);
+				free (ent->name);
+				free (ent);
+			}
+		}
+	}
+}
+
 static int atrfs_getattr(const char *file, struct stat *st)
 {
 	/*
@@ -339,7 +378,10 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 		break;
 	case ATRFS_FILE_ENTRY:
 		if (ent->file.start_time == 0)
+		{
 			ent->file.start_time = time (NULL);
+			handle_srt_for_file (ent, true);
+		}
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		break;
@@ -526,6 +568,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	case ATRFS_FILE_ENTRY:
 		if (ent->file.start_time)
 		{
+			handle_srt_for_file (ent, false);
 			int delta = time (NULL) - ent->file.start_time;
 			int watchtime = get_value (ent, "user.watchtime", 946677600);
 			set_value (ent, "user.watchtime", watchtime + delta);
@@ -638,26 +681,6 @@ static void populate_root_dir (struct atrfs_entry *root)
 			insert_entry (ent, name, root);
 			free (name);
 			name = ent->name;
-
-#if 1
-			/* Add subtitles for flv-files. */
-			char *ext = strrchr (name, '.');
-			if (ext && !strcmp (ext, ".flv"))
-			{
-				char srtname[strlen (name) + 1];
-				sprintf (srtname, "%.*s.srt", ext - name, name);
-
-				char *data;
-				asprintf (&data,
-					  "1\n00:00:00,00 --> 00:00:05,00\n"
-					  "%.*s\n", ext - name, name);
-
-				struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-				ent->virtual.data = data;
-				ent->virtual.size = strlen (data);
-				insert_entry (ent, srtname, root);
-			}
-#endif
 		}
 
 		fclose (fp);
