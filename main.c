@@ -617,18 +617,53 @@ static int atrfs_fsyncdir(const char *file, int datasync, struct fuse_file_info 
 	return -ENOSYS;
 }
 
-static char *add_file(char *real_name)
+static void populate_root_dir (struct atrfs_entry *root)
 {
-	if (real_name[0] != '/')
-		abort ();
+	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
-	struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
-	ent->file.e_real_file_name = strdup (real_name);
+	FILE *fp = fopen (datafile, "r");
+	if (fp)
+	{
+		char buf[256];
+		char *name;
 
-	char *name = uniquify_in_directory (basename (real_name), root);
-	insert_entry (ent, name, root);
-	free (name);
-	return ent->name;
+		while (fgets (buf, sizeof (buf), fp))
+		{
+			*strchr(buf, '\n') = '\0';
+
+			struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
+			ent->file.e_real_file_name = strdup (buf);
+
+			name = uniquify_in_directory (basename (buf), root);
+			insert_entry (ent, name, root);
+			free (name);
+			name = ent->name;
+
+#if 1
+			/* Add subtitles for flv-files. */
+			char *ext = strrchr (name, '.');
+			if (ext && !strcmp (ext, ".flv"))
+			{
+				char srtname[strlen (name) + 1];
+				sprintf (srtname, "%.*s.srt", ext - name, name);
+
+				char *data;
+				asprintf (&data,
+					  "1\n00:00:00,00 --> 00:00:05,00\n"
+					  "%.*s\n", ext - name, name);
+
+				struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+				ent->virtual.data = data;
+				ent->virtual.size = strlen (data);
+				insert_entry (ent, srtname, root);
+			}
+#endif
+		}
+
+		fclose (fp);
+	}
+	free (datafile);
+	datafile = NULL;
 }
 
 static void *atrfs_init(struct fuse_conn_info *conn)
@@ -643,44 +678,8 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 */
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
-	FILE *fp = fopen (datafile, "r");
-	if (fp)
-	{
-		char buf[256];
-		char *file, *ext, *name;
+	populate_root_dir (root);
 
-		while (fgets (buf, sizeof (buf), fp))
-		{
-			*strchr(buf, '\n') = '\0';
-			file = canonicalize_file_name (buf);
-			name = add_file (file);
-
-#if 1
-			/* Add subtitles for flv-files. */
-			ext = strrchr (name, '.');
-			if (ext && !strcmp (ext, ".flv"))
-			{
-				char *srtname;
-				asprintf (&srtname, "%.*s.srt", ext - name, name);
-
-				char *data;
-				asprintf (&data,
-					  "1\n00:00:00,00 --> 00:00:05,00\n"
-					  "%.*s\n", ext - name, name);
-
-				struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-				ent->virtual.data = data;
-				ent->virtual.size = strlen (data);
-				insert_entry (ent, srtname, root);
-				free (srtname);
-			}
-#endif
-		}
-
-		fclose (fp);
-	}
-	free (datafile);
-	datafile = NULL;
 }
 
 static void atrfs_destroy(void *data)
