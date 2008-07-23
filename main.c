@@ -224,7 +224,7 @@ static void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			ent->virtual.data = data;
 			ent->virtual.size = strlen (data);
-			insert_entry (ent, srtname, root);
+			insert_entry (ent, srtname, file->parent);
 		} else {
 			ent = lookup_entry_by_name (file->parent, srtname);
 			if (ent && ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
@@ -483,7 +483,18 @@ static int atrfs_statfs(const char *file, struct statvfs *stat)
 	 * The 'f_frsize', 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
 	 *
 	 */
-	return -ENOSYS;
+	stat->f_bsize = 1024;	/* file system block size */
+	stat->f_frsize = 1024;	/* fragment size */
+	stat->f_blocks = 1000;	/* size of fs in f_frsize units */
+	stat->f_bfree = 800;	/* # free blocks */
+	stat->f_bavail = 800;	/* # free blocks for non-root */
+	stat->f_files = 34;	/* # inodes */
+	stat->f_ffree = 1000;	/* # free inodes */
+	stat->f_favail = 1000;	/* # free inodes for non-root */
+	stat->f_fsid = 342;	/* file system ID */
+	stat->f_flag = 0;	/* mount flags */
+	stat->f_namemax = 128;	/* maximum filename length */
+	return 0;
 }
 
 static int atrfs_access(const char *file, int acc)
