@@ -30,6 +30,7 @@ struct atrfs_entry
 		{
 			char *e_real_file_name;
 			time_t start_time;
+			int dir_len;
 		};
 		GHashTable *e_contents;
 		struct
@@ -59,6 +60,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		abort ();
 	case ATRFS_DIRECTORY_ENTRY:
 		ent->e_contents = g_hash_table_new (g_str_hash, g_str_equal);
+		ent->dir_len = 0;
 		break;
 	case ATRFS_FILE_ENTRY:
 		ent->e_real_file_name = NULL;
@@ -97,6 +99,7 @@ void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 	ent->name = strdup (name);
 	g_hash_table_replace (dir->e_contents, ent->name, ent);
 	ent->parent = dir;
+	dir->dir_len++;
 }
 
 void remove_entry (struct atrfs_entry *ent)
@@ -106,6 +109,7 @@ void remove_entry (struct atrfs_entry *ent)
 	char *name = ent->name;
 	if (name)
 		g_hash_table_remove (ent->parent->e_contents, name);
+	ent->parent->dir_len--;
 	ent->parent = NULL;
 }
 
@@ -201,7 +205,7 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_nlink = 1;
 		st->st_uid = getuid();
 		st->st_gid = getgid();
-		st->st_size = 34;
+		st->st_size = ent->dir_len;
 		st->st_atime = time(NULL);
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
