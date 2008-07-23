@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 22.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 23.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
 #include <sys/stat.h>
@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define CHECK_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
 
 enum atrfs_entry_type
 {
@@ -49,7 +51,7 @@ struct atrfs_entry
 static struct atrfs_entry *root;
 static char *datafile;
 
-struct atrfs_entry *create_entry (enum atrfs_entry_type type)
+static struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent = malloc (sizeof (*ent));
 	if (! ent)
@@ -79,14 +81,13 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	return ent;
 }
 
-struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
+static struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
 {
-	if (dir->e_type != ATRFS_DIRECTORY_ENTRY)
-		abort ();
+	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	return g_hash_table_lookup (dir->directory.e_contents, name);
 }
 
-struct atrfs_entry *lookup_entry_by_path (const char *path)
+static struct atrfs_entry *lookup_entry_by_path (const char *path)
 {
 	struct atrfs_entry *ent = root;
 	char *buf = strdup (path);
@@ -97,20 +98,18 @@ struct atrfs_entry *lookup_entry_by_path (const char *path)
 	return ent;
 }
 
-void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
+static void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 {
-	if (dir->e_type != ATRFS_DIRECTORY_ENTRY)
-		abort ();
+	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	ent->name = strdup (name);
 	g_hash_table_replace (dir->directory.e_contents, ent->name, ent);
 	ent->parent = dir;
 	dir->directory.dir_len++;
 }
 
-void remove_entry (struct atrfs_entry *ent)
+static void remove_entry (struct atrfs_entry *ent)
 {
-	if (! ent->parent || ent->parent->e_type != ATRFS_DIRECTORY_ENTRY)
-		abort ();
+	CHECK_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
 	char *name = ent->name;
 	if (name)
 		g_hash_table_remove (ent->parent->directory.e_contents, name);
@@ -118,10 +117,9 @@ void remove_entry (struct atrfs_entry *ent)
 	ent->parent = NULL;
 }
 
-void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
+static void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 {
-	if (to->e_type != ATRFS_DIRECTORY_ENTRY)
-		abort ();
+	CHECK_TYPE (to, ATRFS_DIRECTORY_ENTRY);
 	char *name = ent->name;
 	remove_entry (ent);
 	insert_entry (ent, name, to);
@@ -130,9 +128,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 
 static int get_value (struct atrfs_entry *ent, char *attr, int def)
 {
-	if (ent->e_type != ATRFS_FILE_ENTRY)
-		abort ();
-
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	char *name = ent->file.e_real_file_name;
 
 	int len = getxattr (name, attr, NULL, 0);
@@ -153,39 +149,31 @@ static int get_value (struct atrfs_entry *ent, char *attr, int def)
 
 static void set_value (struct atrfs_entry *ent, char *attr, int value)
 {
-	if (ent->e_type != ATRFS_FILE_ENTRY)
-		abort ();
-
-	char buf[30];	     /* XXX: this caused 5h+ debugging :-/  */
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	char buf[30];	     /* XXX */
 	sprintf (buf, "%d", value);
 	setxattr (ent->file.e_real_file_name, attr, buf, strlen (buf) + 1, 0);
 }
 
-static char *add_file(char *real_name, bool is_subdir)
+static char *uniquify_in_directory (char *name, struct atrfs_entry *dir)
 {
-	if (real_name[0] != '/')
-		abort ();
+	char *uniq = strdup (name);
+	int len = strlen (name);
+	char *ext = strrchr (name, '.');
+	if (! ext)
+		ext = name + strlen (name);
 
-	struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
-	ent->file.e_real_file_name = strdup (real_name);
-
-	char *name = strdup (basename (real_name));
 	int i;
 	for (i = 2;; i++)
 	{
-		if (! lookup_entry_by_name (root, name))
+		if (! lookup_entry_by_name (dir, uniq))
 		{
-			insert_entry (ent, name, root);
-			free (name);
-			return ent->name; /* exit here */
+			return uniq;
 		} else {
-			char buf[strlen (name) + 5];
-			char *ext = strrchr (name, '.');
-			if (! ext)
-				ext = name + strlen (name);
+			char buf[len + 10];
 			sprintf (buf, "%.*s %d%s", ext - name, name, i, ext);
-			free (name);
-			name = strdup (buf);
+			free (uniq);
+			uniq = strdup (buf);
 		}
 	}
 }
@@ -204,8 +192,11 @@ static int atrfs_getattr(const char *file, struct stat *st)
 	if (! ent)
 		return -ENOENT;
 
-	if (ent->e_type == ATRFS_DIRECTORY_ENTRY)
+	switch (ent->e_type)
 	{
+	default:
+		abort ();
+	case ATRFS_DIRECTORY_ENTRY:
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
 		st->st_uid = getuid();
@@ -214,18 +205,21 @@ static int atrfs_getattr(const char *file, struct stat *st)
 		st->st_atime = time(NULL);
 		st->st_mtime = time(NULL);
 		st->st_ctime = time(NULL);
-	} else if (ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY) {
+		break;
+	case ATRFS_VIRTUAL_FILE_ENTRY:
 		st->st_nlink = 1;
 		st->st_size = ent->virtual.size;
 		st->st_mode = S_IFREG | S_IRUSR;
 		st->st_uid = getuid();
 		st->st_mtime = time(NULL);
-	} else {
+		break;
+	case ATRFS_FILE_ENTRY:
 		if (stat (ent->file.e_real_file_name, st) < 0)
 			return -errno;
 
 		st->st_nlink = get_value (ent, "user.count", 0);
 		st->st_mtime = get_value (ent, "user.watchtime", 946677600);
+		break;
 	}
 
 	return 0;
@@ -339,10 +333,18 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 	if (! ent)
 		return -ENOENT;
 
-	if (ent->e_type == ATRFS_FILE_ENTRY)
+	switch (ent->e_type)
 	{
+	default:
+		break;
+	case ATRFS_FILE_ENTRY:
 		if (ent->file.start_time == 0)
 			ent->file.start_time = time (NULL);
+		break;
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		break;
+	case ATRFS_DIRECTORY_ENTRY:
+		abort ();
 	}
 
 	return 0;
@@ -361,40 +363,39 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	 * value of the read system call will reflect the return value of
 	 * this operation.
 	 */
-	int ret = -ENOENT;
 	struct atrfs_entry *ent = lookup_entry_by_path (file);
+	if (! ent)
+		return -ENOENT;
 
-	if (ent)
+	switch (ent->e_type)
 	{
-		switch (ent->e_type)
-		{
-		default:
-			abort ();
+	default:
+		abort ();
 
-		case ATRFS_VIRTUAL_FILE_ENTRY:
-		{
-			size_t count = ent->virtual.size;
-			if (len < count)
-				count = len;
-			memcpy (buf, ent->virtual.data + off, count);
-			return count;
-		}
+	case ATRFS_DIRECTORY_ENTRY:
+		abort ();
 
-		case ATRFS_FILE_ENTRY:
-		{
-			int fd = open (ent->file.e_real_file_name, O_RDONLY);
-			if (fd < 0)
-				return -errno;
-			ret = pread (fd, buf, len, off);
-			if (ret < 0)
-				ret = -errno;
-			close (fd);
-			return ret;
-		}
-		}
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+	{
+		size_t count = ent->virtual.size;
+		if (len < count)
+			count = len;
+		memcpy (buf, ent->virtual.data + off, count);
+		return count;
 	}
 
-	return ret;
+	case ATRFS_FILE_ENTRY:
+	{
+		int ret, fd = open (ent->file.e_real_file_name, O_RDONLY);
+		if (fd < 0)
+			return -errno;
+		ret = pread (fd, buf, len, off);
+		if (ret < 0)
+			ret = -errno;
+		close (fd);
+		return ret;
+	}
+	}
 }
 
 static int atrfs_write(const char *file, const char *buf, size_t len,
@@ -517,34 +518,47 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	if (! ent)
 		return 0;
 
-	if (ent->e_type == ATRFS_FILE_ENTRY && ent->file.start_time)
+	switch (ent->e_type)
 	{
-		int delta = time (NULL) - ent->file.start_time;
-		int watchtime = get_value (ent, "user.watchtime", 946677600);
-		set_value (ent, "user.watchtime", watchtime + delta);
+	default:
+		abort ();
 
-		if (delta >= 45)
+	case ATRFS_FILE_ENTRY:
+		if (ent->file.start_time)
 		{
-			int val = get_value (ent, "user.count", 0) + 1;
-			set_value (ent, "user.count", val);
-		}
+			int delta = time (NULL) - ent->file.start_time;
+			int watchtime = get_value (ent, "user.watchtime", 946677600);
+			set_value (ent, "user.watchtime", watchtime + delta);
+
+			if (delta >= 45)
+			{
+				int val = get_value (ent, "user.count", 0) + 1;
+				set_value (ent, "user.count", val);
+			}
 
 #if 1
-		delta /= 15;
-		delta++;
-		delta *= 15;
-		char buf[20];
-		sprintf (buf, "time_%d", delta);
-		struct atrfs_entry *dir = lookup_entry_by_name (root, buf);
-		if (! dir)
-		{
-			dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-			insert_entry (dir, buf, root);
-		}
-		move_entry (ent, dir);
+			delta /= 15;
+			delta++;
+			delta *= 15;
+			char buf[20];
+			sprintf (buf, "time_%d", delta);
+			struct atrfs_entry *dir = lookup_entry_by_name (root, buf);
+			if (! dir)
+			{
+				dir = create_entry (ATRFS_DIRECTORY_ENTRY);
+				insert_entry (dir, buf, root);
+			}
+			move_entry (ent, dir);
 #endif
+			ent->file.start_time = 0;
+		}
+		break;
 
-		ent->file.start_time = 0;
+	case ATRFS_DIRECTORY_ENTRY:
+		break;
+
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		break;
 	}
 
 	return 0;
@@ -603,6 +617,20 @@ static int atrfs_fsyncdir(const char *file, int datasync, struct fuse_file_info 
 	return -ENOSYS;
 }
 
+static char *add_file(char *real_name)
+{
+	if (real_name[0] != '/')
+		abort ();
+
+	struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
+	ent->file.e_real_file_name = strdup (real_name);
+
+	char *name = uniquify_in_directory (basename (real_name), root);
+	insert_entry (ent, name, root);
+	free (name);
+	return ent->name;
+}
+
 static void *atrfs_init(struct fuse_conn_info *conn)
 {
 	/*
@@ -615,9 +643,6 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 	 */
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
-	add_file ("/.", true);
-	add_file ("/..", true);
-
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
 	{
@@ -628,7 +653,7 @@ static void *atrfs_init(struct fuse_conn_info *conn)
 		{
 			*strchr(buf, '\n') = '\0';
 			file = canonicalize_file_name (buf);
-			name = add_file (file, false);
+			name = add_file (file);
 
 #if 1
 			/* Add subtitles for flv-files. */
