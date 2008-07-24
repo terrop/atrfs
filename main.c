@@ -480,9 +480,14 @@ static void populate_root_dir (struct atrfs_entry *root)
 
 		while (fgets (buf, sizeof (buf), fp))
 		{
+			struct atrfs_entry *ent;
 			*strchr(buf, '\n') = '\0';
 
-			struct atrfs_entry *ent = create_entry (ATRFS_FILE_ENTRY);
+			/* We need the read access to the real file */
+			if (access(buf, R_OK))
+				continue;
+
+			ent = create_entry (ATRFS_FILE_ENTRY);
 			ent->file.e_real_file_name = strdup (buf);
 
 			name = uniquify_in_directory (basename (buf), root);
