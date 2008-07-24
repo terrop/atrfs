@@ -115,8 +115,10 @@ static int atrfs_unlink(const char *file)
 	if (ent->parent != root)
 	{
 		move_entry (ent, root);
+		set_value (ent, "user.category", 0);
 	} else {
 		set_value (ent, "user.count", 0);
+		set_value (ent, "user.category", 0);
 		set_value (ent, "user.watchtime", 946677600);
 	}
 
