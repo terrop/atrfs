@@ -360,24 +360,19 @@ static int atrfs_flush(const char *file, struct fuse_file_info *fi)
 	return -ENOSYS;
 }
 
-static void categorize_flv_entry (struct atrfs_entry *ent, time_t new)
+static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	char *ext = strrchr (ent->file.e_real_file_name, '.');
 	if (!ext || strcmp (ext, ".flv"))
 		return;
-	size_t current = get_value (ent, "user.category", 0);
+	int current = get_value (ent, "user.category", 0);
 	if (new > current)
 	{
-		current = new;
-		set_value (ent, "user.category", new);
-	}
-
-	if (current > 0)
-	{
 		char dir[10];
-		sprintf (dir, "time_%d", current);
+		sprintf (dir, "time_%d", new);
 		move_to_named_subdir (ent, dir);
+
 		set_value (ent, "user.category", new);
 	}
 }
