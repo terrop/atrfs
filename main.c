@@ -360,6 +360,28 @@ static int atrfs_flush(const char *file, struct fuse_file_info *fi)
 	return -ENOSYS;
 }
 
+static void categorize_flv_entry (struct atrfs_entry *ent, time_t new)
+{
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	char *ext = strrchr (ent->file.e_real_file_name, '.');
+	if (!ext || strcmp (ext, ".flv"))
+		return;
+	size_t current = get_value (ent, "user.category", 0);
+	if (new > current)
+	{
+		current = new;
+		set_value (ent, "user.category", new);
+	}
+
+	if (current > 0)
+	{
+		char dir[10];
+		sprintf (dir, "time_%d", current);
+		move_to_named_subdir (ent, dir);
+		set_value (ent, "user.category", new);
+	}
+}
+
 static int atrfs_release(const char *file, struct fuse_file_info *fi)
 {
 	/*
@@ -402,9 +424,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 			delta /= 15;
 			delta++;
 			delta *= 15;
-			char buf[20];
-			sprintf (buf, "time_%d", delta);
-			move_to_named_subdir (ent, buf);
+			categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
 		}
@@ -498,7 +518,8 @@ static void populate_root_dir (struct atrfs_entry *root)
 			name = uniquify_in_directory (basename (buf), root);
 			insert_entry (ent, name, root);
 			free (name);
-			name = ent->name;
+
+			categorize_flv_entry (ent, 0);
 		}
 
 		fclose (fp);
