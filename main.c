@@ -4,7 +4,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
+#include <fuse/fuse_lowlevel.h>
 #include <libgen.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +15,20 @@
 #include "util.h"
 
 static char *datafile;
+
+static void tmplog(char *fmt, ...)
+{
+	va_list list;
+	va_start(list, fmt);
+	FILE *fp = fopen("/tmp/loki.txt", "a");
+	if (fp)
+	{
+		vfprintf(fp, fmt, list);
+		fflush(fp);
+		fclose(fp);
+	}
+	va_end(list);
+}
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -25,92 +41,186 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static int atrfs_getattr(const char *file, struct stat *st)
+static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
-	 * Get file attributes.
+	 * Get file attributes
 	 *
-	 * Similar to stat(). The 'st_dev' and 'st_blksize' fields are
-	 * ignored. The 'st_ino' field is ignored except if the 'use_ino'
-	 * mount option is given.
+	 * Valid replies:
+	 *   fuse_reply_attr
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi for future use, currently always NULL
 	 */
-	struct atrfs_entry *ent = lookup_entry_by_path (file);
+	tmplog("atrfs_getattr(ino=%lu)\n", ino);
 
-	if (! ent)
-		return -ENOENT;
+	struct stat st;
+	struct atrfs_entry *ent;
+       
+	if (ino == 1)
+		ent = root;
+	else
+		ent = (struct atrfs_entry *)ino;
 
 	switch (ent->e_type)
 	{
 	default:
 		abort ();
 	case ATRFS_DIRECTORY_ENTRY:
-		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-		st->st_nlink = 1;
-		st->st_uid = getuid();
-		st->st_gid = getgid();
-		st->st_size = ent->directory.dir_len;
-		st->st_atime = time(NULL);
-		st->st_mtime = time(NULL);
-		st->st_ctime = time(NULL);
+		tmplog("ATRFS_DIRECTORY_ENTRY\n");
+		st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+		st.st_nlink = 1;
+		st.st_uid = getuid();
+		st.st_gid = getgid();
+		st.st_size = ent->directory.dir_len;
+		st.st_atime = time(NULL);
+		st.st_mtime = time(NULL);
+		st.st_ctime = time(NULL);
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
-		st->st_nlink = 1;
-		st->st_size = ent->virtual.size;
-		st->st_mode = S_IFREG | S_IRUSR;
-		st->st_uid = getuid();
-		st->st_mtime = time(NULL);
+		tmplog("ATRFS_VIRTUAL_FILE_ENTRY\n");
+		st.st_nlink = 1;
+		st.st_size = ent->virtual.size;
+		st.st_mode = S_IFREG | S_IRUSR;
+		st.st_uid = getuid();
+		st.st_mtime = time(NULL);
 		break;
 	case ATRFS_FILE_ENTRY:
-		if (stat (ent->file.e_real_file_name, st) < 0)
-			return -errno;
+		tmplog("ATRFS_FILE_ENTRY\n");
+		if (stat (ent->file.e_real_file_name, &st) < 0)
+		{
+			fuse_reply_err(req, errno);
+			return;
+		}
 
-		st->st_nlink = get_value (ent, "user.count", 0);
-		st->st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
+		st.st_nlink = get_value (ent, "user.count", 0);
+		st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
 		break;
 	}
 
-	return 0;
+	fuse_reply_attr(req, &st, 0.0);
 }
 
-static int atrfs_readlink(const char *file, char *buf, size_t len)
+static void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
+	struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
 	/*
-	 * Read the target of a symbolic link
+	 * Set file attributes
 	 *
-	 * The buffer should be filled with a null terminated string. The
-	 * buffer size argument includes the space for the terminating
-	 * null character. If the linkname is too long to fit in the
-	 * buffer, it should be truncated. The return value should be 0
-	 * for success.
+	 * In the 'attr' argument only members indicated by the 'to_set'
+	 * bitmask contain valid values.  Other members contain undefined
+	 * values.
+	 *
+	 * If the setattr was invoked from the ftruncate() system call
+	 * under Linux kernel versions 2.6.15 or later, the fi->fh will
+	 * contain the value set by the open method or will be undefined
+	 * if the open method didn't set any value.  Otherwise (not
+	 * ftruncate call, or kernel version earlier than 2.6.15) the fi
+	 * parameter will be NULL.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_attr
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param attr the attributes
+	 * @param to_set bit mask of attributes which should be set
+	 * @param fi file information, or NULL
+	 *
+	 * Changed in version 2.5:
+	 *     file information filled in for ftruncate
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_setattr\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_mknod(const char *file, mode_t mode, dev_t dev)
+static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
 {
 	/*
-	 * Create a file node
+	 * Read symbolic link
 	 *
-	 * This is called for creation of all non-directory, non-symlink
-	 * nodes. If the filesystem defines a create() method, then for
-	 * regular files that will be called instead.
+	 * Valid replies:
+	 *   fuse_reply_readlink
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_readlink\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_mkdir(const char *name, mode_t mode)
+static void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
+	const char *name, mode_t mode, dev_t rdev)
 {
-	/* Create a directory */
-	return -ENOSYS;
+	/*
+	 * Create file node
+	 *
+	 * Create a regular file, character device, block device, fifo or
+	 * socket node.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode file type and mode with which to create the new file
+	 * @param rdev the device number (only valid if created file is a device)
+	 */
+	tmplog("atrfs_mknod\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_unlink(const char *file)
+static void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
+	const char *name, mode_t mode)
 {
-	/* Remove a file */
-	struct atrfs_entry *ent = lookup_entry_by_path (file);
+	/*
+	 * Create a directory
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode with which to create the new file
+	 */
+	tmplog("atrfs_mkdir\n");
+	fuse_reply_err(req, ENOSYS);
+}
 
-	if (! ent)
-		return -ENOENT;
+static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Remove a file
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to remove
+	 */
+	tmplog("unlink(%lu, '%s'\n", parent, name);
+
+	struct atrfs_entry *ent, *pent = (struct atrfs_entry *)parent;
+
+	if (parent == 1)
+		pent = root;
+
+	ent = lookup_entry_by_name(pent, name);
+
+	if (!ent)
+	{
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
 
 	if (ent->parent != root)
 	{
@@ -122,65 +232,110 @@ static int atrfs_unlink(const char *file)
 		set_value (ent, "user.watchtime", 0);
 	}
 
-	return 0;
+	fuse_reply_err(req, 0);
 }
 
-static int atrfs_rmdir(const char *name)
-{
-	/* Remove a directory */
-	return -ENOSYS;
-}
-
-static int atrfs_link(const char *from, const char *to)
-{
-	/* Create a hard link to a file */
-	return -ENOSYS;
-}
-
-static int atrfs_symlink(const char *from, const char *to)
-{
-	/* Create a symbolic link */
-	return -ENOSYS;
-}
-
-static int atrfs_rename(const char *from, const char *to)
-{
-	/* Rename a file */
-	return -ENOSYS;
-}
-
-static int atrfs_chmod(const char *file, mode_t mode)
-{
-	/* Change the permission bits of a file */
-	return -ENOSYS;
-}
-
-static int atrfs_chown(const char *file, uid_t uid, gid_t gid)
-{
-	/* Change the owner and group of a file */
-	return -ENOSYS;
-}
-
-static int atrfs_truncate(const char *file, off_t len)
-{
-	/* Change the size of a file */
-	return -ENOSYS;
-}
-
-static int atrfs_open(const char *file, struct fuse_file_info *fi)
+static void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
 	/*
-	 * File open operation
+	 * Remove a directory
 	 *
-	 * No creation, or truncation flags (O_CREAT, O_EXCL, O_TRUNC)
-	 * will be passed to open().  Open should check if the operation
-	 * is permitted for the given flags.  Optionally open may also
-	 * return an arbitrary filehandle in the fuse_file_info structure,
-	 * which will be passed to all file operations.
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to remove
 	 */
-	struct atrfs_entry *ent = lookup_entry_by_path (file);
-	if (! ent)
-		return -ENOENT;
+	tmplog("atrfs_rmdir\n");
+	fuse_reply_err(req, ENOSYS);
+}
+
+static void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
+{
+	/*
+	 * Create a hard link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the old inode number
+	 * @param newparent inode number of the new parent directory
+	 * @param newname new name to create
+	 */
+	tmplog("atrfs_link\n");
+	fuse_reply_err(req, ENOSYS);
+}
+
+static void atrfs_symlink(fuse_req_t req, const char *link,
+	fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Create a symbolic link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param link the contents of the symbolic link
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 */
+	tmplog("atrfs_symlink\n");
+	fuse_reply_err(req, ENOSYS);
+}
+
+static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
+	const char *name, fuse_ino_t newparent, const char *newname)
+{
+	/*
+	 * Rename a file
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the old parent directory
+	 * @param name old name
+	 * @param newparent inode number of the new parent directory
+	 * @param newname new name
+	 */
+	tmplog("atrfs_rename\n");
+	fuse_reply_err(req, ENOSYS);
+}
+
+static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
+{
+	/*
+	 * Open a file
+	 *
+	 * Open flags (with the exception of O_CREAT, O_EXCL, O_NOCTTY and
+	 * O_TRUNC) are available in fi->flags.
+	 *
+	 * Filesystem may store an arbitrary file handle (pointer, index,
+	 * etc) in fi->fh, and use this in other all other file operations
+	 * (read, write, flush, release, fsync).
+	 *
+	 * Filesystem may also implement stateless file I/O and not store
+	 * anything in fi->fh.
+	 *
+	 * There are also some flags (direct_io, keep_cache) which the
+	 * filesystem may set in fi, to change the way the file is opened.
+	 * See fuse_file_info structure in <fuse_common.h> for more details.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_open
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 */
+	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+	tmplog("open(%p)\n", ino);
 
 	switch (ent->e_type)
 	{
@@ -199,25 +354,37 @@ static int atrfs_open(const char *file, struct fuse_file_info *fi)
 		abort ();
 	}
 
-	return 0;
+	fuse_reply_open(req, fi);
 }
 
-static int atrfs_read(const char *file, char *buf, size_t len,
-	off_t off, struct fuse_file_info *fi)
+static void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
+	struct fuse_file_info *fi)
 {
 	/*
-	 * Read data from an open file
+	 * Read data
 	 *
-	 * Read should return exactly the number of bytes requested except
+	 * Read should send exactly the number of bytes requested except
 	 * on EOF or error, otherwise the rest of the data will be
-	 * substituted with zeroes.	 An exception to this is when the
-	 * 'direct_io' mount option is specified, in which case the return
+	 * substituted with zeroes.  An exception to this is when the file
+	 * has been opened in 'direct_io' mode, in which case the return
 	 * value of the read system call will reflect the return value of
 	 * this operation.
+	 *
+	 * fi->fh will contain the value set by the open method, or will
+	 * be undefined if the open method didn't set any value.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_buf
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param size number of bytes to read
+	 * @param off offset to read from
+	 * @param fi file information
 	 */
-	struct atrfs_entry *ent = lookup_entry_by_path (file);
-	if (! ent)
-		return -ENOENT;
+	tmplog("read(%lu, size=%lu, off=%lu)\n", ino, size, off);
+	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
 
 	switch (ent->e_type)
 	{
@@ -230,63 +397,95 @@ static int atrfs_read(const char *file, char *buf, size_t len,
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 	{
 		size_t count = ent->virtual.size;
-		if (len < count)
-			count = len;
+		if (size < count)
+			count = size;
+		char buf[count];
 		memcpy (buf, ent->virtual.data + off, count);
-		return count;
+		fuse_reply_buf(req, buf, sizeof(buf));
+		return;
 	}
 
 	case ATRFS_FILE_ENTRY:
 	{
+		char buf[size];
 		int ret, fd = open (ent->file.e_real_file_name, O_RDONLY);
 		if (fd < 0)
-			return -errno;
-		ret = pread (fd, buf, len, off);
+		{
+			fuse_reply_err(req, errno);
+			return;
+		}
+		ret = pread (fd, buf, size, off);
 		if (ret < 0)
-			ret = -errno;
+			ret = errno;
 		close (fd);
-		return ret;
+
+		if (ret < 0)
+			fuse_reply_err(req, ret);
+		else
+			fuse_reply_buf(req, buf, ret);
 	}
 	}
 }
 
-static int atrfs_write(const char *file, const char *buf, size_t len,
-	off_t off, struct fuse_file_info *fi)
+static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
+	size_t size, off_t off, struct fuse_file_info *fi)
 {
 	/*
-	 * Write data to an open file
+	 * Write data
 	 *
 	 * Write should return exactly the number of bytes requested
-	 * except on error.	 An exception to this is when the 'direct_io'
-	 * mount option is specified (see read operation).
+	 * except on error.  An exception to this is when the file has
+	 * been opened in 'direct_io' mode, in which case the return value
+	 * of the write system call will reflect the return value of this
+	 * operation.
 	 *
+	 * fi->fh will contain the value set by the open method, or will
+	 * be undefined if the open method didn't set any value.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_write
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param buf data to write
+	 * @param size number of bytes to write
+	 * @param off offset to write to
+	 * @param fi file information
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_write\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_statfs(const char *file, struct statvfs *stat)
+static void atrfs_statfs(fuse_req_t req, fuse_ino_t ino)
 {
 	/*
 	 * Get file system statistics
 	 *
-	 * The 'f_frsize', 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
+	 * Valid replies:
+	 *   fuse_reply_statfs
+	 *   fuse_reply_err
 	 *
+	 * @param req request handle
+	 * @param ino the inode number, zero means "undefined"
 	 */
-	stat->f_bsize = 1024;	/* file system block size */
-	stat->f_frsize = 1024;	/* fragment size */
-	stat->f_blocks = 1000;	/* size of fs in f_frsize units */
-	stat->f_bfree = 800;	/* # free blocks */
-	stat->f_bavail = 800;	/* # free blocks for non-root */
-	stat->f_files = 34;	/* # inodes */
-	stat->f_ffree = 1000;	/* # free inodes */
-	stat->f_favail = 1000;	/* # free inodes for non-root */
-	stat->f_fsid = 342;	/* file system ID */
-	stat->f_flag = 0;	/* mount flags */
-	stat->f_namemax = 128;	/* maximum filename length */
-	return 0;
+	tmplog("atrfs_statfs\n");
+	struct statvfs st;
+	st.f_bsize = 1024;	/* file system block size */
+	st.f_frsize = 1024;	/* fragment size */
+	st.f_blocks = 1000;	/* size of fs in f_frsize units */
+	st.f_bfree = 800;	/* # free blocks */
+	st.f_bavail = 800;	/* # free blocks for non-root */
+	st.f_files = 34;	/* # inodes */
+	st.f_ffree = 1000;	/* # free inodes */
+	st.f_favail = 1000;	/* # free inodes for non-root */
+	st.f_fsid = 342;	/* file system ID */
+	st.f_flag = 0;		/* mount flags */
+	st.f_namemax = 128;	/* maximum filename length */
+	fuse_reply_statfs(req, &st);
 }
 
-static int atrfs_access(const char *file, int acc)
+static void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 {
 	/*
 	 * Check file access permissions
@@ -294,72 +493,170 @@ static int atrfs_access(const char *file, int acc)
 	 * This will be called for the access() system call.  If the
 	 * 'default_permissions' mount option is given, this method is not
 	 * called.
+	 *
+	 * This method is not called under Linux kernel versions 2.4.x
+	 *
+	 * Introduced in version 2.5
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param mask requested access mode
 	 */
-	return 0;
+	tmplog("atrfs_access\n");
+	fuse_reply_err(req, 0);
 }
 
-static int atrfs_opendir(const char *file, struct fuse_file_info *fi)
+static void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
-	 * Open directory
+	 * Open a directory
 	 *
-	 * This method should check if the open operation is permitted for
-	 * this directory
+	 * Filesystem may store an arbitrary file handle (pointer, index,
+	 * etc) in fi->fh, and use this in other all other directory
+	 * stream operations (readdir, releasedir, fsyncdir).
 	 *
+	 * Filesystem may also implement stateless directory I/O and not
+	 * store anything in fi->fh, though that makes it impossible to
+	 * implement standard conforming directory stream operations in
+	 * case the contents of the directory can change between opendir
+	 * and releasedir.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_open
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
 	 */
-	return 0;
+	tmplog("atrfs_opendir\n");
+	fuse_reply_open(req, fi);
 }
 
-static int atrfs_readdir(const char *file, void *buf,
-	fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
+static void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
+	struct fuse_file_info *fi)
 {
-	/* Read directory */
-	static GList *files, *cur;
+	/*
+	 * Read directory
+	 *
+	 * Send a buffer filled using fuse_add_direntry(), with size not
+	 * exceeding the requested size.  Send an empty buffer on end of
+	 * stream.
+	 *
+	 * fi->fh will contain the value set by the opendir method, or
+	 * will be undefined if the opendir method didn't set any value.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_buf
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param size maximum number of bytes to send
+	 * @param off offset to continue reading the directory stream
+	 * @param fi file information
+	 */
+	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
-	if (offset == 0)
+	static GList *files, *cur;
+	struct atrfs_entry *parent = (struct atrfs_entry *)ino;
+
+	if (ino == 1)
+		parent = root;
+
+	if (off == 0) /* Begin of directory */
 	{
 		if (files)
-			g_list_free (files);
-		struct atrfs_entry *ent = lookup_entry_by_path (file);
-		files = g_hash_table_get_keys (ent->directory.e_contents);
+			g_list_free(files);
+		files = g_hash_table_get_keys (parent->directory.e_contents);
 		cur = files;
 	}
 
 	while (cur)
 	{
-		if (filler (buf, cur->data, NULL, offset + 1) == 1)
+		char buf[size];
+		struct stat st;
+		struct atrfs_entry *ent = lookup_entry_by_name(parent, cur->data);
+
+		switch (ent->e_type)
+		{
+		case ATRFS_DIRECTORY_ENTRY:
+                	st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+                	st.st_nlink = 1;
+                	st.st_uid = getuid();
+                	st.st_gid = getgid();
+                	st.st_size = ent->directory.dir_len;
+                	st.st_atime = time(NULL);
+                	st.st_mtime = time(NULL);
+                	st.st_ctime = time(NULL);
 			break;
+		case ATRFS_FILE_ENTRY:
+			if (stat(ent->file.e_real_file_name, &st) < 0)
+			{
+				fuse_reply_err(req, errno);
+				return;
+			}
+
+			st.st_ino = (fuse_ino_t)ent;
+			st.st_nlink = get_value (ent, "user.count", 0);
+			st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
+			break;
+		case ATRFS_VIRTUAL_FILE_ENTRY:
+			st.st_nlink = 1;
+			st.st_size = ent->virtual.size;
+			st.st_mode = S_IFREG | S_IRUSR;
+			st.st_uid = getuid();
+			st.st_mtime = time(NULL);
+			break;
+		}
+
+		int len = fuse_add_direntry(req, buf, sizeof(buf), cur->data, &st, off+1);
+		fuse_reply_buf(req, buf, len);
 		cur = cur->next;
+		return;
 	}
 
-	return 0;
+	/* End of Directory */
+	cur = NULL;
+	fuse_reply_buf(req, NULL, 0);
 }
 
-static int atrfs_flush(const char *file, struct fuse_file_info *fi)
+static void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
-	 * Possibly flush cached data
+	 * Flush method
 	 *
-	 * BIG NOTE: This is not equivalent to fsync().  It's not a
-	 * request to sync dirty data.
+	 * This is called on each close() of the opened file.
 	 *
-	 * Flush is called on each close() of a file descriptor.  So if a
-	 * filesystem wants to return write errors in close() and the file
-	 * has cached dirty data, this is a good place to write back data
-	 * and return any errors.  Since many applications ignore close()
-	 * errors this is not always useful.
-	 *
-	 * NOTE: The flush() method may be called more than once for each
-	 * open().	This happens if more than one file descriptor refers
-	 * to an opened file due to dup(), dup2() or fork() calls.	It is
-	 * not possible to determine if a flush is final, so each flush
-	 * should be treated equally.  Multiple write-flush sequences are
-	 * relatively rare, so this shouldn't be a problem.
+	 * Since file descriptors can be duplicated (dup, dup2, fork), for
+	 * one open call there may be many flush calls.
 	 *
 	 * Filesystems shouldn't assume that flush will always be called
 	 * after some writes, or that if will be called at all.
+	 *
+	 * fi->fh will contain the value set by the open method, or will
+	 * be undefined if the open method didn't set any value.
+	 *
+	 * NOTE: the name of the method is misleading, since (unlike
+	 * fsync) the filesystem is not forced to flush pending writes.
+	 * One reason to flush data, is if the filesystem wants to return
+	 * write errors.
+	 *
+	 * If the filesystem supports file locking operations (setlk,
+	 * getlk) it should remove all locks belonging to 'fi->owner'.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_flush\n");
+	fuse_reply_err(req, 0);
 }
 
 static void categorize_flv_entry (struct atrfs_entry *ent, int new)
@@ -384,7 +681,7 @@ static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 	}
 }
 
-static int atrfs_release(const char *file, struct fuse_file_info *fi)
+static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
 	 * Release an open file
@@ -393,15 +690,28 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 	 * file: all file descriptors are closed and all memory mappings
 	 * are unmapped.
 	 *
-	 * For every open() call there will be exactly one release() call
-	 * with the same flags and file descriptor.	 It is possible to
-	 * have a file opened more than once, in which case only the last
-	 * release will mean, that no more reads/writes will happen on the
-	 * file.  The return value of release is ignored.
+	 * For every open call there will be exactly one release call.
+	 *
+	 * The filesystem may reply with an error, but error values are
+	 * not returned to close() or munmap() which triggered the
+	 * release.
+	 *
+	 * fi->fh will contain the value set by the open method, or will
+	 * be undefined if the open method didn't set any value.
+	 * fi->flags will contain the same flags as for open.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
 	 */
-	struct atrfs_entry *ent = lookup_entry_by_path (file);
-	if (! ent)
-		return 0;
+	tmplog("atrfs_release\n");
+	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+
+	if (ino == 1)
+		ent = root;
 
 	switch (ent->e_type)
 	{
@@ -439,60 +749,158 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		break;
 	}
 
-	return 0;
+	fuse_reply_err(req, 0);
 }
 
-static int atrfs_fsync(const char *file, int datasync, struct fuse_file_info *fi)
+static void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi)
 {
 	/*
 	 * Synchronize file contents
 	 *
 	 * If the datasync parameter is non-zero, then only the user data
 	 * should be flushed, not the meta data.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param datasync flag indicating if only data should be flushed
+	 * @param fi file information
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_fsync\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_setxattr(const char *file, const char *name,
+static void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	const char *value, size_t size, int flags)
 {
-	/* Set extended attributes */
-	return -ENOSYS;
+	/*
+	 * Set an extended attribute
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 */
+	tmplog("atrfs_setxattr\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_getxattr(const char *file, const char *name, char *buf, size_t len)
+static void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
 {
-	/* Get extended attributes */
-	return -ENOSYS;
+	/*
+	 * Get an extended attribute
+	 *
+	 * If size is zero, the size of the value should be sent with
+	 * fuse_reply_xattr.
+	 *
+	 * If the size is non-zero, and the value fits in the buffer, the
+	 * value should be sent with fuse_reply_buf.
+	 *
+	 * If the size is too small for the value, the ERANGE error should
+	 * be sent.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_buf
+	 *   fuse_reply_xattr
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param name of the extended attribute
+	 * @param size maximum size of the value to send
+	 */
+	tmplog("getxattr(%lu, '%s', size=%lu\n", ino, name, size);
+	fuse_reply_err(req, ENOTSUP);
 }
 
-static int atrfs_listxattr(const char *file, char *buf, size_t len)
+static void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
-	/* List extended attributes */
-	return -ENOSYS;
+	/*
+	 * List extended attribute names
+	 *
+	 * If size is zero, the total size of the attribute list should be
+	 * sent with fuse_reply_xattr.
+	 *
+	 * If the size is non-zero, and the null character separated
+	 * attribute list fits in the buffer, the list should be sent with
+	 * fuse_reply_buf.
+	 *
+	 * If the size is too small for the list, the ERANGE error should
+	 * be sent.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_buf
+	 *   fuse_reply_xattr
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param size maximum size of the list to send
+	 */
+	tmplog("atrfs_listxattr\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_removexattr(const char *file, const char *name)
+static void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 {
-	/* Remove extended attributes */
-	return -ENOSYS;
+	/*
+	 * Remove an extended attribute
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param name of the extended attribute
+	 */
+	tmplog("atrfs_removexattr\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_releasedir(const char *file, struct fuse_file_info *fi)
+static void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
-	/* Release directory */
-	return -ENOSYS;
+	/*
+	 * Release an open directory
+	 *
+	 * For every opendir call there will be exactly one releasedir
+	 * call.
+	 *
+	 * fi->fh will contain the value set by the opendir method, or
+	 * will be undefined if the opendir method didn't set any value.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 */
+	tmplog("atrfs_releasedir\n");
+	fuse_reply_err(req, 0);
 }
 
-static int atrfs_fsyncdir(const char *file, int datasync, struct fuse_file_info *fi)
+static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
+	struct fuse_file_info *fi)
 {
 	/*
 	 * Synchronize directory contents
 	 *
-	 * If the datasync parameter is non-zero, then only the user data
-	 * should be flushed, not the meta data
+	 * If the datasync parameter is non-zero, then only the directory
+	 * contents should be flushed, not the meta data.
+	 *
+	 * fi->fh will contain the value set by the opendir method, or
+	 * will be undefined if the opendir method didn't set any value.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param datasync flag indicating if only data should be flushed
+	 * @param fi file information
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_fsyncdir\n");
+	fuse_reply_err(req, 0);
 }
 
 static void populate_root_dir (struct atrfs_entry *root)
@@ -530,32 +938,146 @@ static void populate_root_dir (struct atrfs_entry *root)
 	datafile = NULL;
 }
 
-static void *atrfs_init(struct fuse_conn_info *conn)
+static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 {
 	/*
 	 * Initialize filesystem
 	 *
-	 * The return value will passed in the private_data field of
-	 * fuse_context to all file operations and as a parameter to the
-	 * destroy() method.
+	 * Called before any other filesystem method
+	 *
+	 * There's no reply to this function
+	 *
+	 * @param userdata the user data passed to fuse_lowlevel_new()
 	 *
 	 */
+	tmplog("atrfs_init\n");
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
 	populate_root_dir (root);
 
 }
 
-static void atrfs_destroy(void *data)
+static void atrfs_destroy(void *userdata)
 {
 	/*
 	 * Clean up filesystem
 	 *
-	 * Called on filesystem exit.
+	 * Called on filesystem exit
+	 *
+	 * There's no reply to this function
+	 *
+	 * @param userdata the user data passed to fuse_lowlevel_new()
 	 */
 }
 
-static int atrfs_create(const char *file, mode_t mode, struct fuse_file_info *fi)
+static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Look up a directory entry by name and get its attributes.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name the name to look up
+	 */
+	tmplog("lookup(%lu, '%s')\n", parent, name);
+	struct atrfs_entry *pent, *ent;
+	struct fuse_entry_param ep;
+	struct stat st;
+
+	if (parent == 1)
+		pent = root;
+	else
+		pent = (struct atrfs_entry *)parent;
+
+	if (!strcmp(name, ".") || !strcmp(name, ".."))
+	{
+		st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+		st.st_nlink = 1;
+		st.st_uid = getuid();
+		st.st_gid = getgid();
+		st.st_size = 34;
+		st.st_atime = time(NULL);
+		st.st_mtime = time(NULL);
+		st.st_ctime = time(NULL);
+	} else {
+		ent = lookup_entry_by_name(pent, name);
+		if (!ent)
+		{
+			fuse_reply_err(req, ENOENT);
+			return;
+		}
+
+		switch (ent->e_type)
+		{
+		case ATRFS_DIRECTORY_ENTRY:
+                	st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+                	st.st_nlink = 1;
+                	st.st_uid = getuid();
+                	st.st_gid = getgid();
+                	st.st_size = ent->directory.dir_len;
+                	st.st_atime = time(NULL);
+                	st.st_mtime = time(NULL);
+                	st.st_ctime = time(NULL);
+			break;
+		case ATRFS_FILE_ENTRY:
+			stat(ent->file.e_real_file_name, &st);
+			st.st_nlink = get_value (ent, "user.count", 0);
+			st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
+			break;
+		case ATRFS_VIRTUAL_FILE_ENTRY:
+			st.st_nlink = 1;
+			st.st_size = ent->virtual.size;
+			st.st_mode = S_IFREG | S_IRUSR;
+			st.st_uid = getuid();
+			st.st_mtime = time(NULL);
+			break;
+		}
+	}
+
+	ep.ino = (fuse_ino_t)ent;
+	ep.generation = 1;
+	ep.attr = st;
+	ep.attr_timeout = 1.0;
+	ep.entry_timeout = 1.0;
+
+	fuse_reply_entry(req, &ep);
+}
+
+static void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
+{
+	/*
+	 * Forget about an inode
+	 *
+	 * The nlookup parameter indicates the number of lookups
+	 * previously performed on this inode.
+	 *
+	 * If the filesystem implements inode lifetimes, it is recommended
+	 * that inodes acquire a single reference on each lookup, and lose
+	 * nlookup references on each forget.
+	 *
+	 * The filesystem may ignore forget calls, if the inodes don't
+	 * need to have a limited lifetime.
+	 *
+	 * On unmount it is not guaranteed, that all referenced inodes
+	 * will receive a forget message.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_none
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param nlookup the number of lookups to forget
+	 */
+	tmplog("atrfs_forget\n");
+	fuse_reply_none(req);
+}
+
+static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
+	mode_t mode, struct fuse_file_info *fi)
 {
 	/*
 	 * Create and open a file
@@ -563,110 +1085,122 @@ static int atrfs_create(const char *file, mode_t mode, struct fuse_file_info *fi
 	 * If the file does not exist, first create it with the specified
 	 * mode, and then open it.
 	 *
+	 * Open flags (with the exception of O_NOCTTY) are available in
+	 * fi->flags.
+	 *
+	 * Filesystem may store an arbitrary file handle (pointer, index,
+	 * etc) in fi->fh, and use this in other all other file operations
+	 * (read, write, flush, release, fsync).
+	 *
+	 * There are also some flags (direct_io, keep_cache) which the
+	 * filesystem may set in fi, to change the way the file is opened.
+	 * See fuse_file_info structure in <fuse_common.h> for more details.
+	 *
 	 * If this method is not implemented or under Linux kernel
 	 * versions earlier than 2.6.15, the mknod() and open() methods
 	 * will be called instead.
-	 */
-	return -ENOSYS;
-}
-
-static int atrfs_ftruncate(const char *file, off_t len, struct fuse_file_info *fi)
-{
-	/*
-	 * Change the size of an open file
-	 *
-	 * This method is called instead of the truncate() method if the
-	 * truncation was invoked from an ftruncate() system call.
-	 *
-	 * If this method is not implemented or under Linux kernel
-	 * versions earlier than 2.6.15, the truncate() method will be
-	 * called instead.
 	 *
 	 * Introduced in version 2.5
+	 *
+	 * Valid replies:
+	 *   fuse_reply_create
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode file type and mode with which to create the new file
+	 * @param fi file information
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_create\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_fgetattr(const char *file, struct stat *st, struct fuse_file_info *fi)
+static void atrfs_getlk(fuse_req_t req, fuse_ino_t ino,
+	struct fuse_file_info *fi, struct flock *lock)
 {
 	/*
-	 * Get attributes from an open file
-	 *
-	 * This method is called instead of the getattr() method if the
-	 * file information is available.
-	 *
-	 * Currently this is only called after the create() method if that
-	 * is implemented (see above).  Later it may be called for
-	 * invocations of fstat() too.
-	 */
-	return -ENOSYS;
-}
-
-static int atrfs_lock(const char *file, struct fuse_file_info *fi, int cmd, struct flock *fl)
-{
-	/*
-	 * Perform POSIX file locking operation
-	 *
-	 * The cmd argument will be either F_GETLK, F_SETLK or F_SETLKW.
-	 *
-	 * For the meaning of fields in 'struct flock' see the man page
-	 * for fcntl(2).  The l_whence field will always be set to
-	 * SEEK_SET.
-	 *
-	 * For checking lock ownership, the 'fuse_file_info->owner'
-	 * argument must be used.
-	 *
-	 * For F_GETLK operation, the library will first check currently
-	 * held locks, and if a conflicting lock is found it will return
-	 * information without calling this method.	 This ensures, that
-	 * for local locks the l_pid field is correctly filled in.	The
-	 * results may not be accurate in case of race conditions and in
-	 * the presence of hard links, but it's unlikly that an
-	 * application would rely on accurate GETLK results in these
-	 * cases.  If a conflicting lock is not found, this method will be
-	 * called, and the filesystem may fill out l_pid by a meaningful
-	 * value, or it may leave this field zero.
-	 *
-	 * For F_SETLK and F_SETLKW the l_pid field will be set to the pid
-	 * of the process performing the locking operation.
-	 *
-	 * Note: if this method is not implemented, the kernel will still
-	 * allow file locking to work locally.  Hence it is only
-	 * interesting for network filesystems and similar.
-	 */
-	return -ENOSYS;
-}
-
-static int atrfs_utimens(const char *file, const struct timespec tv[2])
-{
-	/*
-	 * Change the access and modification times of a file with
-	 * nanosecond resolution
+	 * Test for a POSIX file lock
 	 *
 	 * Introduced in version 2.6
+	 *
+	 * Valid replies:
+	 *   fuse_reply_lock
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 * @param lock the region/type to test
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_getlk\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
-static int atrfs_bmap(const char *file, size_t blocksize, uint64_t *idx)
+static void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
+	struct fuse_file_info *fi, struct flock *lock, int sleep)
+{
+	/**
+	 * Acquire, modify or release a POSIX file lock
+	 *
+	 * For POSIX threads (NPTL) there's a 1-1 relation between pid and
+	 * owner, but otherwise this is not always the case.  For checking
+	 * lock ownership, 'fi->owner' must be used.  The l_pid field in
+	 * 'struct flock' should only be used to fill in this field in
+	 * getlk().
+	 *
+	 * Note: if the locking methods are not implemented, the kernel
+	 * will still allow file locking to work locally.  Hence these are
+	 * only interesting for network filesystems and similar.
+	 *
+	 * Introduced in version 2.6
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 * @param lock the region/type to test
+	 * @param sleep locking operation may sleep
+	 */
+	tmplog("atrfs_setlk\n");
+	fuse_reply_err(req, ENOSYS);
+}
+
+static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	/*
 	 * Map block index within file to block index within device
 	 *
 	 * Note: This makes sense only for block device backed filesystems
 	 * mounted with the 'blkdev' option
+	 *
+	 * Introduced in version 2.6
+	 *
+	 * Valid replies:
+	 *   fuse_reply_bmap
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param blocksize unit of block index
+	 * @param idx block index within file
 	 */
-	return -ENOSYS;
+	tmplog("atrfs_bmap\n");
+	fuse_reply_err(req, ENOSYS);
 }
 
 int main(int argc, char *argv[])
 {
-	struct fuse_operations atrfs_operations =
+	struct fuse_lowlevel_ops atrfs_operations =
 	{
 		.init = atrfs_init,
 		.destroy = atrfs_destroy,
+		.lookup = atrfs_lookup,
+		.forget = atrfs_forget,
 		.getattr = atrfs_getattr,
-		.fgetattr = atrfs_fgetattr,
+		.setattr = atrfs_setattr,
 		.readlink = atrfs_readlink,
 		.mknod = atrfs_mknod,
 		.mkdir = atrfs_mkdir,
@@ -675,10 +1209,6 @@ int main(int argc, char *argv[])
 		.symlink = atrfs_symlink,
 		.unlink = atrfs_unlink,
 		.rename = atrfs_rename,
-		.chmod = atrfs_chmod,
-		.chown = atrfs_chown,
-		.truncate = atrfs_truncate,
-		.ftruncate = atrfs_ftruncate,
 		.create = atrfs_create,
 		.open = atrfs_open,
 		.read = atrfs_read,
@@ -696,11 +1226,30 @@ int main(int argc, char *argv[])
 		.getxattr = atrfs_getxattr,
 		.listxattr = atrfs_listxattr,
 		.removexattr = atrfs_removexattr,
-		.lock = atrfs_lock,
-		.utimens = atrfs_utimens,
+		.getlk = atrfs_getlk,
 		.bmap = atrfs_bmap,
 	};
 
+	struct fuse_chan *fc;
+	struct fuse_session *fs;
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+	char *mountpoint;
+	int multithreaded;
+	int foreground;
+
 	datafile = canonicalize_file_name ("piccolocoro.txt");
-	return fuse_main (argc, argv, &atrfs_operations, NULL);
+
+	fuse_parse_cmdline(&args, &mountpoint, &multithreaded, &foreground);
+	fc = fuse_mount(mountpoint, &args);
+	fs = fuse_lowlevel_new(&args,
+		&atrfs_operations,
+		sizeof(struct fuse_lowlevel_ops),
+		NULL);
+
+
+	fuse_session_add_chan(fs, fc);
+
+	if (fs)
+		return fuse_session_loop(fs);
+	return 0;
 }
