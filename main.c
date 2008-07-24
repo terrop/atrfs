@@ -65,7 +65,7 @@ static int atrfs_getattr(const char *file, struct stat *st)
 			return -errno;
 
 		st->st_nlink = get_value (ent, "user.count", 0);
-		st->st_mtime = get_value (ent, "user.watchtime", 946677600);
+		st->st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
 		break;
 	}
 
@@ -119,7 +119,7 @@ static int atrfs_unlink(const char *file)
 	} else {
 		set_value (ent, "user.count", 0);
 		set_value (ent, "user.category", 0);
-		set_value (ent, "user.watchtime", 946677600);
+		set_value (ent, "user.watchtime", 0);
 	}
 
 	return 0;
@@ -413,7 +413,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 		{
 			handle_srt_for_file (ent, false);
 			int delta = time (NULL) - ent->file.start_time;
-			int watchtime = get_value (ent, "user.watchtime", 946677600);
+			int watchtime = get_value (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);
 
 			if (delta >= 45)
