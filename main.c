@@ -367,13 +367,18 @@ static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 	if (!ext || strcmp (ext, ".flv"))
 		return;
 	int current = get_value (ent, "user.category", 0);
+
 	if (new > current)
 	{
-		char dir[10];
-		sprintf (dir, "time_%d", new);
-		move_to_named_subdir (ent, dir);
-
+		current = new;
 		set_value (ent, "user.category", new);
+	}
+
+	if (current > 0)
+	{
+		char dir[20];
+		sprintf (dir, "time_%d", current);
+		move_to_named_subdir (ent, dir);
 	}
 }
 
