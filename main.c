@@ -14,6 +14,17 @@
 
 static char *datafile;
 
+static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
+{
+	struct atrfs_entry *dir = lookup_entry_by_name (root, subdir);
+	if (! dir)
+	{
+		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
+		insert_entry (dir, subdir, root);
+	}
+	move_entry (ent, dir);
+}
+
 static int atrfs_getattr(const char *file, struct stat *st)
 {
 	/*
@@ -393,13 +404,7 @@ static int atrfs_release(const char *file, struct fuse_file_info *fi)
 			delta *= 15;
 			char buf[20];
 			sprintf (buf, "time_%d", delta);
-			struct atrfs_entry *dir = lookup_entry_by_name (root, buf);
-			if (! dir)
-			{
-				dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-				insert_entry (dir, buf, root);
-			}
-			move_entry (ent, dir);
+			move_to_named_subdir (ent, buf);
 #endif
 			ent->file.start_time = 0;
 		}
