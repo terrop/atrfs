@@ -74,9 +74,19 @@ void remove_entry (struct atrfs_entry *ent)
 void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 {
 	CHECK_TYPE (to, ATRFS_DIRECTORY_ENTRY);
+	struct atrfs_entry *parent = ent->parent;
 	char *name = ent->name;
 	remove_entry (ent);
 	insert_entry (ent, name, to);
 	free (name);
-}
 
+	/* Remove empty directories. */
+	while (parent != root && g_hash_table_size (parent->directory.e_contents) == 0)
+	{
+		struct atrfs_entry *tmp = parent->parent;
+		remove_entry (parent);
+		free (parent->name);
+		g_hash_table_destroy (parent->directory.e_contents);
+		parent = tmp;
+	}
+}
