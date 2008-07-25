@@ -43,17 +43,6 @@ struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *n
 	return g_hash_table_lookup (dir->directory.e_contents, name);
 }
 
-struct atrfs_entry *lookup_entry_by_path (const char *path)
-{
-	struct atrfs_entry *ent = root;
-	char *buf = strdup (path);
-	char *s;
-
-	for (s = strtok (buf, "/"); ent && s; s = strtok (NULL, "/"))
-		ent = lookup_entry_by_name (ent, s);
-	return ent;
-}
-
 void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 {
 	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
