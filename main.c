@@ -1170,6 +1170,7 @@ int main(int argc, char *argv[])
 		if (fs)
 		{
 			fuse_session_add_chan(fs, fc);
+			fuse_daemonize(foreground);
 			return fuse_session_loop(fs);
 		}
 	}
