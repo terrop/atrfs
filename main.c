@@ -1241,15 +1241,19 @@ int main(int argc, char *argv[])
 
 	fuse_parse_cmdline(&args, &mountpoint, &multithreaded, &foreground);
 	fc = fuse_mount(mountpoint, &args);
-	fs = fuse_lowlevel_new(&args,
-		&atrfs_operations,
-		sizeof(struct fuse_lowlevel_ops),
-		NULL);
+	if (fc)
+	{
+		fs = fuse_lowlevel_new(&args,
+			&atrfs_operations,
+			sizeof(struct fuse_lowlevel_ops),
+			NULL);
 
+		if (fs)
+		{
+			fuse_session_add_chan(fs, fc);
+			return fuse_session_loop(fs);
+		}
+	}
 
-	fuse_session_add_chan(fs, fc);
-
-	if (fs)
-		return fuse_session_loop(fs);
 	return 0;
 }
