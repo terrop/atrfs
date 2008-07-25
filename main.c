@@ -405,6 +405,24 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	 * @param fi file information
 	 */
 	tmplog("write(%lu, '%.*s')\n", ino, size, buf);
+
+	/* TODO: refactor this & populate_root_dir.
+	   uniquify_globally() */
+	char *s, *str = strdup (buf);
+	for (s = strtok (str, "\n"); s; s = strtok (NULL, "\n"))
+	{
+		struct atrfs_entry *ent;
+		char *name;
+		if (access (s, R_OK))
+			continue;
+		ent = create_entry (ATRFS_FILE_ENTRY);
+		ent->file.e_real_file_name = strdup (s);
+		name = uniquify_in_directory (basename (s), root);
+		insert_entry (ent, name, root);
+		free (name);
+	}
+	free (str);
+
 	fuse_reply_write(req, size);
 }
 
