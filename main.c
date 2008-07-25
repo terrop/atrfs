@@ -14,6 +14,7 @@
 #include "util.h"
 
 static char *datafile;
+static void populate_root_dir (struct atrfs_entry *root);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -236,7 +237,25 @@ static void atrfs_symlink(fuse_req_t req, const char *link,
 	 * @param name to create
 	 */
 	tmplog("symlink('%s' '%s')\n", link, name);
-	fuse_reply_err(req, ENOSYS);
+
+	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
+	ent->file.e_real_file_name = strdup(link);
+	name = uniquify_in_directory((char *)name, root);
+	insert_entry (ent, (char *)name, root);
+	free((char *)name);
+
+	struct fuse_entry_param fep =
+	{
+		.ino = (fuse_ino_t)ent,
+		.generation = 1,
+		.attr_timeout = 1.0,
+		.entry_timeout = 1.0,
+	};
+
+	stat_entry(ent, &fep.attr);
+	fep.attr.st_mode |= S_IFLNK;
+
+	fuse_reply_entry(req, &fep);
 }
 
 static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
