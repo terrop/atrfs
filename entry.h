@@ -47,7 +47,6 @@ extern struct atrfs_entry *root;
 struct atrfs_entry *create_entry (enum atrfs_entry_type type);
 
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name);
-struct atrfs_entry *lookup_entry_by_path (const char *path);
 
 void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir);
 void remove_entry (struct atrfs_entry *ent);
