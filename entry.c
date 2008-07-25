@@ -124,3 +124,42 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 
 	return 0;
 }
+
+/* Call FN for every non-directory entry in tree rooted at ROOT.
+   Return the first return value != 0 or 0 when all entries are handled. */
+int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *ent))
+{
+	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
+	int ret = 0;
+	GList *p, *entries = g_hash_table_get_values (root->directory.e_contents);
+	struct atrfs_entry *ent;
+
+	p = entries;
+	while (p)
+	{
+		ent = p->data;
+		switch (ent->e_type)
+		{
+		default:
+			abort ();
+
+		case ATRFS_DIRECTORY_ENTRY:
+			/* Recursive call */
+			ret = map_leaf_entries (ent, fn);
+			if (ret)
+				goto out;
+			break;
+
+		case ATRFS_VIRTUAL_FILE_ENTRY:
+		case ATRFS_FILE_ENTRY:
+			ret = fn (ent);
+			if (ret)
+				goto out;
+			break;
+		}
+		p = p->next;
+	}
+out:
+	g_list_free (entries);
+	return ret;
+}
