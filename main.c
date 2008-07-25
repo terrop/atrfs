@@ -6,7 +6,6 @@
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <libgen.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,23 +14,6 @@
 #include "util.h"
 
 static char *datafile;
-
-static void tmplog(char *fmt, ...)
-{
-	static FILE *fp;
-	va_list list;
-	va_start(list, fmt);
-
-	if (!fp)
-		fp = fopen("/tmp/loki.txt", "w+");
-	if (fp)
-	{
-		vfprintf(fp, fmt, list);
-		fflush(fp);
-	//	fclose(fp);
-	}
-	va_end(list);
-}
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {

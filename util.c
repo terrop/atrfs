@@ -1,4 +1,5 @@
 /* util.c - 24.7.2008 - 24.7.2008 Ari & Tero Roponen */
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,3 +135,22 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 		}
 	}
 }
+
+void tmplog(char *fmt, ...)
+{
+	static FILE *fp;
+	va_list list;
+	va_start(list, fmt);
+
+	if (!fp)
+		fp = fopen("/tmp/loki.txt", "w+");
+	if (fp)
+	{
+		vfprintf(fp, fmt, list);
+		fflush(fp);
+//		fclose(fp);
+	}
+
+	va_end(list);
+}
+

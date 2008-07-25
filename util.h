@@ -9,5 +9,7 @@ void set_value (struct atrfs_entry *ent, char *attr, int value);
 char *uniquify_in_directory (char *name, struct atrfs_entry *dir);
 void handle_srt_for_file (struct atrfs_entry *file, bool insert);
 
+void tmplog(char *fmt, ...);
+
 
 #endif
