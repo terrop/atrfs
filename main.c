@@ -944,29 +944,18 @@ static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 * @param name the name to look up
 	 */
 	tmplog("lookup(%lu, '%s')\n", parent, name);
-	struct atrfs_entry *ent, *pent = ino_to_entry(parent);
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
 	struct fuse_entry_param ep;
 	struct stat st;
 
-	if (!strcmp(name, ".") || !strcmp(name, ".."))
+	if (!ent)
 	{
-		st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-		st.st_nlink = 1;
-		st.st_uid = getuid();
-		st.st_gid = getgid();
-		st.st_size = 34;
-		st.st_atime = time(NULL);
-		st.st_mtime = time(NULL);
-		st.st_ctime = time(NULL);
-	} else {
-		ent = lookup_entry_by_name(pent, name);
-		if (!ent)
-		{
-			fuse_reply_err(req, ENOENT);
-			return;
-		}
-		stat_entry (ent, &st);
+		fuse_reply_err(req, ENOENT);
+		return;
 	}
+
+	stat_entry (ent, &st);
 
 	ep.ino = (fuse_ino_t)ent;
 	ep.generation = 1;
