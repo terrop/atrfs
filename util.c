@@ -59,6 +59,37 @@ char *uniquify_in_directory (char *name, struct atrfs_entry *dir)
 	}
 }
 
+char *uniquify_globally (char *name, struct atrfs_entry *root)
+{
+	char *uniq = strdup (name);
+
+	int globally_unique (struct atrfs_entry *ent)
+	{
+		if (strcmp (uniq, ent->name) == 0)
+			return 1;
+		return 0;
+	}
+
+	int len = strlen (name);
+	char *ext = strrchr (name, '.');
+	if (! ext)
+		ext = name + strlen (name);
+
+	int i;
+	for (i = 2;; i++)
+	{
+		if (map_leaf_entries (root, globally_unique) == 0)
+		{
+			return uniq;
+		} else {
+			char buf[len + 10];
+			sprintf (buf, "%.*s %d%s", ext - name, name, i, ext);
+			free (uniq);
+			uniq = strdup (buf);
+		}
+	}
+}
+
 void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 {
 	if (file->e_type != ATRFS_FILE_ENTRY)

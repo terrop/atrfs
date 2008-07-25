@@ -417,7 +417,7 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 			continue;
 		ent = create_entry (ATRFS_FILE_ENTRY);
 		ent->file.e_real_file_name = strdup (s);
-		name = uniquify_in_directory (basename (s), root);
+		name = uniquify_globally (basename (s), root);
 		insert_entry (ent, name, root);
 		free (name);
 	}
