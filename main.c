@@ -18,14 +18,17 @@ static char *datafile;
 
 static void tmplog(char *fmt, ...)
 {
+	static FILE *fp;
 	va_list list;
 	va_start(list, fmt);
-	FILE *fp = fopen("/tmp/loki.txt", "a");
+
+	if (!fp)
+		fp = fopen("/tmp/loki.txt", "w+");
 	if (fp)
 	{
 		vfprintf(fp, fmt, list);
 		fflush(fp);
-		fclose(fp);
+	//	fclose(fp);
 	}
 	va_end(list);
 }
@@ -161,7 +164,7 @@ static void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
 	 * @param name to create
 	 * @param mode with which to create the new file
 	 */
-	tmplog("atrfs_mkdir\n");
+	tmplog("mkdir(%lu, '%s')\n", parent, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -179,9 +182,8 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 */
 	tmplog("unlink(%lu, '%s'\n", parent, name);
 
-	struct atrfs_entry *ent, *pent = ino_to_entry(parent);
-
-	ent = lookup_entry_by_name(pent, name);
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
 
 	if (!ent)
 	{
@@ -351,7 +353,7 @@ static void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	 * @param fi file information
 	 */
 	tmplog("read(%lu, size=%lu, off=%lu)\n", ino, size, off);
-	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+	struct atrfs_entry *ent = ino_to_entry(ino);
 
 	switch (ent->e_type)
 	{
@@ -436,7 +438,7 @@ static void atrfs_statfs(fuse_req_t req, fuse_ino_t ino)
 	 * @param req request handle
 	 * @param ino the inode number, zero means "undefined"
 	 */
-	tmplog("atrfs_statfs\n");
+	tmplog("statfs(%lu)\n", ino);
 	struct statvfs st;
 	st.f_bsize = 1024;	/* file system block size */
 	st.f_frsize = 1024;	/* fragment size */
@@ -472,7 +474,7 @@ static void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 	 * @param ino the inode number
 	 * @param mask requested access mode
 	 */
-	tmplog("atrfs_access\n");
+	tmplog("access(%lu)\n", ino);
 	fuse_reply_err(req, 0);
 }
 
@@ -499,7 +501,7 @@ static void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param ino the inode number
 	 * @param fi file information
 	 */
-	tmplog("atrfs_opendir\n");
+	tmplog("opendir(%lu)\n", ino);
 	fuse_reply_open(req, fi);
 }
 
@@ -595,7 +597,7 @@ static void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *f
 	 * @param ino the inode number
 	 * @param fi file information
 	 */
-	tmplog("atrfs_flush\n");
+	tmplog("flush(%lu)\n", ino);
 	fuse_reply_err(req, 0);
 }
 
@@ -647,7 +649,7 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param ino the inode number
 	 * @param fi file information
 	 */
-	tmplog("atrfs_release\n");
+	tmplog("release(%lu)\n", ino);
 	struct atrfs_entry *ent = ino_to_entry(ino);
 
 	switch (ent->e_type)
@@ -705,7 +707,7 @@ static void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fus
 	 * @param datasync flag indicating if only data should be flushed
 	 * @param fi file information
 	 */
-	tmplog("atrfs_fsync\n");
+	tmplog("fsync(%lu, %d)\n", ino, datasync);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -718,7 +720,7 @@ static void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	 * Valid replies:
 	 *   fuse_reply_err
 	 */
-	tmplog("atrfs_setxattr\n");
+	tmplog("setxattr(%lu, '%s' = '%.*s'\n", ino, name, size, value);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -774,7 +776,7 @@ static void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 	 * @param ino the inode number
 	 * @param size maximum size of the list to send
 	 */
-	tmplog("atrfs_listxattr\n");
+	tmplog("listxattr(%lu)\n", ino);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -790,7 +792,7 @@ static void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 	 * @param ino the inode number
 	 * @param name of the extended attribute
 	 */
-	tmplog("atrfs_removexattr\n");
+	tmplog("removexattr(%lu, '%s')\n", ino, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
