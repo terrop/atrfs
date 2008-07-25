@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 24.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 25.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
 #include <sys/stat.h>
@@ -64,43 +64,11 @@ static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	else
 		ent = (struct atrfs_entry *)ino;
 
-	switch (ent->e_type)
-	{
-	default:
-		abort ();
-	case ATRFS_DIRECTORY_ENTRY:
-		tmplog("ATRFS_DIRECTORY_ENTRY\n");
-		st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-		st.st_nlink = 1;
-		st.st_uid = getuid();
-		st.st_gid = getgid();
-		st.st_size = ent->directory.dir_len;
-		st.st_atime = time(NULL);
-		st.st_mtime = time(NULL);
-		st.st_ctime = time(NULL);
-		break;
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-		tmplog("ATRFS_VIRTUAL_FILE_ENTRY\n");
-		st.st_nlink = 1;
-		st.st_size = ent->virtual.size;
-		st.st_mode = S_IFREG | S_IRUSR;
-		st.st_uid = getuid();
-		st.st_mtime = time(NULL);
-		break;
-	case ATRFS_FILE_ENTRY:
-		tmplog("ATRFS_FILE_ENTRY\n");
-		if (stat (ent->file.e_real_file_name, &st) < 0)
-		{
-			fuse_reply_err(req, errno);
-			return;
-		}
-
-		st.st_nlink = get_value (ent, "user.count", 0);
-		st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
-		break;
-	}
-
-	fuse_reply_attr(req, &st, 0.0);
+	int err = stat_entry (ent, &st);
+	if (err)
+		fuse_reply_err (req, err);
+	else
+		fuse_reply_attr (req, &st, 0.0);
 }
 
 static void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
@@ -579,38 +547,14 @@ static void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off
 	{
 		char buf[size];
 		struct stat st;
+		int err;
 		struct atrfs_entry *ent = lookup_entry_by_name(parent, cur->data);
 
-		switch (ent->e_type)
+		err = stat_entry (ent, &st);
+		if (err)
 		{
-		case ATRFS_DIRECTORY_ENTRY:
-                	st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-                	st.st_nlink = 1;
-                	st.st_uid = getuid();
-                	st.st_gid = getgid();
-                	st.st_size = ent->directory.dir_len;
-                	st.st_atime = time(NULL);
-                	st.st_mtime = time(NULL);
-                	st.st_ctime = time(NULL);
-			break;
-		case ATRFS_FILE_ENTRY:
-			if (stat(ent->file.e_real_file_name, &st) < 0)
-			{
-				fuse_reply_err(req, errno);
-				return;
-			}
-
-			st.st_ino = (fuse_ino_t)ent;
-			st.st_nlink = get_value (ent, "user.count", 0);
-			st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
-			break;
-		case ATRFS_VIRTUAL_FILE_ENTRY:
-			st.st_nlink = 1;
-			st.st_size = ent->virtual.size;
-			st.st_mode = S_IFREG | S_IRUSR;
-			st.st_uid = getuid();
-			st.st_mtime = time(NULL);
-			break;
+			fuse_reply_err (req, err);
+			return;
 		}
 
 		int len = fuse_add_direntry(req, buf, sizeof(buf), cur->data, &st, off+1);
@@ -1010,32 +954,7 @@ static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 			fuse_reply_err(req, ENOENT);
 			return;
 		}
-
-		switch (ent->e_type)
-		{
-		case ATRFS_DIRECTORY_ENTRY:
-                	st.st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-                	st.st_nlink = 1;
-                	st.st_uid = getuid();
-                	st.st_gid = getgid();
-                	st.st_size = ent->directory.dir_len;
-                	st.st_atime = time(NULL);
-                	st.st_mtime = time(NULL);
-                	st.st_ctime = time(NULL);
-			break;
-		case ATRFS_FILE_ENTRY:
-			stat(ent->file.e_real_file_name, &st);
-			st.st_nlink = get_value (ent, "user.count", 0);
-			st.st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
-			break;
-		case ATRFS_VIRTUAL_FILE_ENTRY:
-			st.st_nlink = 1;
-			st.st_size = ent->virtual.size;
-			st.st_mode = S_IFREG | S_IRUSR;
-			st.st_uid = getuid();
-			st.st_mtime = time(NULL);
-			break;
-		}
+		stat_entry (ent, &st);
 	}
 
 	ep.ino = (fuse_ino_t)ent;

@@ -1,6 +1,8 @@
-/* entry.c - 24.7.2008 - 24.7.2008 Ari & Tero Roponen */
+/* entry.c - 24.7.2008 - 25.7.2008 Ari & Tero Roponen */
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "entry.h"
 
 struct atrfs_entry *root = NULL;
@@ -89,4 +91,47 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 		g_hash_table_destroy (parent->directory.e_contents);
 		parent = tmp;
 	}
+}
+
+int stat_entry (struct atrfs_entry *ent, struct stat *st)
+{
+	if (! ent)
+		abort ();
+
+	switch (ent->e_type)
+	{
+	default:
+		abort ();
+
+	case ATRFS_DIRECTORY_ENTRY:
+		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+		st->st_nlink = 1;
+		st->st_uid = getuid();
+		st->st_gid = getgid();
+		st->st_size = ent->directory.dir_len;
+		st->st_atime = time (NULL);
+		st->st_mtime = time (NULL);
+		st->st_ctime = time (NULL);
+		break;
+
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		st->st_nlink = 1;
+		st->st_size = ent->virtual.size;
+		st->st_mode = S_IFREG | S_IRUSR;
+		st->st_uid = getuid();
+		st->st_mtime = time (NULL);
+		break;
+
+	case ATRFS_FILE_ENTRY:
+		if (stat (ent->file.e_real_file_name, st) < 0)
+			return errno;
+
+		st->st_nlink = get_value (ent, "user.count", 0);
+		/* start at 1.1.2000 */
+		st->st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
+		st->st_ino = (ino_t)(unsigned int) ent;
+		break;
+	}
+
+	return 0;
 }

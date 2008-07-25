@@ -1,7 +1,8 @@
-/* entry.h - 24.7.2008 - 24.7.2008 Ari & Tero Roponen */
+/* entry.h - 24.7.2008 - 25.7.2008 Ari & Tero Roponen */
 #ifndef ENTRY_H
 #define ENTRY_H
 #include <glib.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #define CHECK_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
@@ -52,5 +53,6 @@ void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 void remove_entry (struct atrfs_entry *ent);
 void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to);
 
+int stat_entry (struct atrfs_entry *ent, struct stat *st);
 
 #endif
