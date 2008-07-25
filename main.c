@@ -478,6 +478,12 @@ static void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 	fuse_reply_err(req, 0);
 }
 
+struct directory_data
+{
+	GList *files;
+	GList *cur;
+};
+
 static void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
@@ -502,6 +508,14 @@ static void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param fi file information
 	 */
 	tmplog("opendir(%lu)\n", ino);
+	struct directory_data *data = malloc(sizeof(*data));
+	if (data)
+	{
+		data->files = g_hash_table_get_keys(ino_to_entry(ino)->directory.e_contents);
+		data->cur = data->files;
+	}
+
+	fi->fh = (uint32_t)data;
 	fuse_reply_open(req, fi);
 }
 
@@ -530,40 +544,44 @@ static void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off
 	 */
 	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
-	static GList *files, *cur;
 	struct atrfs_entry *parent = ino_to_entry(ino);
+	struct directory_data *data = (struct directory_data *)(uint32_t)fi->fh;
+	int err = 0;
 
-	if (off == 0) /* Begin of directory */
-	{
-		if (files)
-			g_list_free(files);
-		files = g_hash_table_get_keys (parent->directory.e_contents);
-		cur = files;
-	}
+	char *buf = malloc(size);
+	int pos = 0;
 
-	while (cur)
+	while (data->cur)
 	{
-		char buf[size];
 		struct stat st;
-		int err;
-		struct atrfs_entry *ent = lookup_entry_by_name(parent, cur->data);
+		struct atrfs_entry *ent = lookup_entry_by_name(parent, data->cur->data);
 
 		err = stat_entry (ent, &st);
 		if (err)
-		{
-			fuse_reply_err (req, err);
-			return;
-		}
+			goto out_err;
 
-		int len = fuse_add_direntry(req, buf, sizeof(buf), cur->data, &st, off+1);
-		fuse_reply_buf(req, buf, len);
-		cur = cur->next;
-		return;
+		int len = fuse_dirent_size(strlen(data->cur->data));
+		if (pos + len > size)
+			break;
+
+		fuse_add_direntry(req, buf + pos, size - pos, data->cur->data, &st, ++off);
+		pos += len;
+		data->cur = data->cur->next;
 	}
 
-	/* End of Directory */
-	cur = NULL;
-	fuse_reply_buf(req, NULL, 0);
+	if (pos)
+	{
+		fuse_reply_buf(req, buf, pos);
+		free (buf);
+	} else {
+		fuse_reply_buf(req, NULL, 0);
+	}
+
+	return;
+out_err:
+	if (buf)
+		free(buf);
+	fuse_reply_err (req, err);
 }
 
 static void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
@@ -815,6 +833,9 @@ static void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_in
 	 * @param fi file information
 	 */
 	tmplog("atrfs_releasedir\n");
+	struct directory_data *data = (struct directory_data *)(uint32_t)fi->fh;
+	g_list_free(data->files);
+	free(data);
 	fuse_reply_err(req, 0);
 }
 
