@@ -41,6 +41,13 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
+static struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
+{
+	if (ino == 1)
+		return root;
+	return (struct atrfs_entry *)ino;
+}
+
 static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
@@ -57,12 +64,7 @@ static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	tmplog("atrfs_getattr(ino=%lu)\n", ino);
 
 	struct stat st;
-	struct atrfs_entry *ent;
-       
-	if (ino == 1)
-		ent = root;
-	else
-		ent = (struct atrfs_entry *)ino;
+	struct atrfs_entry *ent = ino_to_entry(ino);
 
 	switch (ent->e_type)
 	{
@@ -209,10 +211,7 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 */
 	tmplog("unlink(%lu, '%s'\n", parent, name);
 
-	struct atrfs_entry *ent, *pent = (struct atrfs_entry *)parent;
-
-	if (parent == 1)
-		pent = root;
+	struct atrfs_entry *ent, *pent = ino_to_entry(parent);
 
 	ent = lookup_entry_by_name(pent, name);
 
@@ -562,10 +561,7 @@ static void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off
 	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
 	static GList *files, *cur;
-	struct atrfs_entry *parent = (struct atrfs_entry *)ino;
-
-	if (ino == 1)
-		parent = root;
+	struct atrfs_entry *parent = ino_to_entry(ino);
 
 	if (off == 0) /* Begin of directory */
 	{
@@ -708,10 +704,7 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param fi file information
 	 */
 	tmplog("atrfs_release\n");
-	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
-
-	if (ino == 1)
-		ent = root;
+	struct atrfs_entry *ent = ino_to_entry(ino);
 
 	switch (ent->e_type)
 	{
@@ -984,14 +977,9 @@ static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 * @param name the name to look up
 	 */
 	tmplog("lookup(%lu, '%s')\n", parent, name);
-	struct atrfs_entry *pent, *ent;
+	struct atrfs_entry *ent, *pent = ino_to_entry(parent);
 	struct fuse_entry_param ep;
 	struct stat st;
-
-	if (parent == 1)
-		pent = root;
-	else
-		pent = (struct atrfs_entry *)parent;
 
 	if (!strcmp(name, ".") || !strcmp(name, ".."))
 	{
