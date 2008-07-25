@@ -46,7 +46,7 @@ static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param ino the inode number
 	 * @param fi for future use, currently always NULL
 	 */
-	tmplog("atrfs_getattr(ino=%lu)\n", ino);
+	tmplog("getattr(ino=%lu)\n", ino);
 
 	struct stat st;
 	struct atrfs_entry *ent = ino_to_entry(ino);
@@ -88,7 +88,7 @@ static void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	 * Changed in version 2.5:
 	 *     file information filled in for ftruncate
 	 */
-	tmplog("atrfs_setattr\n");
+	tmplog("setattr(%lu)\n", ino);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -104,7 +104,7 @@ static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
 	 * @param req request handle
 	 * @param ino the inode number
 	 */
-	tmplog("atrfs_readlink\n");
+	tmplog("readlink(%lu)\n", ino);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -127,7 +127,7 @@ static void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 	 * @param mode file type and mode with which to create the new file
 	 * @param rdev the device number (only valid if created file is a device)
 	 */
-	tmplog("atrfs_mknod\n");
+	tmplog("mknod(%lu, '%s')\n", parent, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -216,7 +216,7 @@ static void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, con
 	 * @param newparent inode number of the new parent directory
 	 * @param newname new name to create
 	 */
-	tmplog("atrfs_link\n");
+	tmplog("link(%lu, %lu, '%s'\n", ino, newparent, newname);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -235,7 +235,7 @@ static void atrfs_symlink(fuse_req_t req, const char *link,
 	 * @param parent inode number of the parent directory
 	 * @param name to create
 	 */
-	tmplog("atrfs_symlink\n");
+	tmplog("symlink('%s' '%s')\n", link, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -404,8 +404,8 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	 * @param off offset to write to
 	 * @param fi file information
 	 */
-	tmplog("atrfs_write\n");
-	fuse_reply_err(req, ENOSYS);
+	tmplog("write(%lu, '%.*s')\n", ino, size, buf);
+	fuse_reply_write(req, size);
 }
 
 static void atrfs_statfs(fuse_req_t req, fuse_ino_t ino)
@@ -1013,8 +1013,18 @@ static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	 * @param mode file type and mode with which to create the new file
 	 * @param fi file information
 	 */
-	tmplog("atrfs_create\n");
-	fuse_reply_err(req, ENOSYS);
+	tmplog("create(%lu, '%s')\n", parent, name);
+	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
+	struct fuse_entry_param fep =
+	{
+		.ino = (fuse_ino_t)ent,
+		.generation = 1,
+		.attr.st_mode = mode,
+		.attr_timeout = 1.0,
+		.entry_timeout = 1.0,
+	};
+
+	fuse_reply_create(req, &fep, fi);
 }
 
 static void atrfs_getlk(fuse_req_t req, fuse_ino_t ino,
