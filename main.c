@@ -1182,27 +1182,40 @@ int main(int argc, char *argv[])
 	struct fuse_session *fs;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	char *mountpoint;
-	int multithreaded;
 	int foreground;
+	int err = -1;
 
 	datafile = canonicalize_file_name ("piccolocoro.txt");
 
-	fuse_parse_cmdline(&args, &mountpoint, &multithreaded, &foreground);
-	fc = fuse_mount(mountpoint, &args);
-	if (fc)
+	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
-		fs = fuse_lowlevel_new(&args,
-			&atrfs_operations,
-			sizeof(struct fuse_lowlevel_ops),
-			NULL);
-
-		if (fs)
+		fc = fuse_mount(mountpoint, &args);
+		if (fc)
 		{
-			fuse_session_add_chan(fs, fc);
-			fuse_daemonize(foreground);
-			return fuse_session_loop(fs);
+			struct fuse_session *fs = fuse_lowlevel_new(&args,
+				&atrfs_operations,
+				sizeof(atrfs_operations),
+				NULL);
+
+			if (fs)
+			{
+				if (fuse_set_signal_handlers(fs) != -1)
+				{
+					fuse_session_add_chan(fs, fc);
+					fuse_daemonize(foreground);
+					err = fuse_session_loop(fs);
+					fuse_remove_signal_handlers(fs);
+					fuse_session_remove_chan(fc);
+				}
+
+				fuse_session_destroy(fs);
+			}
 		}
+
+		fuse_unmount(mountpoint, fc);
 	}
 
-	return 0;
+	fuse_opt_free_args(&args);
+
+	return err ? 1 : 0;
 }
