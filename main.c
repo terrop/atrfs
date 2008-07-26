@@ -13,6 +13,15 @@
 #include "entry.h"
 #include "util.h"
 
+static bool check_file_type (struct atrfs_entry *ent, char *ext)
+{
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	if (! ext)
+		abort ();
+	char *s = strrchr (ent->file.e_real_file_name, '.');
+	return (s && !strcmp (s, ext));
+}
+
 static void populate_root_dir (struct atrfs_entry *root, char *datafile);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
@@ -644,9 +653,6 @@ static void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *f
 static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	char *ext = strrchr (ent->file.e_real_file_name, '.');
-	if (!ext || strcmp (ext, ".flv"))
-		return;
 	int current = get_value (ent, "user.category", 0);
 
 	if (new > current)
@@ -725,7 +731,8 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 			delta /= 15;
 			delta++;
 			delta *= 15;
-			categorize_flv_entry (ent, delta);
+			if (check_file_type (ent, ".flv"))
+				categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
 		}
@@ -899,7 +906,8 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
 	{
-		categorize_flv_entry (ent, 0);
+		if (check_file_type (ent, ".flv"))
+			categorize_flv_entry (ent, 0);
 		return 0;
 	}
 
