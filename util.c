@@ -1,4 +1,4 @@
-/* util.c - 24.7.2008 - 24.7.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 26.7.2008 Ari & Tero Roponen */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,30 +36,7 @@ void set_value (struct atrfs_entry *ent, char *attr, int value)
 	setxattr (ent->file.e_real_file_name, attr, buf, strlen (buf) + 1, 0);
 }
 
-char *uniquify_in_directory (char *name, struct atrfs_entry *dir)
-{
-	char *uniq = strdup (name);
-	int len = strlen (name);
-	char *ext = strrchr (name, '.');
-	if (! ext)
-		ext = name + strlen (name);
-
-	int i;
-	for (i = 2;; i++)
-	{
-		if (! lookup_entry_by_name (dir, uniq))
-		{
-			return uniq;
-		} else {
-			char buf[len + 10];
-			sprintf (buf, "%.*s %d%s", ext - name, name, i, ext);
-			free (uniq);
-			uniq = strdup (buf);
-		}
-	}
-}
-
-char *uniquify_globally (char *name, struct atrfs_entry *root)
+char *uniquify_name (char *name, struct atrfs_entry *root)
 {
 	char *uniq = strdup (name);
 

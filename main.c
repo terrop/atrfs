@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 25.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 26.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
 #include <sys/stat.h>
 #include <errno.h>
@@ -240,7 +240,7 @@ static void atrfs_symlink(fuse_req_t req, const char *link,
 
 	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
 	ent->file.e_real_file_name = strdup(link);
-	name = uniquify_in_directory((char *)name, root);
+	name = uniquify_name((char *)name, root);
 	insert_entry (ent, (char *)name, root);
 	free((char *)name);
 
@@ -423,8 +423,7 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	 */
 	tmplog("write(%lu, '%.*s')\n", ino, size, buf);
 
-	/* TODO: refactor this & populate_root_dir.
-	   uniquify_globally() */
+	/* TODO: refactor this & populate_root_dir. */
 	char *s, *str = strdup (buf);
 	for (s = strtok (str, "\n"); s; s = strtok (NULL, "\n"))
 	{
@@ -434,7 +433,7 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 			continue;
 		ent = create_entry (ATRFS_FILE_ENTRY);
 		ent->file.e_real_file_name = strdup (s);
-		name = uniquify_globally (basename (s), root);
+		name = uniquify_name (basename (s), root);
 		insert_entry (ent, name, root);
 		free (name);
 	}
@@ -902,7 +901,7 @@ static void populate_root_dir (struct atrfs_entry *root)
 			ent = create_entry (ATRFS_FILE_ENTRY);
 			ent->file.e_real_file_name = strdup (buf);
 
-			name = uniquify_in_directory (basename (buf), root);
+			name = uniquify_name (basename (buf), root);
 			insert_entry (ent, name, root);
 			free (name);
 
