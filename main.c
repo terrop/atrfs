@@ -248,12 +248,10 @@ static void atrfs_symlink(fuse_req_t req, const char *link,
 	{
 		.ino = (fuse_ino_t)ent,
 		.generation = 1,
-		.attr_timeout = 1.0,
-		.entry_timeout = 1.0,
+		.attr_timeout = 0.0,
+		.entry_timeout = 0.0,
+		.attr.st_mode = S_IFLNK,
 	};
-
-	stat_entry(ent, &fep.attr);
-	fep.attr.st_mode |= S_IFLNK;
 
 	fuse_reply_entry(req, &fep);
 }
