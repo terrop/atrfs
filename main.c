@@ -1199,6 +1199,7 @@ int main(int argc, char *argv[])
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
 		int fd = open(mountpoint, O_RDONLY);
+		fuse_opt_add_arg(&args, "-ofsname=atrfs");
 		fc = fuse_mount(mountpoint, &args);
 		if (fc)
 		{
