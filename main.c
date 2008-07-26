@@ -686,6 +686,16 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	tmplog("release(%lu)\n", ino);
 	struct atrfs_entry *ent = ino_to_entry(ino);
 
+	/* Temporary entries don't have a parent */
+	if (ent->parent == NULL)
+	{
+		if (ent->name)
+			tmplog("Warning, temporary node with a name '%s' found\n", ent->name);
+		free(ent);
+		fuse_reply_err(req, 0);
+		return;
+	}
+
 	switch (ent->e_type)
 	{
 	default:
@@ -1059,8 +1069,6 @@ static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 		.attr_timeout = 1.0,
 		.entry_timeout = 1.0,
 	};
-
-	/* TODO: ent must be freed somewhere! */
 
 	fuse_reply_create(req, &fep, fi);
 }
