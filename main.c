@@ -321,7 +321,8 @@ static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi
 		if (ent->file.start_time == 0)
 		{
 			ent->file.start_time = time (NULL);
-			handle_srt_for_file (ent, true);
+			if (check_file_type (ent, ".flv"))
+				handle_srt_for_file (ent, true);
 		}
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
@@ -716,7 +717,8 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	case ATRFS_FILE_ENTRY:
 		if (ent->file.start_time)
 		{
-			handle_srt_for_file (ent, false);
+			if (check_file_type (ent, ".flv"))
+				handle_srt_for_file (ent, false);
 			int delta = time (NULL) - ent->file.start_time;
 			int watchtime = get_value (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);

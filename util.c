@@ -69,8 +69,7 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 
 void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 {
-	if (file->e_type != ATRFS_FILE_ENTRY)
-		return;
+	CHECK_TYPE (file, ATRFS_FILE_ENTRY);
 
 	char *name = file->name;
 
