@@ -1,6 +1,5 @@
 /* main.c - 20.7.2008 - 25.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
-#define _GNU_SOURCE
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
@@ -10,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "entry.h"
 #include "util.h"
 
@@ -1060,6 +1060,8 @@ static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 		.attr_timeout = 1.0,
 		.entry_timeout = 1.0,
 	};
+
+	/* TODO: ent must be freed somewhere! */
 
 	fuse_reply_create(req, &fep, fi);
 }

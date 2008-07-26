@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define _GNU_SOURCE
 
 static bool has_many_languages = false;
 static bool found_language = false;
