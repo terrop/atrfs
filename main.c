@@ -929,7 +929,9 @@ static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	 * @param userdata the user data passed to fuse_lowlevel_new()
 	 *
 	 */
-	tmplog("atrfs_init\n");
+	char *pwd = get_current_dir_name();
+	tmplog("atrfs_init, pwd='%s'\n", pwd);
+	free(pwd);
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
 	populate_root_dir (root);
@@ -1189,6 +1191,7 @@ int main(int argc, char *argv[])
 
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
+		int fd = open(mountpoint, O_RDONLY);
 		fc = fuse_mount(mountpoint, &args);
 		if (fc)
 		{
@@ -1203,6 +1206,8 @@ int main(int argc, char *argv[])
 				{
 					fuse_session_add_chan(fs, fc);
 					fuse_daemonize(foreground);
+					fchdir(fd);
+					close(fd);
 					err = fuse_session_loop(fs);
 					fuse_remove_signal_handlers(fs);
 					fuse_session_remove_chan(fc);
