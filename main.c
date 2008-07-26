@@ -1068,6 +1068,13 @@ static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	 * @param fi file information
 	 */
 	tmplog("create(%lu, '%s')\n", parent, name);
+	char *ext = strrchr(name, '.');
+	if (!ext || strcmp(ext, ".txt"))
+	{
+		fuse_reply_err(req, ENOMSG); /* "No message of desired type" */
+		return;
+	}
+
 	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
 	struct fuse_entry_param fep =
 	{
