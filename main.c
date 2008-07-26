@@ -395,6 +395,25 @@ static void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	}
 }
 
+static void create_listed_entries (char *list)
+{
+	/* LIST must be modifiable. Caller frees the LIST. */
+
+	char *s;
+	for (s = strtok (list, "\n"); s; s = strtok (NULL, "\n"))
+	{
+		struct atrfs_entry *ent;
+		char *name;
+		if (access (s, R_OK))
+			continue;
+		ent = create_entry (ATRFS_FILE_ENTRY);
+		ent->file.e_real_file_name = strdup (s);
+		name = uniquify_name (basename (s), root);
+		insert_entry (ent, name, root);
+		free (name);
+	}
+}
+
 static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	size_t size, off_t off, struct fuse_file_info *fi)
 {
@@ -423,21 +442,9 @@ static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	 */
 	tmplog("write(%lu, '%.*s')\n", ino, size, buf);
 
-	/* TODO: refactor this & populate_root_dir. */
-	char *s, *str = strdup (buf);
-	for (s = strtok (str, "\n"); s; s = strtok (NULL, "\n"))
-	{
-		struct atrfs_entry *ent;
-		char *name;
-		if (access (s, R_OK))
-			continue;
-		ent = create_entry (ATRFS_FILE_ENTRY);
-		ent->file.e_real_file_name = strdup (s);
-		name = uniquify_name (basename (s), root);
-		insert_entry (ent, name, root);
-		free (name);
-	}
-	free (str);
+	char *list = strdup (buf);
+	create_listed_entries (list);
+	free (list);
 
 	fuse_reply_write(req, size);
 }
@@ -891,34 +898,30 @@ static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 
 static void populate_root_dir (struct atrfs_entry *root)
 {
+	int categorize_helper (struct atrfs_entry *ent)
+	{
+		categorize_flv_entry (ent, 0);
+		return 0;
+	}
+
 	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
 	FILE *fp = fopen (datafile, "r");
 	if (fp)
 	{
-		char buf[256];
-		char *name;
+		char buf[256];	/* XXX */
+		char *obuf = NULL;
+		size_t size = 0;
+		FILE *out = open_memstream (&obuf, &size);
 
 		while (fgets (buf, sizeof (buf), fp))
-		{
-			struct atrfs_entry *ent;
-			*strchr(buf, '\n') = '\0';
-
-			/* We need the read access to the real file */
-			if (access(buf, R_OK))
-				continue;
-
-			ent = create_entry (ATRFS_FILE_ENTRY);
-			ent->file.e_real_file_name = strdup (buf);
-
-			name = uniquify_name (basename (buf), root);
-			insert_entry (ent, name, root);
-			free (name);
-
-			categorize_flv_entry (ent, 0);
-		}
-
+			fprintf (out, "%s", buf);
+		fclose (out);
+		create_listed_entries (obuf);
+		free (obuf);
 		fclose (fp);
+
+		map_leaf_entries (root, categorize_helper);
 	}
 	free (datafile);
 	datafile = NULL;
