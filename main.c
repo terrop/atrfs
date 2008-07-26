@@ -13,8 +13,7 @@
 #include "entry.h"
 #include "util.h"
 
-static char *datafile;
-static void populate_root_dir (struct atrfs_entry *root);
+static void populate_root_dir (struct atrfs_entry *root, char *datafile);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -896,7 +895,7 @@ static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	fuse_reply_err(req, 0);
 }
 
-static void populate_root_dir (struct atrfs_entry *root)
+static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
 	{
@@ -924,7 +923,6 @@ static void populate_root_dir (struct atrfs_entry *root)
 		map_leaf_entries (root, categorize_helper);
 	}
 	free (datafile);
-	datafile = NULL;
 }
 
 static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
@@ -944,8 +942,7 @@ static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	free(pwd);
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 
-	populate_root_dir (root);
-
+	populate_root_dir (root, (char *)userdata);
 }
 
 static void atrfs_destroy(void *userdata)
@@ -1197,8 +1194,6 @@ int main(int argc, char *argv[])
 	int foreground;
 	int err = -1;
 
-	datafile = canonicalize_file_name ("piccolocoro.txt");
-
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
 		int fd = open(mountpoint, O_RDONLY);
@@ -1209,7 +1204,7 @@ int main(int argc, char *argv[])
 			struct fuse_session *fs = fuse_lowlevel_new(&args,
 				&atrfs_operations,
 				sizeof(atrfs_operations),
-				NULL);
+				canonicalize_file_name("piccolocoro.txt"));
 
 			if (fs)
 			{
