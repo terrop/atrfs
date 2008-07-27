@@ -180,7 +180,7 @@ struct atrfs_entry **get_all_file_entries (void)
 
 	map_leaf_entries (root, counter);
 
-	tmplog("get_all_file_entries: %d entries\n", count);
+//	tmplog("get_all_file_entries: %d entries\n", count);
 
 	struct atrfs_entry **entries = malloc ((count + 1) * sizeof (struct atrfs_entry));
 	ptr = entries;

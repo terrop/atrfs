@@ -47,9 +47,11 @@ static void update_top_ten (void)
 	FILE *fp = open_memstream (&buf, &size);
 	for (i = 0; i < 10 && entries[i]; i++)
 	{
-		int val = get_value (entries[i], "user.watchtime", 0);
-		fprintf (fp, "%4d\t%s/%s\n", val, entries[i]->parent->name ? : "",
-			 entries[i]->name);
+		struct atrfs_entry *ent = entries[i];
+		int val = get_value (ent, "user.watchtime", 0);
+		fprintf (fp, "%4d\t%s%c%s\n", val,
+			ent->parent == root ? "" : ent->parent->name,
+			ent->parent == root ? '\0' : '/', ent->name);
 	}
 	fclose (fp);
 
@@ -369,6 +371,9 @@ static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi
 	 */
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
 	tmplog("open('%s')\n", ent->name);
+
+	if (ent == top_ten)
+		update_top_ten();
 
 	switch (ent->e_type)
 	{
@@ -799,8 +804,6 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 				categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
-
-			update_top_ten ();
 		}
 		break;
 
