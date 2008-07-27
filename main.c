@@ -243,6 +243,12 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 		return;
 	}
 
+	if (ent->parent == statroot)
+	{
+		fuse_reply_err(req, EROFS);
+		return;
+	}
+
 	if (ent->parent != root)
 	{
 		move_entry (ent, root);
@@ -807,9 +813,8 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 
 #if 1
 			delta /= 15;
-			delta++;
 			delta *= 15;
-			if (check_file_type (ent, ".flv"))
+			if (delta > 0 && check_file_type (ent, ".flv"))
 				categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
