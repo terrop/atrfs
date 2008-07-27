@@ -13,6 +13,53 @@
 #include "entry.h"
 #include "util.h"
 
+static struct atrfs_entry *top_ten;
+
+static void update_top_ten (void)
+{
+	int i;
+	if (! top_ten)
+	{
+		top_ten = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+		insert_entry (top_ten, "top-10", root);
+	}
+
+	struct atrfs_entry **entries = get_all_file_entries ();
+	int count;
+	for (count = 0; entries[count]; count++)
+		;
+
+	int compare_times (void *a, void *b)
+	{
+		struct atrfs_entry *e1, *e2;
+		e1 = *(struct atrfs_entry **)a;
+		e2 = *(struct atrfs_entry **)b;
+		if (get_value (e1, "user.watchtime", 0) > get_value (e2, "user.watchtime", 0))
+			return -1;
+		return 1;
+	}
+
+	qsort (entries, count, sizeof (struct atrfs_entry *),
+	       (comparison_fn_t) compare_times);
+
+	char *buf = NULL;
+	size_t size;
+	FILE *fp = open_memstream (&buf, &size);
+	for (i = 0; i < 10 && entries[i]; i++)
+	{
+		int val = get_value (entries[i], "user.watchtime", 0);
+		fprintf (fp, "%4d\t%s/%s\n", val, entries[i]->parent->name ? : "",
+			 entries[i]->name);
+	}
+	fclose (fp);
+
+	free (top_ten->virtual.data);
+	top_ten->virtual.data = buf;
+	top_ten->virtual.size = size;
+		
+	free (entries);
+}
+
 static bool check_file_type (struct atrfs_entry *ent, char *ext)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
@@ -737,6 +784,8 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 				categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
+
+			update_top_ten ();
 		}
 		break;
 
@@ -931,6 +980,8 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 		fclose (fp);
 
 		map_leaf_entries (root, categorize_helper);
+
+		update_top_ten ();
 	}
 	free (datafile);
 }
