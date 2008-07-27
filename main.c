@@ -1236,12 +1236,12 @@ int main(int argc, char *argv[])
 
 				fuse_session_destroy(fs);
 			}
+
+			fuse_unmount(mountpoint, fc);
 		}
 
-		fuse_unmount(mountpoint, fc);
 	}
 
 	fuse_opt_free_args(&args);
-
 	return err ? 1 : 0;
 }
