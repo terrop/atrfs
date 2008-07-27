@@ -1,4 +1,4 @@
-/* entry.h - 24.7.2008 - 25.7.2008 Ari & Tero Roponen */
+/* entry.h - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
 #ifndef ENTRY_H
 #define ENTRY_H
 #include <glib.h>
@@ -45,6 +45,7 @@ struct atrfs_entry
 extern struct atrfs_entry *root;
 
 struct atrfs_entry *create_entry (enum atrfs_entry_type type);
+void destroy_entry (struct atrfs_entry *ent);
 
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name);
 int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *ent));

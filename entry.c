@@ -1,4 +1,4 @@
-/* entry.c - 24.7.2008 - 25.7.2008 Ari & Tero Roponen */
+/* entry.c - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +35,27 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		break;
 	}
 	return ent;
+}
+
+void destroy_entry (struct atrfs_entry *ent)
+{
+	if (! ent)
+		abort ();
+	switch (ent->e_type)
+	{
+	default:
+		abort ();
+	case ATRFS_DIRECTORY_ENTRY:
+		if (g_hash_table_size (ent->directory.e_contents) > 0)
+			abort ();
+		g_hash_table_destroy (ent->directory.e_contents);
+		break;
+	case ATRFS_FILE_ENTRY:
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		break;
+	}
+
+	free (ent);
 }
 
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
@@ -79,7 +100,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	{
 		struct atrfs_entry *tmp = parent->parent;
 		remove_entry (parent);
-		g_hash_table_destroy (parent->directory.e_contents);
+		destroy_entry (parent);
 		parent = tmp;
 	}
 }
