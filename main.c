@@ -55,10 +55,10 @@ static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 	 * @param ino the inode number
 	 * @param fi for future use, currently always NULL
 	 */
-	tmplog("getattr(ino=%lu)\n", ino);
-
 	struct stat st;
 	struct atrfs_entry *ent = ino_to_entry(ino);
+
+	tmplog("getattr('%s')\n", ent->name);
 
 	int err = stat_entry (ent, &st);
 	if (err)
@@ -97,7 +97,8 @@ static void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	 * Changed in version 2.5:
 	 *     file information filled in for ftruncate
 	 */
-	tmplog("setattr(%lu)\n", ino);
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("setattr('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -113,7 +114,8 @@ static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
 	 * @param req request handle
 	 * @param ino the inode number
 	 */
-	tmplog("readlink(%lu)\n", ino);
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("readlink('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -136,7 +138,8 @@ static void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 	 * @param mode file type and mode with which to create the new file
 	 * @param rdev the device number (only valid if created file is a device)
 	 */
-	tmplog("mknod(%lu, '%s')\n", parent, name);
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mknod('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -155,7 +158,8 @@ static void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
 	 * @param name to create
 	 * @param mode with which to create the new file
 	 */
-	tmplog("mkdir(%lu, '%s')\n", parent, name);
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mkdir('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -171,10 +175,10 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 * @param parent inode number of the parent directory
 	 * @param name to remove
 	 */
-	tmplog("unlink(%lu, '%s'\n", parent, name);
-
 	struct atrfs_entry *pent = ino_to_entry(parent);
 	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
+
+	tmplog("unlink('%s', '%s')\n", pent->name, name);
 
 	if (!ent)
 	{
@@ -207,7 +211,8 @@ static void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
 	 * @param parent inode number of the parent directory
 	 * @param name to remove
 	 */
-	tmplog("atrfs_rmdir\n");
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("rmdir('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -225,7 +230,9 @@ static void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, con
 	 * @param newparent inode number of the new parent directory
 	 * @param newname new name to create
 	 */
-	tmplog("link(%lu, %lu, '%s'\n", ino, newparent, newname);
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	struct atrfs_entry *npent = ino_to_entry(newparent);
+	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -244,7 +251,7 @@ static void atrfs_symlink(fuse_req_t req, const char *link,
 	 * @param parent inode number of the parent directory
 	 * @param name to create
 	 */
-	tmplog("symlink('%s' '%s')\n", link, name);
+	tmplog("symlink('%s' -> '%s')\n", link, name);
 
 	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
 	ent->file.e_real_file_name = strdup(link);
@@ -279,7 +286,10 @@ static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
 	 * @param newparent inode number of the new parent directory
 	 * @param newname new name
 	 */
-	tmplog("atrfs_rename\n");
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *npent = ino_to_entry(newparent);
+	tmplog("rename('%s', '%s' -> '%s', '%s'\n",
+		pent->name, name, npent->name, newname);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -311,7 +321,7 @@ static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi
 	 * @param fi file information
 	 */
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
-	tmplog("open(%p)\n", ino);
+	tmplog("open('%s')\n", ent->name);
 
 	switch (ent->e_type)
 	{
@@ -360,8 +370,8 @@ static void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	 * @param off offset to read from
 	 * @param fi file information
 	 */
-	tmplog("read(%lu, size=%lu, off=%lu)\n", ino, size, off);
 	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
 
 	switch (ent->e_type)
 	{
@@ -807,7 +817,8 @@ static void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, siz
 	 * @param name of the extended attribute
 	 * @param size maximum size of the value to send
 	 */
-	tmplog("getxattr(%lu, '%s', size=%lu\n", ino, name, size);
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
 	fuse_reply_err(req, ENOTSUP);
 }
 
@@ -873,7 +884,8 @@ static void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_in
 	 * @param ino the inode number
 	 * @param fi file information
 	 */
-	tmplog("atrfs_releasedir\n");
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("releasedir('%s')\n", ent->name);
 	struct directory_data *data = (struct directory_data *)(uint32_t)fi->fh;
 	g_list_free(data->files);
 	free(data);
@@ -951,6 +963,7 @@ static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	tmplog("atrfs_init, pwd='%s'\n", pwd);
 	free(pwd);
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
+	root->name = "/";
 
 	populate_root_dir (root, (char *)userdata);
 }
