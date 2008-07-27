@@ -18,9 +18,10 @@ static struct atrfs_entry *statroot;
 static void update_stats (void)
 {
 	struct atrfs_entry *top_ten = lookup_entry_by_name(statroot, "top-10");
-	int i;
+	struct atrfs_entry *last_ten = lookup_entry_by_name(statroot, "last-10");
 	struct atrfs_entry **entries = get_all_file_entries ();
-	int count;
+	int i, count;
+
 	for (count = 0; entries[count]; count++)
 		;
 
@@ -37,22 +38,35 @@ static void update_stats (void)
 	qsort (entries, count, sizeof (struct atrfs_entry *),
 	       (comparison_fn_t) compare_times);
 
-	char *buf = NULL;
-	size_t size;
-	FILE *fp = open_memstream (&buf, &size);
+	char *topbuf = NULL, *lastbuf = NULL;
+	size_t top_size, last_size;
+	FILE *topfp = open_memstream (&topbuf, &top_size);
+	FILE *lastfp = open_memstream(&lastbuf, &last_size);
 	for (i = 0; i < 10 && entries[i]; i++)
 	{
-		struct atrfs_entry *ent = entries[i];
-		int val = get_value (ent, "user.watchtime", 0);
-		fprintf (fp, "%4d\t%s%c%s\n", val,
-			ent->parent == root ? "" : ent->parent->name,
-			ent->parent == root ? '\0' : '/', ent->name);
+		struct atrfs_entry *topent = entries[i];
+		struct atrfs_entry *lastent = entries[count - 1 - i];
+		int val;
+		val = get_value (topent, "user.watchtime", 0);
+		fprintf (topfp, "%4d\t%s%c%s\n", val,
+			topent->parent == root ? "" : topent->parent->name,
+			topent->parent == root ? '\0' : '/', topent->name);
+
+		val = get_value (lastent, "user.watchtime", 0);
+		fprintf (lastfp, "%4d\t%s%c%s\n", val,
+			lastent->parent == root ? "" : lastent->parent->name,
+			lastent->parent == root ? '\0' : '/', lastent->name);
 	}
-	fclose (fp);
+	fclose (lastfp);
+	fclose (topfp);
 
 	free (top_ten->virtual.data);
-	top_ten->virtual.data = buf;
-	top_ten->virtual.size = size;
+	top_ten->virtual.data = topbuf;
+	top_ten->virtual.size = top_size;
+
+	free (last_ten->virtual.data);
+	last_ten->virtual.data = lastbuf;
+	last_ten->virtual.size = last_size;
 		
 	free (entries);
 }
@@ -67,6 +81,7 @@ static bool check_file_type (struct atrfs_entry *ent, char *ext)
 }
 
 static void populate_root_dir (struct atrfs_entry *root, char *datafile);
+static void populate_stat_dir (struct atrfs_entry *statroot);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -1027,10 +1042,17 @@ static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	insert_entry (statroot, "stats", root);
 
 	populate_root_dir (root, (char *)userdata);
-//	populate_stat_dir (statroot);
+	populate_stat_dir (statroot);
+}
 
-	struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+static void populate_stat_dir(struct atrfs_entry *statroot)
+{
+	struct atrfs_entry *ent;
+
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	insert_entry (ent, "top-10", statroot);
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	insert_entry (ent, "last-10", statroot);
 	update_stats();
 }
 
