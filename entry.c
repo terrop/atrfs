@@ -60,13 +60,16 @@ void remove_entry (struct atrfs_entry *ent)
 		g_hash_table_remove (ent->parent->directory.e_contents, name);
 	ent->parent->directory.dir_len--;
 	ent->parent = NULL;
+
+	free (ent->name);
+	ent->name = NULL;
 }
 
 void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 {
 	CHECK_TYPE (to, ATRFS_DIRECTORY_ENTRY);
 	struct atrfs_entry *parent = ent->parent;
-	char *name = ent->name;
+	char *name = strdup (ent->name);
 	remove_entry (ent);
 	insert_entry (ent, name, to);
 	free (name);
@@ -76,7 +79,6 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	{
 		struct atrfs_entry *tmp = parent->parent;
 		remove_entry (parent);
-		free (parent->name);
 		g_hash_table_destroy (parent->directory.e_contents);
 		parent = tmp;
 	}

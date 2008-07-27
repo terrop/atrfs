@@ -136,7 +136,6 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			{
 				remove_entry (ent);
 				free (ent->virtual.data);
-				free (ent->name);
 				free (ent);
 			}
 		}
