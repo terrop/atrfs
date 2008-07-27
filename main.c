@@ -13,17 +13,12 @@
 #include "entry.h"
 #include "util.h"
 
-static struct atrfs_entry *top_ten;
+static struct atrfs_entry *statroot;
 
-static void update_top_ten (void)
+static void update_stats (void)
 {
+	struct atrfs_entry *top_ten = lookup_entry_by_name(statroot, "top-10");
 	int i;
-	if (! top_ten)
-	{
-		top_ten = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-		insert_entry (top_ten, "top-10", root);
-	}
-
 	struct atrfs_entry **entries = get_all_file_entries ();
 	int count;
 	for (count = 0; entries[count]; count++)
@@ -372,8 +367,9 @@ static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
 	tmplog("open('%s')\n", ent->name);
 
-	if (ent == top_ten)
-		update_top_ten();
+	/* Update statistics when needed */
+	if (ent->parent == statroot)
+		update_stats();
 
 	switch (ent->e_type)
 	{
@@ -1005,8 +1001,6 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 		fclose (fp);
 
 		map_leaf_entries (root, categorize_helper);
-
-		update_top_ten ();
 	}
 	free (datafile);
 }
@@ -1029,7 +1023,15 @@ static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 	root->name = "/";
 
+	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
+	insert_entry (statroot, "stats", root);
+
 	populate_root_dir (root, (char *)userdata);
+//	populate_stat_dir (statroot);
+
+	struct atrfs_entry *ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	insert_entry (ent, "top-10", statroot);
+	update_stats();
 }
 
 static void atrfs_destroy(void *userdata)
