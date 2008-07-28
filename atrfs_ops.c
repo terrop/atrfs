@@ -112,7 +112,7 @@ void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 	 * @param ino the inode number
 	 * @param nlookup the number of lookups to forget
 	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("forget('%s')\n", ent->name);
+//	struct atrfs_entry *ent = ino_to_entry(ino);
+//	tmplog("forget('%s')\n", ent->name);
 	fuse_reply_none(req);
 }
