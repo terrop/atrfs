@@ -352,3 +352,25 @@ void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 
 	fuse_reply_err(req, 0);
 }
+
+void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
+	const char *name, fuse_ino_t newparent, const char *newname)
+{
+	/*
+	 * Rename a file
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the old parent directory
+	 * @param name old name
+	 * @param newparent inode number of the new parent directory
+	 * @param newname new name
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *npent = ino_to_entry(newparent);
+	tmplog("rename('%s', '%s' -> '%s', '%s'\n",
+		pent->name, name, npent->name, newname);
+	fuse_reply_err(req, ENOSYS);
+}

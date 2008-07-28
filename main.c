@@ -91,28 +91,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
-	const char *name, fuse_ino_t newparent, const char *newname)
-{
-	/*
-	 * Rename a file
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the old parent directory
-	 * @param name old name
-	 * @param newparent inode number of the new parent directory
-	 * @param newname new name
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *npent = ino_to_entry(newparent);
-	tmplog("rename('%s', '%s' -> '%s', '%s'\n",
-		pent->name, name, npent->name, newname);
-	fuse_reply_err(req, ENOSYS);
-}
-
 static void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
@@ -964,6 +942,8 @@ extern void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name);
 extern void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname);
 extern void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name);
 extern void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name);
+extern void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
+	const char *name, fuse_ino_t newparent, const char *newname);
 
 int main(int argc, char *argv[])
 {
