@@ -649,3 +649,39 @@ void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 	tmplog("access('%s')\n", ent->name);
 	fuse_reply_err(req, 0);
 }
+
+void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
+{
+	/*
+	 * Flush method
+	 *
+	 * This is called on each close() of the opened file.
+	 *
+	 * Since file descriptors can be duplicated (dup, dup2, fork), for
+	 * one open call there may be many flush calls.
+	 *
+	 * Filesystems shouldn't assume that flush will always be called
+	 * after some writes, or that if will be called at all.
+	 *
+	 * fi->fh will contain the value set by the open method, or will
+	 * be undefined if the open method didn't set any value.
+	 *
+	 * NOTE: the name of the method is misleading, since (unlike
+	 * fsync) the filesystem is not forced to flush pending writes.
+	 * One reason to flush data, is if the filesystem wants to return
+	 * write errors.
+	 *
+	 * If the filesystem supports file locking operations (setlk,
+	 * getlk) it should remove all locks belonging to 'fi->owner'.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("flush('%s')\n", ent->name);
+	fuse_reply_err(req, 0);
+}

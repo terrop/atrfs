@@ -149,42 +149,6 @@ void create_listed_entries (char *list)
 	}
 }
 
-static void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
-{
-	/*
-	 * Flush method
-	 *
-	 * This is called on each close() of the opened file.
-	 *
-	 * Since file descriptors can be duplicated (dup, dup2, fork), for
-	 * one open call there may be many flush calls.
-	 *
-	 * Filesystems shouldn't assume that flush will always be called
-	 * after some writes, or that if will be called at all.
-	 *
-	 * fi->fh will contain the value set by the open method, or will
-	 * be undefined if the open method didn't set any value.
-	 *
-	 * NOTE: the name of the method is misleading, since (unlike
-	 * fsync) the filesystem is not forced to flush pending writes.
-	 * One reason to flush data, is if the filesystem wants to return
-	 * write errors.
-	 *
-	 * If the filesystem supports file locking operations (setlk,
-	 * getlk) it should remove all locks belonging to 'fi->owner'.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("flush('%s')\n", ent->name);
-	fuse_reply_err(req, 0);
-}
-
 static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
@@ -481,6 +445,7 @@ extern void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off
 extern void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	struct fuse_file_info *fi);
+extern void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	const char *value, size_t size, int flags);
 extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size);
