@@ -138,7 +138,10 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_size = ent->virtual.size;
 		st->st_mode = S_IFREG | S_IRUSR;
 		st->st_uid = getuid();
+		st->st_gid = getgid();
+		st->st_atime = time (NULL);
 		st->st_mtime = time (NULL);
+		st->st_ctime = time (NULL);
 		break;
 
 	case ATRFS_FILE_ENTRY:

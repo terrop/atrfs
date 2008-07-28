@@ -749,8 +749,9 @@ static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 		{
 			conf = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			conf->virtual.data = malloc (size);
-			getxattr (ent->file.e_real_file_name, "user.mpconf",
-				  conf->virtual.data, &conf->virtual.size);
+			conf->virtual.size = getxattr (ent->file.e_real_file_name,
+				"user.mpconf", conf->virtual.data, size);
+			tmplog("Data: '%s'\n", conf->virtual.data);
 			insert_entry (conf, cfgname, ent->parent);
 		}
 	}
