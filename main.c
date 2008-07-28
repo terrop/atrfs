@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 26.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
 #include <sys/stat.h>
 #include <errno.h>
@@ -21,11 +21,9 @@ static void update_stats (void)
 	st_ents[0] = lookup_entry_by_name(statroot, "top-10");
 	st_ents[1] = lookup_entry_by_name(statroot, "last-10");
 
-	struct atrfs_entry **entries = get_all_file_entries ();
-	int i, j, count;
-
-	for (count = 0; entries[count]; count++)
-		;
+	struct atrfs_entry **entries;
+	size_t count;
+	int i, j;
 
 	int compare_times (void *a, void *b)
 	{
@@ -36,6 +34,8 @@ static void update_stats (void)
 			return -1;
 		return 1;
 	}
+
+	get_all_file_entries (&entries, &count);
 
 	qsort (entries, count, sizeof (struct atrfs_entry *),
 	       (comparison_fn_t) compare_times);
