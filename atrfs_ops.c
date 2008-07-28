@@ -15,47 +15,6 @@ extern void update_recent_file (struct atrfs_entry *ent);
 extern void create_listed_entries (char *list);
 extern void categorize_flv_entry (struct atrfs_entry *ent, int new);
 extern bool check_file_type (struct atrfs_entry *ent, char *ext);
-extern void populate_root_dir (struct atrfs_entry *root, char *datafile);
-extern void populate_stat_dir (struct atrfs_entry *statroot);
-
-void atrfs_init(void *userdata, struct fuse_conn_info *conn)
-{
-	/*
-	 * Initialize filesystem
-	 *
-	 * Called before any other filesystem method
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 *
-	 */
-	char *pwd = get_current_dir_name();
-	tmplog("init(pwd='%s')\n", pwd);
-	free(pwd);
-	root = create_entry (ATRFS_DIRECTORY_ENTRY);
-	root->name = "/";
-
-	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	insert_entry (statroot, "stats", root);
-
-	populate_root_dir (root, (char *)userdata);
-	populate_stat_dir (statroot);
-}
-
-void atrfs_destroy(void *userdata)
-{
-	/*
-	 * Clean up filesystem
-	 *
-	 * Called on filesystem exit
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 */
-	tmplog("destroy()\n");
-}
 
 void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {

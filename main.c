@@ -17,9 +17,9 @@
 #endif
 #define XSTR(s) STR(s)
 #define STR(s) #s
-static char *top_name = "top-" XSTR(LIST_SIZE);
-static char *last_name = "last-" XSTR(LIST_SIZE);
-static char *recent_name = "recent";
+char *top_name = "top-" XSTR(LIST_SIZE);
+char *last_name = "last-" XSTR(LIST_SIZE);
+char *recent_name = "recent";
 #undef STR
 #undef XSTR
 
@@ -116,9 +116,6 @@ bool check_file_type (struct atrfs_entry *ent, char *ext)
 	return (s && !strcmp (s, ext));
 }
 
-void populate_root_dir (struct atrfs_entry *root, char *datafile);
-void populate_stat_dir (struct atrfs_entry *statroot);
-
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
 	struct atrfs_entry *dir = lookup_entry_by_name (root, subdir);
@@ -188,50 +185,6 @@ void categorize_flv_entry (struct atrfs_entry *ent, int new)
 		if (conf)
 			move_to_named_subdir (conf, dir);
 	}
-}
-
-void populate_root_dir (struct atrfs_entry *root, char *datafile)
-{
-	int categorize_helper (struct atrfs_entry *ent)
-	{
-		if (check_file_type (ent, ".flv"))
-			categorize_flv_entry (ent, 0);
-		return 0;
-	}
-
-	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
-
-	FILE *fp = fopen (datafile, "r");
-	if (fp)
-	{
-		char buf[256];	/* XXX */
-		char *obuf = NULL;
-		size_t size = 0;
-		FILE *out = open_memstream (&obuf, &size);
-
-		while (fgets (buf, sizeof (buf), fp))
-			fprintf (out, "%s", buf);
-		fclose (out);
-		create_listed_entries (obuf);
-		free (obuf);
-		fclose (fp);
-
-		map_leaf_entries (root, categorize_helper);
-	}
-	free (datafile);
-}
-
-void populate_stat_dir(struct atrfs_entry *statroot)
-{
-	struct atrfs_entry *ent;
-
-	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, top_name, statroot);
-	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, last_name, statroot);
-	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, recent_name, statroot);
-	update_stats();
 }
 
 extern void atrfs_getlk(fuse_req_t req, fuse_ino_t ino,

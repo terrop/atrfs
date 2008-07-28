@@ -4,7 +4,7 @@ CFLAGS=-D_GNU_SOURCE -DFUSE_USE_VERSION=26 -DLIST_SIZE=20 \
 	$(shell pkg-config --cflags fuse glib-2.0) -g
 LIBS=$(shell pkg-config --libs fuse glib-2.0)
 
-oma: entry.o asc-srt.o util.o main.o atrfs_ops.o atrfs_dir.o atrfs_xattr.o
+oma: entry.o asc-srt.o util.o main.o atrfs_ops.o atrfs_dir.o atrfs_xattr.o atrfs_init.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
