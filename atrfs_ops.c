@@ -3,8 +3,10 @@
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "entry.h"
+#include "util.h"
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
@@ -272,4 +274,38 @@ void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char
 	struct atrfs_entry *npent = ino_to_entry(newparent);
 	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
 	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Create a symbolic link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param link the contents of the symbolic link
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 */
+	tmplog("symlink('%s' -> '%s')\n", link, name);
+
+	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
+	ent->file.e_real_file_name = strdup(link);
+	name = uniquify_name((char *)name, root);
+	insert_entry (ent, (char *)name, root);
+	free((char *)name);
+
+	struct fuse_entry_param fep =
+	{
+		.ino = (fuse_ino_t)ent,
+		.generation = 1,
+		.attr_timeout = 0.0,
+		.entry_timeout = 0.0,
+		.attr.st_mode = S_IFLNK,
+	};
+
+	fuse_reply_entry(req, &fep);
 }

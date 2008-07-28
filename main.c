@@ -134,41 +134,6 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	fuse_reply_err(req, 0);
 }
 
-static void atrfs_symlink(fuse_req_t req, const char *link,
-	fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Create a symbolic link
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param link the contents of the symbolic link
-	 * @param parent inode number of the parent directory
-	 * @param name to create
-	 */
-	tmplog("symlink('%s' -> '%s')\n", link, name);
-
-	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
-	ent->file.e_real_file_name = strdup(link);
-	name = uniquify_name((char *)name, root);
-	insert_entry (ent, (char *)name, root);
-	free((char *)name);
-
-	struct fuse_entry_param fep =
-	{
-		.ino = (fuse_ino_t)ent,
-		.generation = 1,
-		.attr_timeout = 0.0,
-		.entry_timeout = 0.0,
-		.attr.st_mode = S_IFLNK,
-	};
-
-	fuse_reply_entry(req, &fep);
-}
-
 static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
 	const char *name, fuse_ino_t newparent, const char *newname)
 {
@@ -1040,6 +1005,7 @@ extern void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 extern void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode);
 extern void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name);
 extern void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname);
+extern void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name);
 
 int main(int argc, char *argv[])
 {
