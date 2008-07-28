@@ -1,5 +1,4 @@
 /* main.c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
-#define FUSE_USE_VERSION 26
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
@@ -13,7 +12,7 @@
 #include "entry.h"
 #include "util.h"
 
-static struct atrfs_entry *statroot;
+struct atrfs_entry *statroot;
 
 static void update_stats (void)
 {
@@ -78,8 +77,8 @@ static bool check_file_type (struct atrfs_entry *ent, char *ext)
 	return (s && !strcmp (s, ext));
 }
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile);
-static void populate_stat_dir (struct atrfs_entry *statroot);
+void populate_root_dir (struct atrfs_entry *root, char *datafile);
+void populate_stat_dir (struct atrfs_entry *statroot);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -985,7 +984,7 @@ static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	fuse_reply_err(req, 0);
 }
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile)
+void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
 	{
@@ -1016,32 +1015,7 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 	free (datafile);
 }
 
-static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
-{
-	/*
-	 * Initialize filesystem
-	 *
-	 * Called before any other filesystem method
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 *
-	 */
-	char *pwd = get_current_dir_name();
-	tmplog("init(pwd='%s')\n", pwd);
-	free(pwd);
-	root = create_entry (ATRFS_DIRECTORY_ENTRY);
-	root->name = "/";
-
-	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	insert_entry (statroot, "stats", root);
-
-	populate_root_dir (root, (char *)userdata);
-	populate_stat_dir (statroot);
-}
-
-static void populate_stat_dir(struct atrfs_entry *statroot)
+void populate_stat_dir(struct atrfs_entry *statroot)
 {
 	struct atrfs_entry *ent;
 
@@ -1267,6 +1241,8 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 	tmplog("bmap('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
+
+extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
 
 int main(int argc, char *argv[])
 {
