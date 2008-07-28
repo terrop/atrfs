@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
+/* .c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
 #define FUSE_USE_VERSION 26
 #include <sys/stat.h>
 #include <errno.h>
@@ -737,11 +737,32 @@ static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 		set_value (ent, "user.category", new);
 	}
 
+	/* Handle file-specific configuration. */
+	struct atrfs_entry *conf = NULL;
+	int size = getxattr (ent->file.e_real_file_name, "user.mpconf", NULL, 0);
+	if (size > 0)
+	{
+//		tmplog ("File-specific config for %s:%d\n", ent->file.e_real_file_name, size);
+		char cfgname[strlen (ent->name) + 6];
+		sprintf (cfgname, "%s.conf", ent->name);
+		conf = lookup_entry_by_name (ent->parent, cfgname);
+		if (! conf)
+		{
+			conf = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+			conf->virtual.data = malloc (size);
+			getxattr (ent->file.e_real_file_name, "user.mpconf",
+				  conf->virtual.data, &conf->virtual.size);
+			insert_entry (conf, cfgname, ent->parent);
+		}
+	}
+
 	if (current > 0)
 	{
 		char dir[20];
 		sprintf (dir, "time_%d", current);
 		move_to_named_subdir (ent, dir);
+		if (conf)
+			move_to_named_subdir (conf, dir);
 	}
 }
 
