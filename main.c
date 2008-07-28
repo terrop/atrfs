@@ -416,31 +416,6 @@ static void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 	fuse_reply_err(req, ENOSYS);
 }
 
-static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
-	struct fuse_file_info *fi)
-{
-	/*
-	 * Synchronize directory contents
-	 *
-	 * If the datasync parameter is non-zero, then only the directory
-	 * contents should be flushed, not the meta data.
-	 *
-	 * fi->fh will contain the value set by the opendir method, or
-	 * will be undefined if the opendir method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param datasync flag indicating if only data should be flushed
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("fsyncdir('%s')\n", ent->name);
-	fuse_reply_err(req, 0);
-}
-
 void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
@@ -593,6 +568,8 @@ extern void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 extern void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	struct fuse_file_info *fi);
 extern void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
+extern void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
+	struct fuse_file_info *fi);
 
 int main(int argc, char *argv[])
 {
