@@ -91,30 +91,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
-	const char *name, mode_t mode, dev_t rdev)
-{
-	/*
-	 * Create file node
-	 *
-	 * Create a regular file, character device, block device, fifo or
-	 * socket node.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to create
-	 * @param mode file type and mode with which to create the new file
-	 * @param rdev the device number (only valid if created file is a device)
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	tmplog("mknod('%s', '%s')\n", pent->name, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
 static void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
 	const char *name, mode_t mode)
 {
@@ -1115,7 +1091,9 @@ extern void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup);
 extern void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	struct stat *attr, int to_set, struct fuse_file_info *fi);
-static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino);
+extern void atrfs_readlink(fuse_req_t req, fuse_ino_t ino);
+extern void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
+	const char *name, mode_t mode, dev_t rdev);
 
 int main(int argc, char *argv[])
 {

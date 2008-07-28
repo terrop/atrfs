@@ -193,3 +193,26 @@ void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
 	tmplog("readlink('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
+
+void atrfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode, dev_t rdev)
+{
+	/*
+	 * Create file node
+	 *
+	 * Create a regular file, character device, block device, fifo or
+	 * socket node.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode file type and mode with which to create the new file
+	 * @param rdev the device number (only valid if created file is a device)
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mknod('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
+}
