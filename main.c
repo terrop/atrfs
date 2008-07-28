@@ -1026,19 +1026,6 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-static void atrfs_destroy(void *userdata)
-{
-	/*
-	 * Clean up filesystem
-	 *
-	 * Called on filesystem exit
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 */
-}
-
 static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
 	/*
@@ -1243,6 +1230,7 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 }
 
 extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
+extern void atrfs_destroy(void *userdata);
 
 int main(int argc, char *argv[])
 {

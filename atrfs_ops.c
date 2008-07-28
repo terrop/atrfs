@@ -1,6 +1,7 @@
 /* atrfs_ops.c - 28.7.2008 - 28.7.2008 Ari & Tero Roponen */
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "entry.h"
 
@@ -32,4 +33,18 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 
 	populate_root_dir (root, (char *)userdata);
 	populate_stat_dir (statroot);
+}
+
+void atrfs_destroy(void *userdata)
+{
+	/*
+	 * Clean up filesystem
+	 *
+	 * Called on filesystem exit
+	 *
+	 * There's no reply to this function
+	 *
+	 * @param userdata the user data passed to fuse_lowlevel_new()
+	 */
+	tmplog("destroy()\n");
 }
