@@ -1,5 +1,4 @@
-/* .c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
-#define FUSE_USE_VERSION 26
+/* main.c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
@@ -13,7 +12,7 @@
 #include "entry.h"
 #include "util.h"
 
-static struct atrfs_entry *statroot;
+struct atrfs_entry *statroot;
 
 static void update_stats (void)
 {
@@ -78,8 +77,8 @@ static bool check_file_type (struct atrfs_entry *ent, char *ext)
 	return (s && !strcmp (s, ext));
 }
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile);
-static void populate_stat_dir (struct atrfs_entry *statroot);
+void populate_root_dir (struct atrfs_entry *root, char *datafile);
+void populate_stat_dir (struct atrfs_entry *statroot);
 
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
@@ -1006,7 +1005,7 @@ static void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	fuse_reply_err(req, 0);
 }
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile)
+void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
 	{
@@ -1037,32 +1036,7 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 	free (datafile);
 }
 
-static void atrfs_init(void *userdata, struct fuse_conn_info *conn)
-{
-	/*
-	 * Initialize filesystem
-	 *
-	 * Called before any other filesystem method
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 *
-	 */
-	char *pwd = get_current_dir_name();
-	tmplog("init(pwd='%s')\n", pwd);
-	free(pwd);
-	root = create_entry (ATRFS_DIRECTORY_ENTRY);
-	root->name = "/";
-
-	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	insert_entry (statroot, "stats", root);
-
-	populate_root_dir (root, (char *)userdata);
-	populate_stat_dir (statroot);
-}
-
-static void populate_stat_dir(struct atrfs_entry *statroot)
+void populate_stat_dir(struct atrfs_entry *statroot)
 {
 	struct atrfs_entry *ent;
 
@@ -1071,56 +1045,6 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	insert_entry (ent, "last-10", statroot);
 	update_stats();
-}
-
-static void atrfs_destroy(void *userdata)
-{
-	/*
-	 * Clean up filesystem
-	 *
-	 * Called on filesystem exit
-	 *
-	 * There's no reply to this function
-	 *
-	 * @param userdata the user data passed to fuse_lowlevel_new()
-	 */
-}
-
-static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Look up a directory entry by name and get its attributes.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name the name to look up
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
-	struct fuse_entry_param ep;
-	struct stat st;
-
-	tmplog("lookup('%s', '%s')\n", pent->name, name);
-
-	if (!ent)
-	{
-		fuse_reply_err(req, ENOENT);
-		return;
-	}
-
-	stat_entry (ent, &st);
-
-	ep.ino = (fuse_ino_t)ent;
-	ep.generation = 1;
-	ep.attr = st;
-	ep.attr_timeout = 1.0;
-	ep.entry_timeout = 1.0;
-
-	fuse_reply_entry(req, &ep);
 }
 
 static void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
@@ -1289,8 +1213,13 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 	fuse_reply_err(req, ENOSYS);
 }
 
+extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
+extern void atrfs_destroy(void *userdata);
+extern void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name);
+
 int main(int argc, char *argv[])
 {
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	struct fuse_lowlevel_ops atrfs_operations =
 	{
 		.init = atrfs_init,
@@ -1328,18 +1257,15 @@ int main(int argc, char *argv[])
 		.bmap = atrfs_bmap,
 	};
 
-	struct fuse_chan *fc;
-	struct fuse_session *fs;
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	char *mountpoint;
 	int foreground;
 	int err = -1;
 
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
-		int fd = open(mountpoint, O_RDONLY);
 		fuse_opt_add_arg(&args, "-ofsname=atrfs");
-		fc = fuse_mount(mountpoint, &args);
+		int fd = open(mountpoint, O_RDONLY);
+		struct fuse_chan *fc = fuse_mount(mountpoint, &args);
 		if (fc)
 		{
 			struct fuse_session *fs = fuse_lowlevel_new(&args,
@@ -1365,7 +1291,6 @@ int main(int argc, char *argv[])
 
 			fuse_unmount(mountpoint, fc);
 		}
-
 	}
 
 	fuse_opt_free_args(&args);
