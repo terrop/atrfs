@@ -120,31 +120,6 @@ void create_listed_entries (char *list)
 	}
 }
 
-static void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
-{
-	/*
-	 * Check file access permissions
-	 *
-	 * This will be called for the access() system call.  If the
-	 * 'default_permissions' mount option is given, this method is not
-	 * called.
-	 *
-	 * This method is not called under Linux kernel versions 2.4.x
-	 *
-	 * Introduced in version 2.5
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param mask requested access mode
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("access('%s')\n", ent->name);
-	fuse_reply_err(req, 0);
-}
-
 struct directory_data
 {
 	GList *files;
@@ -714,6 +689,7 @@ extern void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 extern void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	size_t size, off_t off, struct fuse_file_info *fi);
 extern void atrfs_statfs(fuse_req_t req, fuse_ino_t ino);
+extern void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask);
 
 int main(int argc, char *argv[])
 {
