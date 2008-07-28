@@ -327,95 +327,6 @@ static void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fus
 	fuse_reply_err(req, ENOSYS);
 }
 
-static void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
-	const char *value, size_t size, int flags)
-{
-	/*
-	 * Set an extended attribute
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("setxattr('%s': '%s' = '%.*s'\n", ent->name, name, size, value);
-	fuse_reply_err(req, ENOSYS);
-}
-
-static void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
-{
-	/*
-	 * Get an extended attribute
-	 *
-	 * If size is zero, the size of the value should be sent with
-	 * fuse_reply_xattr.
-	 *
-	 * If the size is non-zero, and the value fits in the buffer, the
-	 * value should be sent with fuse_reply_buf.
-	 *
-	 * If the size is too small for the value, the ERANGE error should
-	 * be sent.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_buf
-	 *   fuse_reply_xattr
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param name of the extended attribute
-	 * @param size maximum size of the value to send
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
-	fuse_reply_err(req, ENOTSUP);
-}
-
-static void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
-{
-	/*
-	 * List extended attribute names
-	 *
-	 * If size is zero, the total size of the attribute list should be
-	 * sent with fuse_reply_xattr.
-	 *
-	 * If the size is non-zero, and the null character separated
-	 * attribute list fits in the buffer, the list should be sent with
-	 * fuse_reply_buf.
-	 *
-	 * If the size is too small for the list, the ERANGE error should
-	 * be sent.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_buf
-	 *   fuse_reply_xattr
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param size maximum size of the list to send
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("listxattr('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-static void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
-{
-	/*
-	 * Remove an extended attribute
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param name of the extended attribute
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("removexattr('%s', '%s')\n", ent->name, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
 void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
@@ -570,6 +481,11 @@ extern void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off
 extern void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	struct fuse_file_info *fi);
+extern void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
+	const char *value, size_t size, int flags);
+extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size);
+extern void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size);
+extern void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name);
 
 int main(int argc, char *argv[])
 {
