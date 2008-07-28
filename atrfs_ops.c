@@ -10,6 +10,8 @@
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
+extern void update_stats (void);
+extern bool check_file_type (struct atrfs_entry *ent, char *ext);
 extern void populate_root_dir (struct atrfs_entry *root, char *datafile);
 extern void populate_stat_dir (struct atrfs_entry *statroot);
 
@@ -431,4 +433,59 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	};
 
 	fuse_reply_create(req, &fep, fi);
+}
+
+void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
+{
+	/*
+	 * Open a file
+	 *
+	 * Open flags (with the exception of O_CREAT, O_EXCL, O_NOCTTY and
+	 * O_TRUNC) are available in fi->flags.
+	 *
+	 * Filesystem may store an arbitrary file handle (pointer, index,
+	 * etc) in fi->fh, and use this in other all other file operations
+	 * (read, write, flush, release, fsync).
+	 *
+	 * Filesystem may also implement stateless file I/O and not store
+	 * anything in fi->fh.
+	 *
+	 * There are also some flags (direct_io, keep_cache) which the
+	 * filesystem may set in fi, to change the way the file is opened.
+	 * See fuse_file_info structure in <fuse_common.h> for more details.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_open
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi file information
+	 */
+	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+	tmplog("open('%s')\n", ent->name);
+
+	/* Update statistics when needed */
+	if (ent->parent == statroot)
+		update_stats();
+
+	switch (ent->e_type)
+	{
+	default:
+		break;
+	case ATRFS_FILE_ENTRY:
+		if (ent->file.start_time == 0)
+		{
+			ent->file.start_time = time (NULL);
+			if (check_file_type (ent, ".flv"))
+				handle_srt_for_file (ent, true);
+		}
+		break;
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+		break;
+	case ATRFS_DIRECTORY_ENTRY:
+		abort ();
+	}
+
+	fuse_reply_open(req, fi);
 }
