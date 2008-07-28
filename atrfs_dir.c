@@ -21,29 +21,29 @@ static struct directory_data *get_data(struct fuse_file_info *fi)
 	return (struct directory_data *)(uint32_t)fi->fh;
 }
 
+/*
+ * Open a directory
+ *
+ * Filesystem may store an arbitrary file handle (pointer, index,
+ * etc) in fi->fh, and use this in other all other directory
+ * stream operations (readdir, releasedir, fsyncdir).
+ *
+ * Filesystem may also implement stateless directory I/O and not
+ * store anything in fi->fh, though that makes it impossible to
+ * implement standard conforming directory stream operations in
+ * case the contents of the directory can change between opendir
+ * and releasedir.
+ *
+ * Valid replies:
+ *   fuse_reply_open
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param fi file information
+ */
 void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
-	/*
-	 * Open a directory
-	 *
-	 * Filesystem may store an arbitrary file handle (pointer, index,
-	 * etc) in fi->fh, and use this in other all other directory
-	 * stream operations (readdir, releasedir, fsyncdir).
-	 *
-	 * Filesystem may also implement stateless directory I/O and not
-	 * store anything in fi->fh, though that makes it impossible to
-	 * implement standard conforming directory stream operations in
-	 * case the contents of the directory can change between opendir
-	 * and releasedir.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_open
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param fi file information
-	 */
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("opendir('%s')\n", ent->name);
 	struct directory_data *data = malloc(sizeof(*data));
@@ -58,29 +58,29 @@ void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	}
 }
 
+/*
+ * Read directory
+ *
+ * Send a buffer filled using fuse_add_direntry(), with size not
+ * exceeding the requested size.  Send an empty buffer on end of
+ * stream.
+ *
+ * fi->fh will contain the value set by the opendir method, or
+ * will be undefined if the opendir method didn't set any value.
+ *
+ * Valid replies:
+ *   fuse_reply_buf
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param size maximum number of bytes to send
+ * @param off offset to continue reading the directory stream
+ * @param fi file information
+ */
 void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	struct fuse_file_info *fi)
 {
-	/*
-	 * Read directory
-	 *
-	 * Send a buffer filled using fuse_add_direntry(), with size not
-	 * exceeding the requested size.  Send an empty buffer on end of
-	 * stream.
-	 *
-	 * fi->fh will contain the value set by the opendir method, or
-	 * will be undefined if the opendir method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_buf
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param size maximum number of bytes to send
-	 * @param off offset to continue reading the directory stream
-	 * @param fi file information
-	 */
 	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
 	struct atrfs_entry *parent = ino_to_entry(ino);
@@ -123,24 +123,24 @@ out_err:
 	fuse_reply_err (req, err);
 }
 
+/*
+ * Release an open directory
+ *
+ * For every opendir call there will be exactly one releasedir
+ * call.
+ *
+ * fi->fh will contain the value set by the opendir method, or
+ * will be undefined if the opendir method didn't set any value.
+ *
+ * Valid replies:
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param fi file information
+ */
 void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
-	/*
-	 * Release an open directory
-	 *
-	 * For every opendir call there will be exactly one releasedir
-	 * call.
-	 *
-	 * fi->fh will contain the value set by the opendir method, or
-	 * will be undefined if the opendir method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param fi file information
-	 */
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("releasedir('%s')\n", ent->name);
 	struct directory_data *data = get_data(fi);
@@ -149,61 +149,61 @@ void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	fuse_reply_err(req, 0);
 }
 
+/*
+ * Synchronize directory contents
+ *
+ * If the datasync parameter is non-zero, then only the directory
+ * contents should be flushed, not the meta data.
+ *
+ * fi->fh will contain the value set by the opendir method, or
+ * will be undefined if the opendir method didn't set any value.
+ *
+ * Valid replies:
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param datasync flag indicating if only data should be flushed
+ * @param fi file information
+ */
 void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi)
 {
-	/*
-	 * Synchronize directory contents
-	 *
-	 * If the datasync parameter is non-zero, then only the directory
-	 * contents should be flushed, not the meta data.
-	 *
-	 * fi->fh will contain the value set by the opendir method, or
-	 * will be undefined if the opendir method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param datasync flag indicating if only data should be flushed
-	 * @param fi file information
-	 */
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("fsyncdir('%s')\n", ent->name);
 	fuse_reply_err(req, 0);
 }
 
+/*
+ * Create a directory
+ *
+ * Valid replies:
+ *   fuse_reply_entry
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param parent inode number of the parent directory
+ * @param name to create
+ * @param mode with which to create the new file
+ */
 void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode)
 {
-	/*
-	 * Create a directory
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to create
-	 * @param mode with which to create the new file
-	 */
 	struct atrfs_entry *pent = ino_to_entry(parent);
 	tmplog("mkdir('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
+/*
+ * Remove a directory
+ *
+ * Valid replies:
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param parent inode number of the parent directory
+ * @param name to remove
+ */
 void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
-	/*
-	 * Remove a directory
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to remove
-	 */
 	struct atrfs_entry *pent = ino_to_entry(parent);
 	tmplog("rmdir('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
