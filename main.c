@@ -791,64 +791,6 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
-	mode_t mode, struct fuse_file_info *fi)
-{
-	/*
-	 * Create and open a file
-	 *
-	 * If the file does not exist, first create it with the specified
-	 * mode, and then open it.
-	 *
-	 * Open flags (with the exception of O_NOCTTY) are available in
-	 * fi->flags.
-	 *
-	 * Filesystem may store an arbitrary file handle (pointer, index,
-	 * etc) in fi->fh, and use this in other all other file operations
-	 * (read, write, flush, release, fsync).
-	 *
-	 * There are also some flags (direct_io, keep_cache) which the
-	 * filesystem may set in fi, to change the way the file is opened.
-	 * See fuse_file_info structure in <fuse_common.h> for more details.
-	 *
-	 * If this method is not implemented or under Linux kernel
-	 * versions earlier than 2.6.15, the mknod() and open() methods
-	 * will be called instead.
-	 *
-	 * Introduced in version 2.5
-	 *
-	 * Valid replies:
-	 *   fuse_reply_create
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to create
-	 * @param mode file type and mode with which to create the new file
-	 * @param fi file information
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	tmplog("create('%s', '%s')\n", pent->name, name);
-	char *ext = strrchr(name, '.');
-	if (!ext || strcmp(ext, ".txt"))
-	{
-		fuse_reply_err(req, ENOMSG); /* "No message of desired type" */
-		return;
-	}
-
-	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
-	struct fuse_entry_param fep =
-	{
-		.ino = (fuse_ino_t)ent,
-		.generation = 1,
-		.attr.st_mode = mode,
-		.attr_timeout = 1.0,
-		.entry_timeout = 1.0,
-	};
-
-	fuse_reply_create(req, &fep, fi);
-}
-
 static void atrfs_getlk(fuse_req_t req, fuse_ino_t ino,
 	struct fuse_file_info *fi, struct flock *lock)
 {
@@ -944,6 +886,8 @@ extern void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, c
 extern void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name);
 extern void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
 	const char *name, fuse_ino_t newparent, const char *newname);
+extern void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
+	mode_t mode, struct fuse_file_info *fi);
 
 int main(int argc, char *argv[])
 {
