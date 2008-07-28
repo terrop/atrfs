@@ -101,76 +101,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
-	struct fuse_file_info *fi)
-{
-	/*
-	 * Read data
-	 *
-	 * Read should send exactly the number of bytes requested except
-	 * on EOF or error, otherwise the rest of the data will be
-	 * substituted with zeroes.  An exception to this is when the file
-	 * has been opened in 'direct_io' mode, in which case the return
-	 * value of the read system call will reflect the return value of
-	 * this operation.
-	 *
-	 * fi->fh will contain the value set by the open method, or will
-	 * be undefined if the open method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_buf
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param size number of bytes to read
-	 * @param off offset to read from
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
-
-	switch (ent->e_type)
-	{
-	default:
-		abort ();
-
-	case ATRFS_DIRECTORY_ENTRY:
-		abort ();
-
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-	{
-		size_t count = ent->virtual.size;
-		if (size < count)
-			count = size;
-		char buf[count];
-		memcpy (buf, ent->virtual.data + off, count);
-		fuse_reply_buf(req, buf, sizeof(buf));
-		return;
-	}
-
-	case ATRFS_FILE_ENTRY:
-	{
-		char buf[size];
-		int ret, fd = open (ent->file.e_real_file_name, O_RDONLY);
-		if (fd < 0)
-		{
-			fuse_reply_err(req, errno);
-			return;
-		}
-		ret = pread (fd, buf, size, off);
-		if (ret < 0)
-			ret = errno;
-		close (fd);
-
-		if (ret < 0)
-			fuse_reply_err(req, ret);
-		else
-			fuse_reply_buf(req, buf, ret);
-	}
-	}
-}
-
 static void create_listed_entries (char *list)
 {
 	/* LIST must be modifiable. Caller frees the LIST. */
@@ -844,6 +774,8 @@ extern void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
 extern void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	mode_t mode, struct fuse_file_info *fi);
 extern void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
+extern void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
+	off_t off, struct fuse_file_info *fi);
 
 int main(int argc, char *argv[])
 {
