@@ -134,26 +134,6 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	fuse_reply_err(req, 0);
 }
 
-static void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
-{
-	/*
-	 * Create a hard link
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the old inode number
-	 * @param newparent inode number of the new parent directory
-	 * @param newname new name to create
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	struct atrfs_entry *npent = ino_to_entry(newparent);
-	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
-	fuse_reply_err(req, ENOSYS);
-}
-
 static void atrfs_symlink(fuse_req_t req, const char *link,
 	fuse_ino_t parent, const char *name)
 {
@@ -1059,6 +1039,7 @@ extern void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 	const char *name, mode_t mode, dev_t rdev);
 extern void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode);
 extern void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name);
+extern void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname);
 
 int main(int argc, char *argv[])
 {

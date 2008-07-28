@@ -253,3 +253,23 @@ void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
 	tmplog("rmdir('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
 }
+
+void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
+{
+	/*
+	 * Create a hard link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the old inode number
+	 * @param newparent inode number of the new parent directory
+	 * @param newname new name to create
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	struct atrfs_entry *npent = ino_to_entry(newparent);
+	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
+	fuse_reply_err(req, ENOSYS);
+}
