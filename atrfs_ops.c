@@ -1,4 +1,5 @@
 /* atrfs_ops.c - 28.7.2008 - 28.7.2008 Ari & Tero Roponen */
+#include <errno.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <stdlib.h>
@@ -47,4 +48,41 @@ void atrfs_destroy(void *userdata)
 	 * @param userdata the user data passed to fuse_lowlevel_new()
 	 */
 	tmplog("destroy()\n");
+}
+
+void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Look up a directory entry by name and get its attributes.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name the name to look up
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
+	struct fuse_entry_param ep;
+	struct stat st;
+
+	tmplog("lookup('%s', '%s')\n", pent->name, name);
+
+	if (!ent)
+	{
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
+
+	stat_entry (ent, &st);
+
+	ep.ino = (fuse_ino_t)ent;
+	ep.generation = 1;
+	ep.attr = st;
+	ep.attr_timeout = 1.0;
+	ep.entry_timeout = 1.0;
+
+	fuse_reply_entry(req, &ep);
 }

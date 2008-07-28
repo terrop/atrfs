@@ -1026,43 +1026,6 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-static void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Look up a directory entry by name and get its attributes.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name the name to look up
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
-	struct fuse_entry_param ep;
-	struct stat st;
-
-	tmplog("lookup('%s', '%s')\n", pent->name, name);
-
-	if (!ent)
-	{
-		fuse_reply_err(req, ENOENT);
-		return;
-	}
-
-	stat_entry (ent, &st);
-
-	ep.ino = (fuse_ino_t)ent;
-	ep.generation = 1;
-	ep.attr = st;
-	ep.attr_timeout = 1.0;
-	ep.entry_timeout = 1.0;
-
-	fuse_reply_entry(req, &ep);
-}
-
 static void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 {
 	/*
@@ -1231,6 +1194,7 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 
 extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
 extern void atrfs_destroy(void *userdata);
+extern void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name);
 
 int main(int argc, char *argv[])
 {
