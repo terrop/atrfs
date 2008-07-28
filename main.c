@@ -1270,6 +1270,7 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 
 int main(int argc, char *argv[])
 {
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	struct fuse_lowlevel_ops atrfs_operations =
 	{
 		.init = atrfs_init,
@@ -1307,18 +1308,15 @@ int main(int argc, char *argv[])
 		.bmap = atrfs_bmap,
 	};
 
-	struct fuse_chan *fc;
-	struct fuse_session *fs;
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 	char *mountpoint;
 	int foreground;
 	int err = -1;
 
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{
-		int fd = open(mountpoint, O_RDONLY);
 		fuse_opt_add_arg(&args, "-ofsname=atrfs");
-		fc = fuse_mount(mountpoint, &args);
+		int fd = open(mountpoint, O_RDONLY);
+		struct fuse_chan *fc = fuse_mount(mountpoint, &args);
 		if (fc)
 		{
 			struct fuse_session *fs = fuse_lowlevel_new(&args,
@@ -1344,7 +1342,6 @@ int main(int argc, char *argv[])
 
 			fuse_unmount(mountpoint, fc);
 		}
-
 	}
 
 	fuse_opt_free_args(&args);
