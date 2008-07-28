@@ -41,10 +41,11 @@ void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	{
 		data->files = g_hash_table_get_keys(ino_to_entry(ino)->directory.e_contents);
 		data->cur = data->files;
+		fi->fh = (uint32_t)data;
+		fuse_reply_open(req, fi);
+	} else {
+		fuse_reply_err(req, ENOMEM);
 	}
-
-	fi->fh = (uint32_t)data;
-	fuse_reply_open(req, fi);
 }
 
 void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
