@@ -1,4 +1,4 @@
-/* util.c - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 28.7.2008 Ari & Tero Roponen */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -160,15 +160,18 @@ void tmplog(char *fmt, ...)
 	va_end(list);
 }
 
-struct atrfs_entry **get_all_file_entries (void)
+void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 {
-	int count = 0;
+	if (! entries || ! count)
+		abort ();
+
+	size_t nitems;
 	struct atrfs_entry **ptr;
 
 	int counter (struct atrfs_entry *ent)
 	{
 		if (ent->e_type == ATRFS_FILE_ENTRY)
-			count++;
+			nitems++;
 		return 0;
 	}
 	int inserter (struct atrfs_entry *ent)
@@ -178,13 +181,16 @@ struct atrfs_entry **get_all_file_entries (void)
 		return 0;
 	}
 
+	nitems = 0;
 	map_leaf_entries (root, counter);
 
 //	tmplog("get_all_file_entries: %d entries\n", count);
 
-	struct atrfs_entry **entries = malloc ((count + 1) * sizeof (struct atrfs_entry));
-	ptr = entries;
+	struct atrfs_entry **ents = malloc ((nitems + 1) * sizeof (struct atrfs_entry *));
+	ptr = ents;
 	map_leaf_entries (root, inserter);
 	*ptr = NULL;
-	return entries;
+
+	*entries = ents;
+	*count = nitems;
 }
