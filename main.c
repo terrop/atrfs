@@ -91,49 +91,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Remove a file
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to remove
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
-
-	tmplog("unlink('%s', '%s')\n", pent->name, name);
-
-	if (!ent)
-	{
-		fuse_reply_err(req, ENOENT);
-		return;
-	}
-
-	if (ent->parent == statroot)
-	{
-		fuse_reply_err(req, EROFS);
-		return;
-	}
-
-	if (ent->parent != root)
-	{
-		move_entry (ent, root);
-		if (ent->e_type == ATRFS_FILE_ENTRY)
-			set_value (ent, "user.category", 0);
-	} else if (ent->e_type == ATRFS_FILE_ENTRY) {
-		set_value (ent, "user.count", 0);
-		set_value (ent, "user.category", 0);
-		set_value (ent, "user.watchtime", 0);
-	}
-
-	fuse_reply_err(req, 0);
-}
-
 static void atrfs_rename(fuse_req_t req, fuse_ino_t parent,
 	const char *name, fuse_ino_t newparent, const char *newname)
 {
@@ -1006,6 +963,7 @@ extern void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mod
 extern void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name);
 extern void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname);
 extern void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name);
+extern void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name);
 
 int main(int argc, char *argv[])
 {
