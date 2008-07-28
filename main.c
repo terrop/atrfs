@@ -1026,36 +1026,6 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-static void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
-{
-	/*
-	 * Forget about an inode
-	 *
-	 * The nlookup parameter indicates the number of lookups
-	 * previously performed on this inode.
-	 *
-	 * If the filesystem implements inode lifetimes, it is recommended
-	 * that inodes acquire a single reference on each lookup, and lose
-	 * nlookup references on each forget.
-	 *
-	 * The filesystem may ignore forget calls, if the inodes don't
-	 * need to have a limited lifetime.
-	 *
-	 * On unmount it is not guaranteed, that all referenced inodes
-	 * will receive a forget message.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_none
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param nlookup the number of lookups to forget
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("forget('%s')\n", ent->name);
-	fuse_reply_none(req);
-}
-
 static void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	mode_t mode, struct fuse_file_info *fi)
 {
@@ -1195,6 +1165,7 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
 extern void atrfs_destroy(void *userdata);
 extern void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name);
+extern void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup);
 
 int main(int argc, char *argv[])
 {
