@@ -11,6 +11,16 @@ struct directory_data
 	GList *cur;
 };
 
+static void set_data(struct fuse_file_info *fi, struct directory_data *data)
+{
+	fi->fh = (uint32_t)data;
+}
+
+static struct directory_data *get_data(struct fuse_file_info *fi)
+{
+	return (struct directory_data *)(uint32_t)fi->fh;
+}
+
 void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*
@@ -41,7 +51,7 @@ void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	{
 		data->files = g_hash_table_get_keys(ino_to_entry(ino)->directory.e_contents);
 		data->cur = data->files;
-		fi->fh = (uint32_t)data;
+		set_data(fi, data);
 		fuse_reply_open(req, fi);
 	} else {
 		fuse_reply_err(req, ENOMEM);
@@ -133,7 +143,7 @@ void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	 */
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("releasedir('%s')\n", ent->name);
-	struct directory_data *data = (struct directory_data *)(uint32_t)fi->fh;
+	struct directory_data *data = get_data(fi);
 	g_list_free(data->files);
 	free(data);
 	fuse_reply_err(req, 0);
@@ -163,8 +173,7 @@ void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_fi
 	fuse_reply_err(req, 0);
 }
 
-void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
-	const char *name, mode_t mode)
+void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode)
 {
 	/*
 	 * Create a directory
