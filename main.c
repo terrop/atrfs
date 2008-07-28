@@ -120,35 +120,6 @@ void create_listed_entries (char *list)
 	}
 }
 
-static void atrfs_statfs(fuse_req_t req, fuse_ino_t ino)
-{
-	/*
-	 * Get file system statistics
-	 *
-	 * Valid replies:
-	 *   fuse_reply_statfs
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number, zero means "undefined"
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("statfs('%s')\n", ent->name);
-	struct statvfs st;
-	st.f_bsize = 1024;	/* file system block size */
-	st.f_frsize = 1024;	/* fragment size */
-	st.f_blocks = 1000;	/* size of fs in f_frsize units */
-	st.f_bfree = 800;	/* # free blocks */
-	st.f_bavail = 800;	/* # free blocks for non-root */
-	st.f_files = 34;	/* # inodes */
-	st.f_ffree = 1000;	/* # free inodes */
-	st.f_favail = 1000;	/* # free inodes for non-root */
-	st.f_fsid = 342;	/* file system ID */
-	st.f_flag = 0;		/* mount flags */
-	st.f_namemax = 128;	/* maximum filename length */
-	fuse_reply_statfs(req, &st);
-}
-
 static void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 {
 	/*
@@ -742,6 +713,7 @@ extern void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 	off_t off, struct fuse_file_info *fi);
 extern void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	size_t size, off_t off, struct fuse_file_info *fi);
+extern void atrfs_statfs(fuse_req_t req, fuse_ino_t ino);
 
 int main(int argc, char *argv[])
 {
