@@ -92,13 +92,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
-{
-	if (ino == 1)
-		return root;
-	return (struct atrfs_entry *)ino;
-}
-
 static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	/*

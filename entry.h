@@ -1,6 +1,7 @@
 /* entry.h - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
 #ifndef ENTRY_H
 #define ENTRY_H
+#include <fuse/fuse_lowlevel.h>
 #include <glib.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -43,6 +44,8 @@ struct atrfs_entry
 };
 
 extern struct atrfs_entry *root;
+
+struct atrfs_entry *ino_to_entry(fuse_ino_t ino);
 
 struct atrfs_entry *create_entry (enum atrfs_entry_type type);
 void destroy_entry (struct atrfs_entry *ent);

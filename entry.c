@@ -7,6 +7,13 @@
 
 struct atrfs_entry *root = NULL;
 
+struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
+{
+	if (ino == 1)
+		return root;
+	return (struct atrfs_entry *)ino;
+}
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent = malloc (sizeof (*ent));
