@@ -116,3 +116,28 @@ void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 //	tmplog("forget('%s')\n", ent->name);
 	fuse_reply_none(req);
 }
+
+void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
+{
+	/*
+	 * Get file attributes
+	 *
+	 * Valid replies:
+	 *   fuse_reply_attr
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param fi for future use, currently always NULL
+	 */
+	struct stat st;
+	struct atrfs_entry *ent = ino_to_entry(ino);
+
+	tmplog("getattr('%s')\n", ent->name);
+
+	int err = stat_entry (ent, &st);
+	if (err)
+		fuse_reply_err (req, err);
+	else
+		fuse_reply_attr (req, &st, 0.0);
+}
