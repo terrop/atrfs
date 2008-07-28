@@ -1,7 +1,13 @@
+#include <sys/types.h>
+#include <attr/xattr.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <errno.h>
+#include <string.h>
 #include "entry.h"
+
+/* Entries of type ATRFS_FILE_ENTRY have this xattr */
+static const char real_name_attr[] = "user.realname";
 
 /*
  * Set an extended attribute
@@ -43,7 +49,26 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
-	fuse_reply_err(req, ENOTSUP);
+
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+	{
+		if (strcmp(name, real_name_attr))
+		{
+			fuse_reply_err(req, ENOATTR);
+		} else {
+			if (size == 0)
+			{
+				fuse_reply_xattr(req, strlen(ent->file.e_real_file_name) + 1);
+			} else if (size < strlen(ent->file.e_real_file_name) + 1) {
+				fuse_reply_err(req, ERANGE);
+			} else {
+				fuse_reply_buf(req, ent->file.e_real_file_name,
+					strlen(ent->file.e_real_file_name) + 1);
+			}
+		}
+	} else {
+		fuse_reply_err(req, ENOTSUP);
+	}
 }
 
 /*
@@ -72,7 +97,19 @@ void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("listxattr('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+	{
+		if (size == 0)
+		{
+			fuse_reply_xattr(req, sizeof(real_name_attr));
+		} else if (size < sizeof(real_name_attr)) {
+			fuse_reply_err(req, ERANGE);
+		} else {
+			fuse_reply_buf(req, real_name_attr, sizeof(real_name_attr));
+		}
+	} else {
+		fuse_reply_err(req, ENOSYS);
+	}
 }
 
 /*
