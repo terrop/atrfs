@@ -3,8 +3,10 @@
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "entry.h"
+#include "util.h"
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
@@ -175,4 +177,178 @@ void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("setattr('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
+{
+	/*
+	 * Read symbolic link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_readlink
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("readlink('%s')\n", ent->name);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode, dev_t rdev)
+{
+	/*
+	 * Create file node
+	 *
+	 * Create a regular file, character device, block device, fifo or
+	 * socket node.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode file type and mode with which to create the new file
+	 * @param rdev the device number (only valid if created file is a device)
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mknod('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
+	const char *name, mode_t mode)
+{
+	/*
+	 * Create a directory
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode with which to create the new file
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mkdir('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Remove a directory
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to remove
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("rmdir('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
+{
+	/*
+	 * Create a hard link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the old inode number
+	 * @param newparent inode number of the new parent directory
+	 * @param newname new name to create
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	struct atrfs_entry *npent = ino_to_entry(newparent);
+	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Create a symbolic link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param link the contents of the symbolic link
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 */
+	tmplog("symlink('%s' -> '%s')\n", link, name);
+
+	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
+	ent->file.e_real_file_name = strdup(link);
+	name = uniquify_name((char *)name, root);
+	insert_entry (ent, (char *)name, root);
+	free((char *)name);
+
+	struct fuse_entry_param fep =
+	{
+		.ino = (fuse_ino_t)ent,
+		.generation = 1,
+		.attr_timeout = 0.0,
+		.entry_timeout = 0.0,
+		.attr.st_mode = S_IFLNK,
+	};
+
+	fuse_reply_entry(req, &fep);
+}
+
+void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Remove a file
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to remove
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
+
+	tmplog("unlink('%s', '%s')\n", pent->name, name);
+
+	if (!ent)
+	{
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
+
+	if (ent->parent == statroot)
+	{
+		fuse_reply_err(req, EROFS);
+		return;
+	}
+
+	if (ent->parent != root)
+	{
+		move_entry (ent, root);
+		if (ent->e_type == ATRFS_FILE_ENTRY)
+			set_value (ent, "user.category", 0);
+	} else if (ent->e_type == ATRFS_FILE_ENTRY) {
+		set_value (ent, "user.count", 0);
+		set_value (ent, "user.category", 0);
+		set_value (ent, "user.watchtime", 0);
+	}
+
+	fuse_reply_err(req, 0);
 }
