@@ -101,7 +101,7 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void create_listed_entries (char *list)
+void create_listed_entries (char *list)
 {
 	/* LIST must be modifiable. Caller frees the LIST. */
 
@@ -118,42 +118,6 @@ static void create_listed_entries (char *list)
 		insert_entry (ent, name, root);
 		free (name);
 	}
-}
-
-static void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
-	size_t size, off_t off, struct fuse_file_info *fi)
-{
-	/*
-	 * Write data
-	 *
-	 * Write should return exactly the number of bytes requested
-	 * except on error.  An exception to this is when the file has
-	 * been opened in 'direct_io' mode, in which case the return value
-	 * of the write system call will reflect the return value of this
-	 * operation.
-	 *
-	 * fi->fh will contain the value set by the open method, or will
-	 * be undefined if the open method didn't set any value.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_write
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param buf data to write
-	 * @param size number of bytes to write
-	 * @param off offset to write to
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("write('%s', '%.*s')\n", ent->name, size, buf);
-
-	char *list = strdup (buf);
-	create_listed_entries (list);
-	free (list);
-
-	fuse_reply_write(req, size);
 }
 
 static void atrfs_statfs(fuse_req_t req, fuse_ino_t ino)
@@ -776,6 +740,8 @@ extern void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 extern void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size,
 	off_t off, struct fuse_file_info *fi);
+extern void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
+	size_t size, off_t off, struct fuse_file_info *fi);
 
 int main(int argc, char *argv[])
 {
