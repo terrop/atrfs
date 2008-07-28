@@ -91,31 +91,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
-{
-	/*
-	 * Get file attributes
-	 *
-	 * Valid replies:
-	 *   fuse_reply_attr
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param fi for future use, currently always NULL
-	 */
-	struct stat st;
-	struct atrfs_entry *ent = ino_to_entry(ino);
-
-	tmplog("getattr('%s')\n", ent->name);
-
-	int err = stat_entry (ent, &st);
-	if (err)
-		fuse_reply_err (req, err);
-	else
-		fuse_reply_attr (req, &st, 0.0);
-}
-
 static void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	struct stat *attr, int to_set, struct fuse_file_info *fi)
 {
@@ -1189,6 +1164,7 @@ extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
 extern void atrfs_destroy(void *userdata);
 extern void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name);
 extern void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup);
+extern void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 
 int main(int argc, char *argv[])
 {
