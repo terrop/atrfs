@@ -176,3 +176,20 @@ void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	tmplog("setattr('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
+
+void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
+{
+	/*
+	 * Read symbolic link
+	 *
+	 * Valid replies:
+	 *   fuse_reply_readlink
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("readlink('%s')\n", ent->name);
+	fuse_reply_err(req, ENOSYS);
+}

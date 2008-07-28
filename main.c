@@ -91,23 +91,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
-{
-	/*
-	 * Read symbolic link
-	 *
-	 * Valid replies:
-	 *   fuse_reply_readlink
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("readlink('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
-}
-
 static void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 	const char *name, mode_t mode, dev_t rdev)
 {
@@ -1132,6 +1115,7 @@ extern void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup);
 extern void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	struct stat *attr, int to_set, struct fuse_file_info *fi);
+static void atrfs_readlink(fuse_req_t req, fuse_ino_t ino);
 
 int main(int argc, char *argv[])
 {
