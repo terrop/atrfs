@@ -190,27 +190,6 @@ void categorize_flv_entry (struct atrfs_entry *ent, int new)
 	}
 }
 
-static void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi)
-{
-	/*
-	 * Synchronize file contents
-	 *
-	 * If the datasync parameter is non-zero, then only the user data
-	 * should be flushed, not the meta data.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param datasync flag indicating if only data should be flushed
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("fsync('%s', %d)\n", ent->name, datasync);
-	fuse_reply_err(req, ENOSYS);
-}
-
 void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
@@ -367,6 +346,7 @@ extern void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	struct fuse_file_info *fi);
 extern void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
+extern void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi);
 extern void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	const char *value, size_t size, int flags);
 extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size);

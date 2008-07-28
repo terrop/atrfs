@@ -767,3 +767,24 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 	fuse_reply_err(req, 0);
 }
+
+void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi)
+{
+	/*
+	 * Synchronize file contents
+	 *
+	 * If the datasync parameter is non-zero, then only the user data
+	 * should be flushed, not the meta data.
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param ino the inode number
+	 * @param datasync flag indicating if only data should be flushed
+	 * @param fi file information
+	 */
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	tmplog("fsync('%s', %d)\n", ent->name, datasync);
+	fuse_reply_err(req, ENOSYS);
+}
