@@ -1,5 +1,6 @@
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include "entry.h"
@@ -159,4 +160,41 @@ void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_fi
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("fsyncdir('%s')\n", ent->name);
 	fuse_reply_err(req, 0);
+}
+
+void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
+	const char *name, mode_t mode)
+{
+	/*
+	 * Create a directory
+	 *
+	 * Valid replies:
+	 *   fuse_reply_entry
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to create
+	 * @param mode with which to create the new file
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("mkdir('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
+}
+
+void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+	/*
+	 * Remove a directory
+	 *
+	 * Valid replies:
+	 *   fuse_reply_err
+	 *
+	 * @param req request handle
+	 * @param parent inode number of the parent directory
+	 * @param name to remove
+	 */
+	struct atrfs_entry *pent = ino_to_entry(parent);
+	tmplog("rmdir('%s', '%s')\n", pent->name, name);
+	fuse_reply_err(req, ENOSYS);
 }

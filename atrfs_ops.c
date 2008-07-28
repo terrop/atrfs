@@ -224,43 +224,6 @@ void atrfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mod
 	fuse_reply_err(req, ENOSYS);
 }
 
-void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent,
-	const char *name, mode_t mode)
-{
-	/*
-	 * Create a directory
-	 *
-	 * Valid replies:
-	 *   fuse_reply_entry
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to create
-	 * @param mode with which to create the new file
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	tmplog("mkdir('%s', '%s')\n", pent->name, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Remove a directory
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to remove
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	tmplog("rmdir('%s', '%s')\n", pent->name, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
 void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
 {
 	/*
