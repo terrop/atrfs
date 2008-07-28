@@ -26,7 +26,7 @@ static char *recent_name = "recent";
 struct atrfs_entry *statroot;
 
 static struct atrfs_entry *recent_files[LIST_SIZE];
-static void update_recent_file (struct atrfs_entry *ent)
+void update_recent_file (struct atrfs_entry *ent)
 {
 	int i;
 	struct atrfs_entry *recent = lookup_entry_by_name (statroot, recent_name);
@@ -149,7 +149,7 @@ void create_listed_entries (char *list)
 	}
 }
 
-static void categorize_flv_entry (struct atrfs_entry *ent, int new)
+void categorize_flv_entry (struct atrfs_entry *ent, int new)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	int current = get_value (ent, "user.category", 0);
@@ -188,86 +188,6 @@ static void categorize_flv_entry (struct atrfs_entry *ent, int new)
 		if (conf)
 			move_to_named_subdir (conf, dir);
 	}
-}
-
-static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
-{
-	/*
-	 * Release an open file
-	 *
-	 * Release is called when there are no more references to an open
-	 * file: all file descriptors are closed and all memory mappings
-	 * are unmapped.
-	 *
-	 * For every open call there will be exactly one release call.
-	 *
-	 * The filesystem may reply with an error, but error values are
-	 * not returned to close() or munmap() which triggered the
-	 * release.
-	 *
-	 * fi->fh will contain the value set by the open method, or will
-	 * be undefined if the open method didn't set any value.
-	 * fi->flags will contain the same flags as for open.
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param ino the inode number
-	 * @param fi file information
-	 */
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("release('%s')\n", ent->name);
-
-	/* Temporary entries don't have a parent */
-	if (ent->parent == NULL)
-	{
-		if (ent->name)
-			tmplog("Warning, temporary node with a name '%s' found\n", ent->name);
-		free(ent);
-		fuse_reply_err(req, 0);
-		return;
-	}
-
-	switch (ent->e_type)
-	{
-	default:
-		abort ();
-
-	case ATRFS_FILE_ENTRY:
-		if (ent->file.start_time)
-		{
-			if (check_file_type (ent, ".flv"))
-				handle_srt_for_file (ent, false);
-			int delta = time (NULL) - ent->file.start_time;
-			int watchtime = get_value (ent, "user.watchtime", 0);
-			set_value (ent, "user.watchtime", watchtime + delta);
-
-			if (delta >= 45)
-			{
-				int val = get_value (ent, "user.count", 0) + 1;
-				set_value (ent, "user.count", val);
-			}
-
-#if 1
-			delta /= 15;
-			delta *= 15;
-			if (delta > 0 && check_file_type (ent, ".flv"))
-				categorize_flv_entry (ent, delta);
-#endif
-			ent->file.start_time = 0;
-			update_recent_file (ent);
-		}
-		break;
-
-	case ATRFS_DIRECTORY_ENTRY:
-		break;
-
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-		break;
-	}
-
-	fuse_reply_err(req, 0);
 }
 
 static void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi)
@@ -446,6 +366,7 @@ extern void atrfs_releasedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_in
 extern void atrfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync,
 	struct fuse_file_info *fi);
 extern void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
+extern void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi);
 extern void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	const char *value, size_t size, int flags);
 extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size);
