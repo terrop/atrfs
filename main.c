@@ -244,8 +244,9 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	if (ent->parent != root)
 	{
 		move_entry (ent, root);
-		set_value (ent, "user.category", 0);
-	} else {
+		if (ent->e_type == ATRFS_FILE_ENTRY)
+			set_value (ent, "user.category", 0);
+	} else if (ent->e_type == ATRFS_FILE_ENTRY) {
 		set_value (ent, "user.count", 0);
 		set_value (ent, "user.category", 0);
 		set_value (ent, "user.watchtime", 0);
