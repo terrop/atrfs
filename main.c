@@ -19,10 +19,39 @@
 #define STR(s) #s
 static char *top_name = "top-" XSTR(LIST_SIZE);
 static char *last_name = "last-" XSTR(LIST_SIZE);
+static char *recent_name = "recent";
 #undef STR
 #undef XSTR
 
 struct atrfs_entry *statroot;
+
+static struct atrfs_entry *recent_files[LIST_SIZE];
+static void update_recent_file (struct atrfs_entry *ent)
+{
+	int i;
+	struct atrfs_entry *recent = lookup_entry_by_name (statroot, recent_name);
+	if (! recent)
+		return;
+	CHECK_TYPE (recent, ATRFS_VIRTUAL_FILE_ENTRY);
+
+	if (! ent)
+		abort ();
+	if (recent_files[0] && ent == recent_files[0])
+		return;
+	for (i = LIST_SIZE - 1; i > 0; i--)
+		recent_files[i] = recent_files[i - 1];
+	recent_files[0] = ent;
+
+	char *buf = NULL;
+	size_t size;
+	FILE *fp = open_memstream (&buf, &size);
+	for (i = 0; i < LIST_SIZE && recent_files[i]; i++)
+		fprintf (fp, "%s\n", recent_files[i]->name);
+	fclose (fp);
+	free (recent->virtual.data);
+	recent->virtual.data = buf;
+	recent->virtual.size = size;
+}
 
 void update_stats (void)
 {
@@ -263,6 +292,7 @@ static void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info 
 				categorize_flv_entry (ent, delta);
 #endif
 			ent->file.start_time = 0;
+			update_recent_file (ent);
 		}
 		break;
 
@@ -450,6 +480,8 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	insert_entry (ent, top_name, statroot);
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	insert_entry (ent, last_name, statroot);
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	insert_entry (ent, recent_name, statroot);
 	update_stats();
 }
 
