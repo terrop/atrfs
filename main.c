@@ -134,23 +134,6 @@ static void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 	fuse_reply_err(req, 0);
 }
 
-static void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	/*
-	 * Remove a directory
-	 *
-	 * Valid replies:
-	 *   fuse_reply_err
-	 *
-	 * @param req request handle
-	 * @param parent inode number of the parent directory
-	 * @param name to remove
-	 */
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	tmplog("rmdir('%s', '%s')\n", pent->name, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
 static void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
 {
 	/*
@@ -1075,6 +1058,7 @@ extern void atrfs_readlink(fuse_req_t req, fuse_ino_t ino);
 extern void atrfs_mknod(fuse_req_t req, fuse_ino_t parent,
 	const char *name, mode_t mode, dev_t rdev);
 extern void atrfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode);
+extern void atrfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name);
 
 int main(int argc, char *argv[])
 {
