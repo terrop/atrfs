@@ -12,13 +12,23 @@
 #include "entry.h"
 #include "util.h"
 
+#ifndef LIST_SIZE
+#define LIST_SIZE 10
+#endif
+#define XSTR(s) STR(s)
+#define STR(s) #s
+static char *top_name = "top-" XSTR(LIST_SIZE);
+static char *last_name = "last-" XSTR(LIST_SIZE);
+#undef STR
+#undef XSTR
+
 struct atrfs_entry *statroot;
 
 static void update_stats (void)
 {
 	struct atrfs_entry *st_ents[2];
-	st_ents[0] = lookup_entry_by_name(statroot, "top-10");
-	st_ents[1] = lookup_entry_by_name(statroot, "last-10");
+	st_ents[0] = lookup_entry_by_name(statroot, top_name);
+	st_ents[1] = lookup_entry_by_name(statroot, last_name);
 
 	struct atrfs_entry **entries;
 	size_t count;
@@ -45,7 +55,7 @@ static void update_stats (void)
 		size_t stsize;
 		FILE *stfp = open_memstream(&stbuf, &stsize);
 
-		for (i = 0; i < 10 && entries[i]; i++)
+		for (i = 0; i < LIST_SIZE && entries[i]; i++)
 		{
 			struct atrfs_entry *ent;
 			if (j == 0)
@@ -785,9 +795,9 @@ void populate_stat_dir(struct atrfs_entry *statroot)
 	struct atrfs_entry *ent;
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, "top-10", statroot);
+	insert_entry (ent, top_name, statroot);
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, "last-10", statroot);
+	insert_entry (ent, last_name, statroot);
 	update_stats();
 }
 
