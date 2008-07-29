@@ -1,4 +1,4 @@
-/* util.c - 24.7.2008 - 28.7.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 29.7.2008 Ari & Tero Roponen */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,4 +193,13 @@ void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 
 	*entries = ents;
 	*count = nitems;
+}
+
+char *secs_to_time (int secs)
+{
+	static char buf[10];	/* XXX */
+	int min = secs / 60;
+	int sec = secs % 60;
+	sprintf (buf, "%02d:%02d", min, sec);
+	return buf;
 }

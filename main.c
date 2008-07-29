@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 28.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 29.7.2008 Ari & Tero Roponen */
 #include <sys/stat.h>
 #include <errno.h>
 #include <fuse.h>
@@ -93,9 +93,9 @@ void update_stats (void)
 				ent = entries[count - 1 - i];
 
 			int val = get_value (ent, "user.watchtime", 0);
-			fprintf (stfp, "%4d\t%s%c%s\n", val,
-				ent->parent == root ? "" : ent->parent->name,
-				ent->parent == root ? '\0' : '/', ent->name);
+			fprintf (stfp, "%s\t%s%c%s\n", secs_to_time (val),
+				 ent->parent == root ? "" : ent->parent->name,
+				 ent->parent == root ? '\0' : '/', ent->name);
 		}
 
 		fclose (stfp);
@@ -179,8 +179,7 @@ void categorize_flv_entry (struct atrfs_entry *ent, int new)
 
 	if (current > 0)
 	{
-		char dir[20];
-		sprintf (dir, "time_%d", current);
+		char *dir = secs_to_time (current);
 		move_to_named_subdir (ent, dir);
 		if (conf)
 			move_to_named_subdir (conf, dir);
