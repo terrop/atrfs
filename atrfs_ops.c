@@ -386,6 +386,8 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	 * @param req request handle
 	 * @param ino the inode number
 	 * @param fi file information
+	 *
+	 * ATR: this will not be called when ino points to a directory.
 	 */
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
 	tmplog("open('%s')\n", ent->name);
@@ -408,8 +410,6 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		break;
-	case ATRFS_DIRECTORY_ENTRY:
-		abort ();
 	}
 
 	fuse_reply_open(req, fi);
