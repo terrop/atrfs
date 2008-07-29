@@ -439,6 +439,8 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	 * @param size number of bytes to read
 	 * @param off offset to read from
 	 * @param fi file information
+	 *
+	 * ATR: this will not be called when ino points to a directory.
 	 */
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
@@ -446,9 +448,6 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	switch (ent->e_type)
 	{
 	default:
-		abort ();
-
-	case ATRFS_DIRECTORY_ENTRY:
 		abort ();
 
 	case ATRFS_VIRTUAL_FILE_ENTRY:
