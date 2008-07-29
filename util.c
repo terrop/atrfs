@@ -204,3 +204,19 @@ char *secs_to_time (int secs)
 	sprintf (buf, "%02d:%02d", min, sec);
 	return buf;
 }
+
+char *pid_to_cmdline(pid_t pid)
+{
+	char *ret = NULL;
+	static char buf[128]; //XXX
+	sprintf(buf, "/proc/%d/cmdline", pid);
+
+	FILE *fp = fopen(buf, "r");
+	if (fp)
+	{
+		ret = fgets(buf, sizeof(buf), fp);
+		fclose(fp);
+	}
+
+	return ret;
+}

@@ -389,8 +389,11 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	 *
 	 * ATR: this will not be called when ino points to a directory.
 	 */
+	const struct fuse_ctx *ctx = fuse_req_ctx(req);
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
-	tmplog("open('%s')\n", ent->name);
+	char *cmd = pid_to_cmdline(ctx->pid);
+
+	tmplog("'%s': open('%s')\n", cmd, ent->name);
 
 	/* Update statistics when needed */
 	if (ent->parent == statroot)
