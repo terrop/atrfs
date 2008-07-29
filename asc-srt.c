@@ -1,4 +1,4 @@
-/* asc-srt.c - 23.7.2008 - 23.7.2008 Ari & Tero Roponen */
+/* asc-srt.c - 23.7.2008 - 29.7.2008 Ari & Tero Roponen */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +41,9 @@ char *asc_read_subtitles (char *ascfile, char *lang)
 	FILE *fp = fopen (ascfile, "r");
 	if (! fp)
 		return NULL;
+
+	has_many_languages = false;
+	found_language = false;
 
 	char *line = NULL;
 	size_t len = 0;
