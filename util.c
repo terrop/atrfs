@@ -102,7 +102,7 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			{
 				asprintf (&data,
 					  "1\n00:00:00,00 --> 00:00:05,00\n"
-					  "%.*s\n\n"
+					  "%.*s\n%s\n\n"
 					  "2\n00:00:15.00 --> 00:00:16,00\n15\n\n"
 					  "3\n00:00:30.00 --> 00:00:31,00\n30\n\n"
 					  "4\n00:00:45.00 --> 00:00:46,00\n45\n\n"
@@ -123,7 +123,8 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 					  "19\n00:04:30.00 --> 00:04:31,00\n4:30\n\n"
 					  "20\n00:04:45.00 --> 00:04:46,00\n4:45\n\n"
 					  "21\n00:05:00.00 --> 01:00:00,00\n5:00+\n\n",
-					  ext - name, name);
+					  ext - name, name,
+					  secs_to_time (get_value (file, "user.watchtime", 0)));
 			}
 
 			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
