@@ -147,16 +147,9 @@ void create_listed_entries (char *list)
 	}
 }
 
-void categorize_flv_entry (struct atrfs_entry *ent, int new)
+void categorize_flv_entry (struct atrfs_entry *ent)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	int current = get_value (ent, "user.category", 0);
-
-	if (new > current)
-	{
-		current = new;
-		set_value (ent, "user.category", new);
-	}
 
 	/* Handle file-specific configuration. */
 	struct atrfs_entry *conf = NULL;
@@ -178,9 +171,13 @@ void categorize_flv_entry (struct atrfs_entry *ent, int new)
 		}
 	}
 
-	if (current > 0)
+	int count = get_value(ent, "user.count", 0);
+	int total = get_value(ent, "user.watchtime", 0);
+	int filelen = get_value(ent, "user.length", 0);
+
+	if (count && total && filelen)
 	{
-		char *dir = secs_to_time (current);
+		char *dir = get_pdir(filelen, count, total);
 		move_to_named_subdir (ent, dir);
 		if (conf)
 			move_to_named_subdir (conf, dir);

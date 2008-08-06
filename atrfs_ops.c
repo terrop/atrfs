@@ -13,7 +13,7 @@ extern struct atrfs_entry *statroot;
 extern void update_stats (void);
 extern void update_recent_file (struct atrfs_entry *ent);
 extern void create_listed_entries (char *list);
-extern void categorize_flv_entry (struct atrfs_entry *ent, int new);
+extern void categorize_flv_entry (struct atrfs_entry *ent);
 extern bool check_file_type (struct atrfs_entry *ent, char *ext);
 
 /*
@@ -693,20 +693,20 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 			int watchtime = get_value (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);
 
-			/*
-			 * Remove virtual subtitles if needed.
-			 */
+			/* Some special handling for flv-files. */
 			if (check_file_type (ent, ".flv"))
+			{
+				/*
+				 * Remove virtual subtitles if needed.
+				 */
 				handle_srt_for_file (ent, false);
 
-			/*
-			 * Finally we categorize the file by moving it
-			 * to a proper subdirectory, if needed.
-			 */
-			delta /= 15;
-			delta *= 15;
-			if (delta > 0 && check_file_type (ent, ".flv"))
-				categorize_flv_entry (ent, delta);
+				/*
+				 * Categorize the file by moving it
+				 * to a proper subdirectory.
+				 */
+				categorize_flv_entry (ent);
+			}
 
 			update_recent_file (ent);
 		}

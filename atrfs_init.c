@@ -42,7 +42,7 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 	int categorize_helper (struct atrfs_entry *ent)
 	{
 		if (check_file_type (ent, ".flv"))
-			categorize_flv_entry (ent, 0);
+			categorize_flv_entry (ent);
 		return 0;
 	}
 
