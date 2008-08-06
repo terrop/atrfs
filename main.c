@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 			struct fuse_session *fs = fuse_lowlevel_new(&args,
 				&atrfs_operations,
 				sizeof(atrfs_operations),
-				canonicalize_file_name("piccolocoro.txt"));
+				canonicalize_file_name("atrfs.conf"));
 
 			if (fs)
 			{

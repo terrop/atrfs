@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <ftw.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <stdio.h>
@@ -14,6 +15,28 @@ extern char *top_name;
 extern char *last_name;
 extern char *recent_name;
 
+static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
+{
+	char *ext;
+
+	if (typeflag != FTW_F)
+		return 0;
+
+	ext = strrchr(fpath, '.');
+	if (!ext || strcmp(ext, ".flv"))
+		return 0;
+
+	tmplog("%s\n", fpath);
+
+	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
+	ent->file.e_real_file_name = strdup(fpath);
+	char *name = uniquify_name (basename(fpath), root);
+	insert_entry (ent, name, root);
+	free (name);
+
+	return 0;
+}
+
 static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
@@ -25,23 +48,22 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 
 	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
-	FILE *fp = fopen (datafile, "r");
+	FILE *fp = fopen(datafile, "r");
 	if (fp)
 	{
-		char buf[256];	/* XXX */
-		char *obuf = NULL;
-		size_t size = 0;
-		FILE *out = open_memstream (&obuf, &size);
-
+		char buf[256]; /* XXX */
 		while (fgets (buf, sizeof (buf), fp))
-			fprintf (out, "%s", buf);
-		fclose (out);
-		create_listed_entries (obuf);
-		free (obuf);
-		fclose (fp);
+		{
+			*strchr(buf, '\n') = '\0';
 
-		map_leaf_entries (root, categorize_helper);
+			if (!*buf || buf[0] == '#')
+				continue;
+
+			ftw(buf, handle_file, 10);
+		}
 	}
+
+	map_leaf_entries (root, categorize_helper);
 	free (datafile);
 }
 
