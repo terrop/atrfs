@@ -406,11 +406,19 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	default:
 		break;
 	case ATRFS_FILE_ENTRY:
-		if (ent->file.start_time == 0)
+		/*
+		 * Increase watch-count every time the 'mplayer' opens
+		 * the file and its timer is not already running.
+		 */
+		if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
 		{
-			ent->file.start_time = time (NULL);
+			int count = get_value (ent, "user.count", 0) + 1;
+			set_value (ent, "user.count", count);
+
 			if (check_file_type (ent, ".flv"))
 				handle_srt_for_file (ent, true);
+
+			ent->file.start_time = time (NULL);
 		}
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
@@ -660,27 +668,23 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		abort ();
 
 	case ATRFS_FILE_ENTRY:
+		/* start_time is only set by an open() called by 'mplayer'. */
 		if (ent->file.start_time)
 		{
+			int delta = time (NULL) - ent->file.start_time;
+			ent->file.start_time = 0;
+
 			if (check_file_type (ent, ".flv"))
 				handle_srt_for_file (ent, false);
-			int delta = time (NULL) - ent->file.start_time;
+
 			int watchtime = get_value (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);
 
-			if (delta >= 45)
-			{
-				int val = get_value (ent, "user.count", 0) + 1;
-				set_value (ent, "user.count", val);
-			}
-
-#if 1
 			delta /= 15;
 			delta *= 15;
 			if (delta > 0 && check_file_type (ent, ".flv"))
 				categorize_flv_entry (ent, delta);
-#endif
-			ent->file.start_time = 0;
+
 			update_recent_file (ent);
 		}
 		break;
