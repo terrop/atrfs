@@ -671,15 +671,38 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		/* start_time is only set by an open() called by 'mplayer'. */
 		if (ent->file.start_time)
 		{
+			/*
+			 * Calculate the time the 'mplayer' held the file open.
+			 * This is a good approximate of how long we watched
+			 * the video.
+			 */
 			int delta = time (NULL) - ent->file.start_time;
 			ent->file.start_time = 0;
 
-			if (check_file_type (ent, ".flv"))
-				handle_srt_for_file (ent, false);
+			/*
+			 * The file's length is considered to be the
+			 * same as its longest continuous watch-time.
+			 */
+			int length = get_value(ent, "user.length", 0);
+			if (delta > length)
+				set_value(ent, "user.length", delta);
 
+			/*
+			 * Update the total watch-time.
+			 */
 			int watchtime = get_value (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);
 
+			/*
+			 * Remove virtual subtitles if needed.
+			 */
+			if (check_file_type (ent, ".flv"))
+				handle_srt_for_file (ent, false);
+
+			/*
+			 * Finally we categorize the file by moving it
+			 * to a proper subdirectory, if needed.
+			 */
 			delta /= 15;
 			delta *= 15;
 			if (delta > 0 && check_file_type (ent, ".flv"))
