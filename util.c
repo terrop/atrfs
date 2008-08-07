@@ -22,7 +22,33 @@ int get_value (struct atrfs_entry *ent, char *attr, int def)
 	{
 		int ret = strtol (buf, &tail, 10);
 		if (tail && *tail)
-			return def;
+		{
+			if (*tail != '.')
+				return def;
+
+			/* HACK: Fix length to be an integer: 105.65 => 106 */
+			switch (*(tail+1))
+			{
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+					set_value(ent, attr, ret);
+					break;
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+				{
+					ret++;
+					set_value(ent, attr, ret);
+					break;
+				}
+			}
+		}
+
 		return ret;
 	}
 	return def;
