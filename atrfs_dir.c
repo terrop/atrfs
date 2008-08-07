@@ -45,6 +45,13 @@ static struct directory_data *get_data(struct fuse_file_info *fi)
 void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
+
+	if (ent->flags & ENTRY_DELETED)
+	{
+		fuse_reply_err(req, ENOENT);
+		return;
+	}
+
 	tmplog("opendir('%s')\n", ent->name);
 	struct directory_data *data = malloc(sizeof(*data));
 	if (data)
