@@ -20,6 +20,7 @@ struct atrfs_entry
 	enum atrfs_entry_type e_type;
 	struct atrfs_entry *parent;
 	char *name;
+	unsigned char flags;
 
 	union
 	{
@@ -41,6 +42,12 @@ struct atrfs_entry
 			size_t size;
 		} virtual;
 	};
+};
+
+enum
+{
+	ENTRY_HIDDEN	= (1<<0),
+	ENTRY_DELETED	= (1<<1),
 };
 
 extern struct atrfs_entry *root;

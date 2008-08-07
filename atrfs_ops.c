@@ -82,6 +82,7 @@ void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 	 * The entry was already deleted in atrfs_release(),
 	 * so we must not try to reference it here.
 	 */
+	tmplog("forget()\n");
 	fuse_reply_none(req);
 }
 

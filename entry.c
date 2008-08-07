@@ -11,7 +11,12 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 {
 	if (ino == 1)
 		return root;
-	return (struct atrfs_entry *)ino;
+	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+
+	if (ent->flags & ENTRY_DELETED)
+		tmplog("Warning: deleted entry accessed\n");
+
+	return ent;
 }
 
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
@@ -23,6 +28,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	ent->e_type = type;
 	ent->parent = NULL;
 	ent->name = NULL;
+	ent->flags = 0;
 
 	switch (type)
 	{
@@ -62,6 +68,7 @@ void destroy_entry (struct atrfs_entry *ent)
 		break;
 	}
 
+	memset(ent, 0, sizeof(*ent));
 	free (ent);
 }
 
@@ -107,7 +114,8 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	{
 		struct atrfs_entry *tmp = parent->parent;
 		remove_entry (parent);
-		destroy_entry (parent);
+//		destroy_entry (parent);
+		parent->flags |= ENTRY_DELETED;
 		parent = tmp;
 	}
 }
