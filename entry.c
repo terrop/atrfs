@@ -87,7 +87,7 @@ void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 	dir->directory.dir_len++;
 }
 
-void remove_entry (struct atrfs_entry *ent)
+void detach_entry (struct atrfs_entry *ent)
 {
 	CHECK_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
 	char *name = ent->name;
@@ -105,7 +105,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	CHECK_TYPE (to, ATRFS_DIRECTORY_ENTRY);
 	struct atrfs_entry *parent = ent->parent;
 	char *name = strdup (ent->name);
-	remove_entry (ent);
+	detach_entry (ent);
 	insert_entry (ent, name, to);
 	free (name);
 
@@ -113,7 +113,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	while (parent != root && g_hash_table_size (parent->directory.e_contents) == 0)
 	{
 		struct atrfs_entry *tmp = parent->parent;
-		remove_entry (parent);
+		detach_entry (parent);
 //		destroy_entry (parent);
 		parent->flags |= ENTRY_DELETED;
 		parent = tmp;

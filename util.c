@@ -161,7 +161,7 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			ent = lookup_entry_by_name (file->parent, srtname);
 			if (ent && ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
 			{
-				remove_entry (ent);
+				detach_entry (ent);
 				free (ent->virtual.data);
 				destroy_entry (ent);
 			}
