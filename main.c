@@ -123,7 +123,7 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	if (! dir)
 	{
 		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-		insert_entry (dir, subdir, root);
+		attach_entry (root, dir, subdir);
 	}
 	move_entry (ent, dir);
 }
@@ -142,7 +142,7 @@ void create_listed_entries (char *list)
 		ent = create_entry (ATRFS_FILE_ENTRY);
 		ent->file.e_real_file_name = strdup (s);
 		name = uniquify_name (basename (s), root);
-		insert_entry (ent, name, root);
+		attach_entry (root, ent, name);
 		free (name);
 	}
 }
@@ -167,7 +167,7 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 			conf->virtual.size = getxattr (ent->file.e_real_file_name,
 				"user.mpconf", conf->virtual.data, size);
 			tmplog("Data: '%s'\n", conf->virtual.data);
-			insert_entry (conf, cfgname, ent->parent);
+			attach_entry (ent->parent, conf, cfgname);
 		}
 	}
 

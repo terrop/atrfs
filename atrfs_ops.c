@@ -225,7 +225,7 @@ void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const ch
 	struct atrfs_entry *ent= create_entry (ATRFS_FILE_ENTRY);
 	ent->file.e_real_file_name = strdup(link);
 	name = uniquify_name((char *)name, root);
-	insert_entry (ent, (char *)name, root);
+	attach_entry (root, ent, (char *)name);
 	free((char *)name);
 
 	struct fuse_entry_param fep =

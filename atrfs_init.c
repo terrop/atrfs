@@ -29,10 +29,14 @@ static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
 	tmplog("%s\n", fpath);
 
 	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
-	ent->file.e_real_file_name = strdup(fpath);
-	char *name = uniquify_name (basename(fpath), root);
-	insert_entry (ent, name, root);
-	free (name);
+	if (ent)
+	{
+		char *name = uniquify_name (basename(fpath), root);
+		ent->file.e_real_file_name = strdup(fpath);
+
+		attach_entry (root, ent, name);
+		free (name);
+	}
 
 	return 0;
 }
@@ -72,11 +76,11 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	struct atrfs_entry *ent;
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, top_name, statroot);
+	attach_entry (statroot, ent, top_name);
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, last_name, statroot);
+	attach_entry (statroot, ent, last_name);
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	insert_entry (ent, recent_name, statroot);
+	attach_entry (statroot, ent, recent_name);
 	update_stats();
 }
 
@@ -99,7 +103,7 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	root->name = "/";
 
 	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	insert_entry (statroot, "stats", root);
+	attach_entry (root, statroot, "stats");
 
 	populate_root_dir (root, (char *)userdata);
 	populate_stat_dir (statroot);

@@ -156,7 +156,7 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			ent->virtual.data = data;
 			ent->virtual.size = strlen (data);
-			insert_entry (ent, srtname, file->parent);
+			attach_entry (file->parent, ent, srtname);
 		} else {
 			ent = lookup_entry_by_name (file->parent, srtname);
 			if (ent && ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)

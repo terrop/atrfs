@@ -78,7 +78,11 @@ struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *n
 	return g_hash_table_lookup (dir->directory.e_contents, name);
 }
 
-void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
+/*
+ * Attach the given entry to a given directory
+ * and give it the specified name.
+ */
+void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name)
 {
 	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	ent->name = strdup (name);
@@ -87,6 +91,10 @@ void insert_entry (struct atrfs_entry *ent, char *name, struct atrfs_entry *dir)
 	dir->directory.dir_len++;
 }
 
+/*
+ * Detach the given entry from its parent and make
+ * it anonymous.
+ */
 void detach_entry (struct atrfs_entry *ent)
 {
 	CHECK_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
@@ -106,7 +114,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	struct atrfs_entry *parent = ent->parent;
 	char *name = strdup (ent->name);
 	detach_entry (ent);
-	insert_entry (ent, name, to);
+	attach_entry (to, ent, name);
 	free (name);
 
 	/* Remove empty directories. */
