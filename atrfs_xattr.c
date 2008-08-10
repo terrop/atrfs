@@ -37,7 +37,7 @@ void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 	const char *value, size_t size, int flags)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("setxattr('%s': '%s' = '%.*s'\n", ent->name, name, size, value);
+//	tmplog("setxattr('%s': '%s' = '%.*s'\n", ent->name, name, size, value);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -66,7 +66,7 @@ void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
+//	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
 
 	if (ent->e_type != ATRFS_FILE_ENTRY)
 	{
@@ -130,7 +130,7 @@ void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 	}
 
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("listxattr('%s')\n", ent->name);
+//	tmplog("listxattr('%s')\n", ent->name);
 	if (ent->e_type == ATRFS_FILE_ENTRY)
 	{
 		if (size == 0)
@@ -169,6 +169,6 @@ void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("removexattr('%s', '%s')\n", ent->name, name);
+//	tmplog("removexattr('%s', '%s')\n", ent->name, name);
 	fuse_reply_err(req, ENOTSUP);
 }

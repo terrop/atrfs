@@ -378,6 +378,29 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	fuse_reply_create(req, &fep, fi);
 }
 
+static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
+{
+	const struct fuse_ctx *ctx = fuse_req_ctx(req);
+	char *cmd = pid_to_cmdline(ctx->pid);
+
+	/*
+	 * Increase watch-count every time the 'mplayer' opens
+	 * the file and its timer is not already running.
+	 */
+	if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
+	{
+		int count = get_value (ent, "user.count", 0) + 1;
+		set_value (ent, "user.count", count);
+
+		if (check_file_type (ent, ".flv"))
+			handle_srt_for_file (ent, true);
+
+		ent->file.start_time = time (NULL);
+	}
+
+	fuse_reply_open(req, fi);
+}
+
 /*
  * Open a file
  *
@@ -408,7 +431,7 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
 	const struct fuse_ctx *ctx = fuse_req_ctx(req);
-	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+	struct atrfs_entry *ent = ino_to_entry(ino);
 	char *cmd = pid_to_cmdline(ctx->pid);
 
 	tmplog("'%s': open('%s')\n", cmd, ent->name);
@@ -420,28 +443,14 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	switch (ent->e_type)
 	{
 	default:
+		fuse_reply_open(req, fi);
 		break;
 	case ATRFS_FILE_ENTRY:
-		/*
-		 * Increase watch-count every time the 'mplayer' opens
-		 * the file and its timer is not already running.
-		 */
-		if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
-		{
-			int count = get_value (ent, "user.count", 0) + 1;
-			set_value (ent, "user.count", count);
-
-			if (check_file_type (ent, ".flv"))
-				handle_srt_for_file (ent, true);
-
-			ent->file.start_time = time (NULL);
-		}
-		break;
+		return open_file(req, ent, fi);
 	case ATRFS_VIRTUAL_FILE_ENTRY:
+		fuse_reply_open(req, fi);
 		break;
 	}
-
-	fuse_reply_open(req, fi);
 }
 
 static void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
