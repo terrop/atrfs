@@ -19,6 +19,10 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 	return ent;
 }
 
+/* in atrfs_ops.c */
+extern void read_file(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off);
+extern void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off);
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent = malloc (sizeof (*ent));
@@ -42,10 +46,12 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	case ATRFS_FILE_ENTRY:
 		ent->file.e_real_file_name = NULL;
 		ent->file.start_time = 0;
+		ent->ops.read = read_file;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		ent->virtual.data = NULL;
 		ent->virtual.size = 0;
+		ent->ops.read = read_virtual;
 		break;
 	}
 	return ent;
