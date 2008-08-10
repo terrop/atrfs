@@ -15,12 +15,21 @@ enum atrfs_entry_type
 	ATRFS_VIRTUAL_FILE_ENTRY,
 };
 
+struct atrfs_entry;
+
+struct entry_ops
+{
+	void (*unlink)(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+};
+
 struct atrfs_entry
 {
 	enum atrfs_entry_type e_type;
 	struct atrfs_entry *parent;
 	char *name;
 	unsigned char flags;
+
+	struct entry_ops ops;
 
 	union
 	{

@@ -240,6 +240,45 @@ void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const ch
 	fuse_reply_entry(req, &fep);
 }
 
+void unlink_stat(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+{
+	/* Files under 'stat' cannot be removed. */
+	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
+	if (ent)
+		fuse_reply_err(req, EROFS);
+	else
+		fuse_reply_err(req, ENOENT);
+}
+
+void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+{
+	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
+	if (ent)
+	{
+		if (ent->e_type == ATRFS_FILE_ENTRY)
+		{
+			set_value (ent, "user.count", 0);
+			set_value (ent, "user.watchtime", 0);
+		}
+
+		fuse_reply_err(req, 0);
+	} else {
+		fuse_reply_err(req, ENOENT);
+	}
+}
+
+void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+{
+	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
+	if (ent)
+	{
+		move_entry (ent, root);
+		fuse_reply_err(req, 0);
+	} else {
+		fuse_reply_err(req, ENOENT);
+	}
+}
+
 /*
  * Remove a file
  *
@@ -253,31 +292,9 @@ void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const ch
 void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
 	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *ent = lookup_entry_by_name(pent, name);
-
-	tmplog("unlink('%s', '%s')\n", pent->name, name);
-
-	if (!ent)
-	{
-		fuse_reply_err(req, ENOENT);
-		return;
-	}
-
-	if (ent->parent == statroot)
-	{
-		fuse_reply_err(req, EROFS);
-		return;
-	}
-
-	if (ent->parent != root)
-	{
-		move_entry (ent, root);
-	} else if (ent->e_type == ATRFS_FILE_ENTRY) {
-		set_value (ent, "user.count", 0);
-		set_value (ent, "user.watchtime", 0);
-	}
-
-	fuse_reply_err(req, 0);
+	if (pent->ops.unlink)
+		return pent->ops.unlink(req, pent, name);
+	fuse_reply_err(req, ENOSYS);
 }
 
 /*

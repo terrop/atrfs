@@ -117,12 +117,15 @@ bool check_file_type (struct atrfs_entry *ent, char *ext)
 	return (s && !strcmp (s, ext));
 }
 
+extern void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
 	struct atrfs_entry *dir = lookup_entry_by_name (root, subdir);
 	if (! dir)
 	{
 		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
+		dir->ops.unlink = unlink_subdir;
 		attach_entry (root, dir, subdir);
 	}
 	move_entry (ent, dir);
