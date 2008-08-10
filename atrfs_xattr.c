@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include "entry.h"
+#include "util.h"
 
 static char *get_realname(struct atrfs_entry *ent)
 {

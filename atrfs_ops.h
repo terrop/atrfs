@@ -47,4 +47,6 @@ extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, siz
 extern void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size);
 extern void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name);
 
+extern struct fuse_lowlevel_ops atrfs_operations;
+
 #endif /* ATRFS_OPS_H */

@@ -254,3 +254,13 @@ char *pid_to_cmdline(pid_t pid)
 
 	return ret;
 }
+
+bool check_file_type (struct atrfs_entry *ent, char *ext)
+{
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	if (! ext)
+		abort ();
+	char *s = strrchr (ent->file.e_real_file_name, '.');
+	return (s && !strcmp (s, ext));
+}
+

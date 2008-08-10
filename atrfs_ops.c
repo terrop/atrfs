@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "atrfs_ops.h"
 #include "entry.h"
 #include "util.h"
 
@@ -834,3 +835,40 @@ void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 	tmplog("bmap('%s')\n", ent->name);
 	fuse_reply_err(req, ENOSYS);
 }
+
+struct fuse_lowlevel_ops atrfs_operations =
+{
+	.init = atrfs_init,
+	.destroy = atrfs_destroy,
+	.lookup = atrfs_lookup,
+	.forget = atrfs_forget,
+	.getattr = atrfs_getattr,
+	.setattr = atrfs_setattr,
+	.readlink = atrfs_readlink,
+	.mknod = atrfs_mknod,
+	.mkdir = atrfs_mkdir,
+	.rmdir = atrfs_rmdir,
+	.link = atrfs_link,
+	.symlink = atrfs_symlink,
+	.unlink = atrfs_unlink,
+	.rename = atrfs_rename,
+	.create = atrfs_create,
+	.open = atrfs_open,
+	.read = atrfs_read,
+	.write = atrfs_write,
+	.statfs = atrfs_statfs,
+	.access = atrfs_access,
+	.opendir = atrfs_opendir,
+	.readdir = atrfs_readdir,
+	.releasedir = atrfs_releasedir,
+	.fsyncdir = atrfs_fsyncdir,
+	.flush = atrfs_flush,
+	.release = atrfs_release,
+	.fsync = atrfs_fsync,
+	.setxattr = atrfs_setxattr,
+	.getxattr = atrfs_getxattr,
+	.listxattr = atrfs_listxattr,
+	.removexattr = atrfs_removexattr,
+	.getlk = atrfs_getlk,
+	.bmap = atrfs_bmap,
+};
