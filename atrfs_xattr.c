@@ -6,8 +6,25 @@
 #include <string.h>
 #include "entry.h"
 
-/* Entries of type ATRFS_FILE_ENTRY have this xattr */
-static const char real_name_attr[] = "user.realname";
+static char *get_realname(struct atrfs_entry *ent)
+{
+	return ent->file.e_real_file_name;
+};
+
+static char *get_length(struct atrfs_entry *ent)
+{
+	return secs_to_time(get_value(ent, "user.length", 0));
+}
+
+static struct virtual_xattr
+{
+	char *name;
+	char *(*fn)(struct atrfs_entry *ent);
+} atrfs_attributes[] = {
+	{"user.realname", get_realname},
+	{"user.length", get_length},
+	{NULL, NULL}
+};
 
 /*
  * Set an extended attribute
@@ -50,25 +67,33 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
 
-	if (ent->e_type == ATRFS_FILE_ENTRY)
+	if (ent->e_type != ATRFS_FILE_ENTRY)
 	{
-		if (strcmp(name, real_name_attr))
-		{
-			fuse_reply_err(req, ENOATTR);
-		} else {
-			if (size == 0)
-			{
-				fuse_reply_xattr(req, strlen(ent->file.e_real_file_name) + 1);
-			} else if (size < strlen(ent->file.e_real_file_name) + 1) {
-				fuse_reply_err(req, ERANGE);
-			} else {
-				fuse_reply_buf(req, ent->file.e_real_file_name,
-					strlen(ent->file.e_real_file_name) + 1);
-			}
-		}
-	} else {
-		fuse_reply_err(req, ENOTSUP);
+		fuse_reply_err(req, ENOATTR);
+		return;
 	}
+
+	int i;
+	for (i = 0; atrfs_attributes[i].name; i++)
+	{
+		if (strcmp(name, atrfs_attributes[i].name))
+			continue;
+
+		char *ret = atrfs_attributes[i].fn(ent);
+
+		if (size == 0)
+		{
+			fuse_reply_xattr(req, strlen(ret) + 1);
+		} else if (size < strlen(ret) + 1) {
+			fuse_reply_err(req, ERANGE);
+		} else {
+			fuse_reply_buf(req, ret, strlen(ret) + 1);
+		}
+
+		return;
+	}
+
+	fuse_reply_err(req, ENOATTR);
 }
 
 /*
@@ -95,20 +120,38 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
  */
 void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
+	static size_t attr_len;
+	if (attr_len == 0)
+	{
+		int i;
+		for (i = 0; atrfs_attributes[i].name; i++)
+			attr_len += strlen(atrfs_attributes[i].name) + 1;
+	}
+
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("listxattr('%s')\n", ent->name);
 	if (ent->e_type == ATRFS_FILE_ENTRY)
 	{
 		if (size == 0)
 		{
-			fuse_reply_xattr(req, sizeof(real_name_attr));
-		} else if (size < sizeof(real_name_attr)) {
+			fuse_reply_xattr(req, attr_len);
+		} else if (size < attr_len) {
 			fuse_reply_err(req, ERANGE);
 		} else {
-			fuse_reply_buf(req, real_name_attr, sizeof(real_name_attr));
+			char buf[size];
+			int pos = 0;
+			int i;
+			for (i = 0; atrfs_attributes[i].name; i++)
+			{
+				int l = strlen(atrfs_attributes[i].name) + 1;
+				memcpy(buf + pos, atrfs_attributes[i].name, l);
+				pos += l;
+			}
+
+			fuse_reply_buf(req, buf, pos);
 		}
 	} else {
-		fuse_reply_err(req, ENOSYS);
+		fuse_reply_err(req, ENOATTR);
 	}
 }
 
