@@ -169,5 +169,5 @@ void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("removexattr('%s', '%s')\n", ent->name, name);
-	fuse_reply_err(req, ENOSYS);
+	fuse_reply_err(req, ENOTSUP);
 }
