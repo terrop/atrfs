@@ -119,7 +119,7 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 			strcpy (strrchr (ascname, '.'), ".asc");
 
 			/* Try different languages in requested order */
-			for (i = 0; *wanted_language[i]; i++)
+			for (i = 0; wanted_language[i]; i++)
 			{
 				data = asc_read_subtitles(ascname, wanted_language[i]);
 				if (data)
