@@ -5,7 +5,6 @@ extern void atrfs_getlk(fuse_req_t req, fuse_ino_t ino,
 	struct fuse_file_info *fi, struct flock *lock);
 extern void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
 	struct fuse_file_info *fi, struct flock *lock, int sleep);
-extern void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx);
 extern void atrfs_init(void *userdata, struct fuse_conn_info *conn);
 extern void atrfs_destroy(void *userdata);
 extern void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name);

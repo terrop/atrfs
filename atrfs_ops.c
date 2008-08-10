@@ -9,7 +9,7 @@
 #include "entry.h"
 #include "util.h"
 
-/* in main.c */
+/* in statistics.c */
 extern struct atrfs_entry *statroot;
 extern void update_stats (void);
 extern void update_recent_file (struct atrfs_entry *ent);
@@ -444,6 +444,36 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	fuse_reply_open(req, fi);
 }
 
+static void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
+{
+	size_t count = ent->virtual.size;
+	if (size < count)
+		count = size;
+	char buf[count];
+	memcpy (buf, ent->virtual.data + off, count);
+	fuse_reply_buf(req, buf, sizeof(buf));
+}
+
+static void read_file(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
+{
+	char buf[size];
+	int ret, fd = open (ent->file.e_real_file_name, O_RDONLY);
+	if (fd < 0)
+	{
+		fuse_reply_err(req, errno);
+		return;
+	}
+	ret = pread (fd, buf, size, off);
+	if (ret < 0)
+		ret = -errno;
+	close (fd);
+
+	if (ret < 0)
+		fuse_reply_err(req, -ret);
+	else
+		fuse_reply_buf(req, buf, ret);
+}
+
 /*
  * Read data
  *
@@ -480,35 +510,10 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 		abort ();
 
 	case ATRFS_VIRTUAL_FILE_ENTRY:
-	{
-		size_t count = ent->virtual.size;
-		if (size < count)
-			count = size;
-		char buf[count];
-		memcpy (buf, ent->virtual.data + off, count);
-		fuse_reply_buf(req, buf, sizeof(buf));
-		return;
-	}
+		return read_virtual(req, ent, size, off);
 
 	case ATRFS_FILE_ENTRY:
-	{
-		char buf[size];
-		int ret, fd = open (ent->file.e_real_file_name, O_RDONLY);
-		if (fd < 0)
-		{
-			fuse_reply_err(req, errno);
-			return;
-		}
-		ret = pread (fd, buf, size, off);
-		if (ret < 0)
-			ret = errno;
-		close (fd);
-
-		if (ret < 0)
-			fuse_reply_err(req, ret);
-		else
-			fuse_reply_buf(req, buf, ret);
-	}
+		return read_file(req, ent, size, off);
 	}
 }
 
@@ -829,10 +834,11 @@ void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
  * @param blocksize unit of block index
  * @param idx block index within file
  */
-void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
+static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("bmap('%s')\n", ent->name);
+	if (ent->ops.bmap)
+		return ent->ops.bmap(req, ent, blocksize, idx);
 	fuse_reply_err(req, ENOSYS);
 }
 

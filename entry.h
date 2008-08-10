@@ -20,6 +20,7 @@ struct atrfs_entry;
 struct entry_ops
 {
 	void (*unlink)(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+	void (*bmap)(fuse_req_t req, struct atrfs_entry *ent, size_t blocksize, uint64_t idx);
 };
 
 struct atrfs_entry
