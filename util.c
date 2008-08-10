@@ -93,6 +93,8 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 	}
 }
 
+extern char *wanted_language[];
+
 void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 {
 	CHECK_TYPE (file, ATRFS_FILE_ENTRY);
@@ -109,19 +111,21 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 
 		if (insert)
 		{
+			int i;
 			char *data;
 
 			// Use asc-file contents when possible.
 			char *ascname = strdup (file->file.e_real_file_name);
 			strcpy (strrchr (ascname, '.'), ".asc");
 
-			data = asc_read_subtitles (ascname, "fi");
-			if (! data)
-				data = asc_read_subtitles (ascname, "it");
-			if (! data)
-				data = asc_read_subtitles (ascname, "en");
-			if (! data)
-				data = asc_read_subtitles (ascname, "la");
+			/* Try different languages in requested order */
+			for (i = 0; *wanted_language[i]; i++)
+			{
+				data = asc_read_subtitles(ascname, wanted_language[i]);
+				if (data)
+					break;
+			}
+
 			free (ascname);
 
 			if (! data)

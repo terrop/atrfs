@@ -41,6 +41,8 @@ static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
 	return 0;
 }
 
+extern char *wanted_language[];
+
 static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
 	int categorize_helper (struct atrfs_entry *ent)
@@ -63,7 +65,25 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 			if (!*buf || buf[0] == '#')
 				continue;
 
-			ftw(buf, handle_file, 10);
+			switch (buf[0])
+			{
+				case '#': /* Comment */
+					continue;
+				case '/': /* Path to search files */
+					ftw(buf, handle_file, 10);
+					continue;
+			}
+
+			if (strncmp(buf, "language=", 9) == 0)
+			{
+				int i = 0;
+				char *lng = strdup(buf + 9);
+				char *s;
+				for (s = strtok(lng, ","); s; s = strtok(NULL, ","))
+					wanted_language[i++] = strdup(s);
+
+				free(lng);
+			}
 		}
 	}
 

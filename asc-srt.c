@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *wanted_language[10] =
+{
+	[0] = "fi",
+	[1] = "it",
+	[2] = "en",
+	[3] = "la",
+};
+
 static bool has_many_languages = false;
 static bool found_language = false;
 
