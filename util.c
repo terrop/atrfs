@@ -230,7 +230,7 @@ char *get_pdir(int filelen, int watchcount, int watchtime)
 {
 	static char buf[10]; /* XXX */
 	int ret = (watchtime * 100 / watchcount) / filelen;
-	sprintf (buf, "%d%%", ret);
+	sprintf (buf, "%d", ret);
 	return buf;
 }
 

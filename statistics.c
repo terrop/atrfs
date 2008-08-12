@@ -46,7 +46,12 @@ void update_recent_file (struct atrfs_entry *ent)
 	size_t size;
 	FILE *fp = open_memstream (&buf, &size);
 	for (i = 0; i < LIST_SIZE && recent_files[i]; i++)
-		fprintf (fp, "%s\n", recent_files[i]->name);
+	{
+		fprintf (fp, "%s%c%s\n",
+			recent_files[i]->parent->name,
+			recent_files[i]->parent == root ? '\0' : '/',
+			recent_files[i]->name);
+	}
 	fclose (fp);
 	free (recent->virtual.data);
 	recent->virtual.data = buf;
