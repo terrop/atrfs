@@ -6,6 +6,7 @@
 #include "util.h"
 
 extern char *asc_read_subtitles (char *ascfile, char *lang);
+extern char *wanted_language[];
 
 static char *get_virtual_srt(struct atrfs_entry *ent)
 {
@@ -41,6 +42,38 @@ static char *get_virtual_srt(struct atrfs_entry *ent)
 		  ext - ent->name, ent->name,
 		  secs_to_time (get_value (ent, "user.watchtime", 0)));
 out:
+	return ret;
+}
+
+static char *get_real_srt(struct atrfs_entry *ent)
+{
+	char *ret = NULL;
+
+	char *ascname = strdup (ent->file.e_real_file_name);
+	strcpy (strrchr (ascname, '.'), ".asc");
+
+	/* Try different languages in requested order */
+	int i;
+	for (i = 0; wanted_language[i]; i++)
+	{
+		ret = asc_read_subtitles(ascname, wanted_language[i]);
+		if (ret)
+			break;
+	}
+
+	free (ascname);
+	return ret;
+}
+
+static char *get_srt(struct atrfs_entry *ent)
+{
+	/*
+	 * Try to load real subtitles from asc-file. If this
+	 * fails, use virtual subtitles instead.
+	 * */
+	char *ret = get_real_srt(ent);
+	if (!ret)
+		ret = get_virtual_srt(ent);
 	return ret;
 }
 
@@ -130,8 +163,6 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 	}
 }
 
-extern char *wanted_language[];
-
 void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 {
 	CHECK_TYPE (file, ATRFS_FILE_ENTRY);
@@ -149,24 +180,7 @@ void handle_srt_for_file (struct atrfs_entry *file, bool insert)
 		if (insert)
 		{
 			int i;
-			char *data;
-
-			// Use asc-file contents when possible.
-			char *ascname = strdup (file->file.e_real_file_name);
-			strcpy (strrchr (ascname, '.'), ".asc");
-
-			/* Try different languages in requested order */
-			for (i = 0; wanted_language[i]; i++)
-			{
-				data = asc_read_subtitles(ascname, wanted_language[i]);
-				if (data)
-					break;
-			}
-
-			free (ascname);
-
-			if (! data)
-				data = get_virtual_srt(file);
+			char *data = get_srt(file);
 
 			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			ent->virtual.data = data;
