@@ -5,6 +5,8 @@
 #include <string.h>
 #include "util.h"
 
+extern char *get_srt(struct atrfs_entry *ent);
+
 int get_value (struct atrfs_entry *ent, char *attr, int def)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
