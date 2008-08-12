@@ -458,9 +458,7 @@ void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t of
 	size_t count = ent->virtual.size;
 	if (size < count)
 		count = size;
-	char buf[count];
-	memcpy (buf, ent->virtual.data + off, count);
-	fuse_reply_buf(req, buf, sizeof(buf));
+	fuse_reply_buf(req, ent->virtual.data + off, count);
 }
 
 void read_file(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
