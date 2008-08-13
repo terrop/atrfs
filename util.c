@@ -1,4 +1,4 @@
-/* util.c - 24.7.2008 - 29.7.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 13.8.2008 Ari & Tero Roponen */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,50 +77,33 @@ static char *get_srt(struct atrfs_entry *ent)
 	return ret;
 }
 
-int get_value (struct atrfs_entry *ent, char *attr, int def)
+static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	char *name = ent->file.e_real_file_name;
-
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
-		return def;
+		return false;
 
-	char *tail = NULL;
 	char buf[len];
-	if (getxattr (name, attr, buf, len) > 0)
-	{
-		int ret = strtol (buf, &tail, 10);
-		if (tail && *tail)
-		{
-			if (*tail != '.')
-				return def;
+	if (getxattr (name, attr, buf, len) <= 0)
+		return false;
 
-			/* HACK: Fix length to be an integer: 105.65 => 106 */
-			switch (*(tail+1))
-			{
-				case '0':
-				case '1':
-				case '2':
-				case '3':
-				case '4':
-					set_value(ent, attr, ret);
-					break;
-				case '5':
-				case '6':
-				case '7':
-				case '8':
-				case '9':
-				{
-					ret++;
-					set_value(ent, attr, ret);
-					break;
-				}
-			}
-		}
+	va_list list;
+	va_start (list, fmt);
+	int ret = vsscanf (buf, fmt, list);
+	va_end (list);
 
-		return ret;
-	}
+	if (ret != count)
+		return false;
+	return true;
+}
+
+int get_value (struct atrfs_entry *ent, char *attr, int def)
+{
+	int value;
+	if (get_value_internal (ent, attr, 1, "%d", &value))
+		return value;
 	return def;
 }
 
