@@ -258,8 +258,8 @@ void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name)
 	{
 		if (ent->e_type == ATRFS_FILE_ENTRY)
 		{
-			set_value (ent, "user.count", 0);
-			set_value (ent, "user.watchtime", 0);
+			set_ivalue (ent, "user.count", 0);
+			set_ivalue (ent, "user.watchtime", 0);
 		}
 
 		fuse_reply_err(req, 0);
@@ -390,7 +390,7 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 	if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
 	{
 		int count = get_ivalue (ent, "user.count", 0) + 1;
-		set_value (ent, "user.count", count);
+		set_ivalue (ent, "user.count", count);
 
 		if (check_file_type (ent, ".flv"))
 			handle_srt_for_file (ent, true);
@@ -705,14 +705,14 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 			 */
 			int length = get_ivalue(ent, "user.length", 0);
 			if (delta > length)
-				set_value(ent, "user.length", delta);
+				set_ivalue(ent, "user.length", delta);
 
 			/*
 			 * Update the total watch-time.
 			 * TODO: get_dvalue
 			 */
 			int watchtime = get_ivalue (ent, "user.watchtime", 0);
-			set_value (ent, "user.watchtime", watchtime + delta);
+			set_ivalue (ent, "user.watchtime", watchtime + delta);
 
 			/* Some special handling for flv-files. */
 			if (check_file_type (ent, ".flv"))

@@ -7,7 +7,7 @@
 int get_ivalue (struct atrfs_entry *ent, char *attr, int def);
 double get_dvalue (struct atrfs_entry *ent, char *attr, double def);
 
-void set_value (struct atrfs_entry *ent, char *attr, int value);
+void set_ivalue (struct atrfs_entry *ent, char *attr, int value);
 char *uniquify_name (char *name, struct atrfs_entry *root);
 void handle_srt_for_file (struct atrfs_entry *file, bool insert);
 

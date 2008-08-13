@@ -62,7 +62,7 @@ double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 	return def;
 }
 
-void set_value (struct atrfs_entry *ent, char *attr, int value)
+void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 {
 	set_value_internal (ent, attr, "%d", value);
 }
