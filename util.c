@@ -29,6 +29,23 @@ static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, 
 	return true;
 }
 
+static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
+{
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	char *buf = NULL;
+	va_list list;
+	va_start (list, fmt);
+	int ret = vasprintf (&buf, fmt, list);
+	va_end (list);
+	if (ret < 0)
+		return false;
+	ret = setxattr (ent->file.e_real_file_name, attr, buf, strlen (buf) + 1, 0);
+	free (buf);
+	if (ret == 0)
+		return true;
+	return false;
+}
+
 int get_ivalue (struct atrfs_entry *ent, char *attr, int def)
 {
 	int value;
@@ -47,10 +64,7 @@ double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 
 void set_value (struct atrfs_entry *ent, char *attr, int value)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	char buf[30];	     /* XXX */
-	sprintf (buf, "%d", value);
-	setxattr (ent->file.e_real_file_name, attr, buf, strlen (buf) + 1, 0);
+	set_value_internal (ent, attr, "%d", value);
 }
 
 char *uniquify_name (char *name, struct atrfs_entry *root)
