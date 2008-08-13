@@ -1,4 +1,4 @@
-/* atrfs_ops.c - 28.7.2008 - 28.7.2008 Ari & Tero Roponen */
+/* atrfs_ops.c - 28.7.2008 - 13.8.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
@@ -389,7 +389,7 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 	 */
 	if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
 	{
-		int count = get_value (ent, "user.count", 0) + 1;
+		int count = get_ivalue (ent, "user.count", 0) + 1;
 		set_value (ent, "user.count", count);
 
 		if (check_file_type (ent, ".flv"))
@@ -701,15 +701,17 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 			/*
 			 * The file's length is considered to be the
 			 * same as its longest continuous watch-time.
+			 * TODO: get_dvalue
 			 */
-			int length = get_value(ent, "user.length", 0);
+			int length = get_ivalue(ent, "user.length", 0);
 			if (delta > length)
 				set_value(ent, "user.length", delta);
 
 			/*
 			 * Update the total watch-time.
+			 * TODO: get_dvalue
 			 */
-			int watchtime = get_value (ent, "user.watchtime", 0);
+			int watchtime = get_ivalue (ent, "user.watchtime", 0);
 			set_value (ent, "user.watchtime", watchtime + delta);
 
 			/* Some special handling for flv-files. */

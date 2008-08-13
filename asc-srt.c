@@ -1,4 +1,4 @@
-/* asc-srt.c - 23.7.2008 - 29.7.2008 Ari & Tero Roponen */
+/* asc-srt.c - 23.7.2008 - 13.8.2008 Ari & Tero Roponen */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,7 +127,7 @@ static char *get_virtual_srt(struct atrfs_entry *ent)
 		  "20\n00:04:45.00 --> 00:04:46,00\n4:45\n\n"
 		  "21\n00:05:00.00 --> 01:00:00,00\n5:00+\n\n",
 		  ext - ent->name, ent->name,
-		  secs_to_time (get_value (ent, "user.watchtime", 0)));
+		  secs_to_time (get_ivalue (ent, "user.watchtime", 0)));
 out:
 	return ret;
 }

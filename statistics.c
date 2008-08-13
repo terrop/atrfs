@@ -73,7 +73,7 @@ void update_stats (void)
 		struct atrfs_entry *e1, *e2;
 		e1 = *(struct atrfs_entry **)a;
 		e2 = *(struct atrfs_entry **)b;
-		if (get_value (e1, "user.watchtime", 0) > get_value (e2, "user.watchtime", 0))
+		if (get_ivalue (e1, "user.watchtime", 0) > get_ivalue (e2, "user.watchtime", 0))
 			return -1;
 		return 1;
 	}
@@ -97,7 +97,7 @@ void update_stats (void)
 			else
 				ent = entries[count - 1 - i];
 
-			int val = get_value (ent, "user.watchtime", 0);
+			int val = get_ivalue (ent, "user.watchtime", 0);
 			fprintf (stfp, "%s\t%s%c%s\n", secs_to_time (val),
 				 ent->parent == root ? "" : ent->parent->name,
 				 ent->parent == root ? '\0' : '/', ent->name);
@@ -169,9 +169,9 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 		}
 	}
 
-	int count = get_value(ent, "user.count", 0);
-	int total = get_value(ent, "user.watchtime", 0);
-	int filelen = get_value(ent, "user.length", 0);
+	int count = get_ivalue(ent, "user.count", 0);
+	int total = get_ivalue(ent, "user.watchtime", 0);
+	int filelen = get_ivalue(ent, "user.length", 0);
 
 	if (count && total && filelen)
 	{

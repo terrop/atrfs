@@ -14,7 +14,7 @@ static char *get_realname(struct atrfs_entry *ent)
 
 static char *get_length(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_value(ent, "user.length", 0));
+	return secs_to_time(get_ivalue(ent, "user.length", 0));
 }
 
 static struct virtual_xattr

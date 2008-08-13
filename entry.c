@@ -1,4 +1,4 @@
-/* entry.c - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
+/* entry.c - 24.7.2008 - 13.8.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -171,9 +171,9 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		if (stat (ent->file.e_real_file_name, st) < 0)
 			return errno;
 
-		st->st_nlink = get_value (ent, "user.count", 0);
+		st->st_nlink = get_ivalue (ent, "user.count", 0);
 		/* start at 1.1.2000 */
-		st->st_mtime = get_value (ent, "user.watchtime", 0) + 946677600;
+		st->st_mtime = get_ivalue (ent, "user.watchtime", 0) + 946677600;
 		st->st_ino = (ino_t)(unsigned int) ent;
 		break;
 	}
