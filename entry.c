@@ -173,8 +173,11 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 
 		st->st_nlink = get_ivalue (ent, "user.count", 0);
 		/* start at 1.1.2000 */
-		st->st_mtime = get_ivalue (ent, "user.watchtime", 0) + 946677600;
+		st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
 		st->st_ino = (ino_t)(unsigned int) ent;
+
+		double wt = get_dvalue (ent, "user.watchtime", 0.0);
+		tmplog ("stat: watchtime %lf = %d\n", wt, (int)wt);
 		break;
 	}
 

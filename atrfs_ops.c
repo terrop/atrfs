@@ -259,7 +259,7 @@ void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name)
 		if (ent->e_type == ATRFS_FILE_ENTRY)
 		{
 			set_ivalue (ent, "user.count", 0);
-			set_ivalue (ent, "user.watchtime", 0);
+			set_dvalue (ent, "user.watchtime", 0.0);
 		}
 
 		fuse_reply_err(req, 0);
@@ -695,24 +695,22 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 			 * This is a good approximate of how long we watched
 			 * the video.
 			 */
-			int delta = time (NULL) - ent->file.start_time;
+			double delta = (double)(time (NULL) - ent->file.start_time);
 			ent->file.start_time = 0;
 
 			/*
 			 * The file's length is considered to be the
 			 * same as its longest continuous watch-time.
-			 * TODO: get_dvalue
 			 */
-			int length = get_ivalue(ent, "user.length", 0);
+			double length = get_dvalue(ent, "user.length", 0.0);
 			if (delta > length)
-				set_ivalue(ent, "user.length", delta);
+				set_dvalue(ent, "user.length", delta);
 
 			/*
 			 * Update the total watch-time.
-			 * TODO: get_dvalue
 			 */
-			int watchtime = get_ivalue (ent, "user.watchtime", 0);
-			set_ivalue (ent, "user.watchtime", watchtime + delta);
+			double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
+			set_dvalue (ent, "user.watchtime", watchtime + delta);
 
 			/* Some special handling for flv-files. */
 			if (check_file_type (ent, ".flv"))

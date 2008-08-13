@@ -67,6 +67,11 @@ void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 	set_value_internal (ent, attr, "%d", value);
 }
 
+void set_dvalue (struct atrfs_entry *ent, char *attr, double value)
+{
+	set_value_internal (ent, attr, "%lf", value);
+}
+
 char *uniquify_name (char *name, struct atrfs_entry *root)
 {
 	char *uniq = strdup (name);
@@ -194,11 +199,11 @@ char *get_pdir(int filelen, int watchcount, int watchtime)
 	return buf;
 }
 
-char *secs_to_time (int secs)
+char *secs_to_time (double secs)
 {
 	static char buf[10];	/* XXX */
-	int min = secs / 60;
-	int sec = secs % 60;
+	int min = (int)secs / 60;
+	int sec = (int)secs % 60;
 	sprintf (buf, "%02d:%02d", min, sec);
 	return buf;
 }
