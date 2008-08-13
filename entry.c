@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "entry.h"
+#include "util.h"
 
 struct atrfs_entry *root = NULL;
 
