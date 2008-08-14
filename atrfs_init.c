@@ -107,6 +107,16 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 extern void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name);
 extern void unlink_stat(fuse_req_t req, struct atrfs_entry *parent, const char *name);
 
+static struct entry_ops rootops =
+{
+	.unlink = unlink_root,
+};
+
+static struct entry_ops statops =
+{
+	.unlink = unlink_stat,
+};
+
 /*
  * Initialize filesystem
  *
@@ -123,11 +133,11 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	tmplog("init(pwd='%s')\n", pwd);
 	free(pwd);
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
-	root->ops.unlink = unlink_root;
+	root->ops = &rootops;
 	root->name = "/";
 
 	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	statroot->ops.unlink = unlink_stat;
+	statroot->ops = &statops;
 	attach_entry (root, statroot, "stats");
 
 	populate_root_dir (root, (char *)userdata);

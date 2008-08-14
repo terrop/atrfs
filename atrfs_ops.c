@@ -293,8 +293,8 @@ void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name)
 void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
 	struct atrfs_entry *pent = ino_to_entry(parent);
-	if (pent->ops.unlink)
-		return pent->ops.unlink(req, pent, name);
+	if (pent->ops->unlink)
+		return pent->ops->unlink(req, pent, name);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -510,8 +510,8 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
-	if (ent->ops.read)
-		return ent->ops.read(req, ent, size, off);
+	if (ent->ops->read)
+		return ent->ops->read(req, ent, size, off);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -642,6 +642,54 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	fuse_reply_err(req, 0);
 }
 
+void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
+{
+	/* start_time is only set by an open() called by 'mplayer'. */
+	if (ent->file.start_time > 0)
+	{
+		/*
+		 * Calculate the time the 'mplayer' held the file open.
+		 * This is a good approximate of how long we watched
+		 * the video.
+		 */
+		double delta = doubletime () - ent->file.start_time;
+		ent->file.start_time = 0.0;
+
+		/*
+		 * The file's length is considered to be the
+		 * same as its longest continuous watch-time.
+		 */
+		double length = get_dvalue(ent, "user.length", 0.0);
+		if (delta > length)
+			set_dvalue(ent, "user.length", delta);
+
+		/*
+		 * Update the total watch-time.
+		 */
+		double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
+		set_dvalue (ent, "user.watchtime", watchtime + delta);
+
+		/* Some special handling for flv-files. */
+		if (check_file_type (ent, ".flv"))
+		{
+			/*
+			 * Remove virtual subtitles if needed.
+			 */
+			handle_srt_for_file (ent, false);
+
+			/*
+			 * Categorize the file by moving it
+			 * to a proper subdirectory.
+			 */
+			categorize_flv_entry (ent);
+		}
+
+		update_recent_file (ent);
+	}
+
+	fuse_reply_err(req, 0);
+}
+
 /*
  * Release an open file
  *
@@ -681,63 +729,8 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		return;
 	}
 
-	switch (ent->e_type)
-	{
-	default:
-		abort ();
-
-	case ATRFS_FILE_ENTRY:
-		/* start_time is only set by an open() called by 'mplayer'. */
-		if (ent->file.start_time > 0)
-		{
-			/*
-			 * Calculate the time the 'mplayer' held the file open.
-			 * This is a good approximate of how long we watched
-			 * the video.
-			 */
-			double delta = doubletime () - ent->file.start_time;
-			ent->file.start_time = 0.0;
-
-			/*
-			 * The file's length is considered to be the
-			 * same as its longest continuous watch-time.
-			 */
-			double length = get_dvalue(ent, "user.length", 0.0);
-			if (delta > length)
-				set_dvalue(ent, "user.length", delta);
-
-			/*
-			 * Update the total watch-time.
-			 */
-			double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
-			set_dvalue (ent, "user.watchtime", watchtime + delta);
-
-			/* Some special handling for flv-files. */
-			if (check_file_type (ent, ".flv"))
-			{
-				/*
-				 * Remove virtual subtitles if needed.
-				 */
-				handle_srt_for_file (ent, false);
-
-				/*
-				 * Categorize the file by moving it
-				 * to a proper subdirectory.
-				 */
-				categorize_flv_entry (ent);
-			}
-
-			update_recent_file (ent);
-		}
-		break;
-
-	case ATRFS_DIRECTORY_ENTRY:
-		break;
-
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-		break;
-	}
-
+	if (ent->ops->release)
+		return ent->ops->release(req, ent, fi);
 	fuse_reply_err(req, 0);
 }
 
@@ -835,8 +828,8 @@ void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
 static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	if (ent->ops.bmap)
-		return ent->ops.bmap(req, ent, blocksize, idx);
+	if (ent->ops->bmap)
+		return ent->ops->bmap(req, ent, blocksize, idx);
 	fuse_reply_err(req, ENOSYS);
 }
 
