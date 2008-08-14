@@ -1,4 +1,4 @@
-/* atrfs_ops.c - 28.7.2008 - 13.8.2008 Ari & Tero Roponen */
+/* atrfs_ops.c - 28.7.2008 - 14.8.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
@@ -395,7 +395,7 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 		if (check_file_type (ent, ".flv"))
 			handle_srt_for_file (ent, true);
 
-		ent->file.start_time = time (NULL);
+		ent->file.start_time = doubletime ();
 	}
 
 	fuse_reply_open(req, fi);
@@ -688,15 +688,15 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 	case ATRFS_FILE_ENTRY:
 		/* start_time is only set by an open() called by 'mplayer'. */
-		if (ent->file.start_time)
+		if (ent->file.start_time > 0)
 		{
 			/*
 			 * Calculate the time the 'mplayer' held the file open.
 			 * This is a good approximate of how long we watched
 			 * the video.
 			 */
-			double delta = (double)(time (NULL) - ent->file.start_time);
-			ent->file.start_time = 0;
+			double delta = doubletime () - ent->file.start_time;
+			ent->file.start_time = 0.0;
 
 			/*
 			 * The file's length is considered to be the

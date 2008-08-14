@@ -1,4 +1,4 @@
-/* entry.h - 24.7.2008 - 27.7.2008 Ari & Tero Roponen */
+/* entry.h - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
 #ifndef ENTRY_H
 #define ENTRY_H
 #include <fuse/fuse_lowlevel.h>
@@ -38,7 +38,7 @@ struct atrfs_entry
 		struct
 		{
 			char *e_real_file_name;
-			time_t start_time;
+			double start_time;
 		} file;
 
 		struct

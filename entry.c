@@ -1,4 +1,4 @@
-/* entry.c - 24.7.2008 - 13.8.2008 Ari & Tero Roponen */
+/* entry.c - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		break;
 	case ATRFS_FILE_ENTRY:
 		ent->file.e_real_file_name = NULL;
-		ent->file.start_time = 0;
+		ent->file.start_time = 0.0;
 		ent->ops.read = read_file;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
@@ -176,9 +176,6 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		/* start at 1.1.2000 */
 		st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
 		st->st_ino = (ino_t)(unsigned int) ent;
-
-		double wt = get_dvalue (ent, "user.watchtime", 0.0);
-		tmplog ("stat: watchtime %lf = %d\n", wt, (int)wt);
 		break;
 	}
 
