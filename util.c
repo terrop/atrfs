@@ -1,11 +1,19 @@
-/* util.c - 24.7.2008 - 13.8.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include "util.h"
 
 extern char *get_srt(struct atrfs_entry *ent);
+
+double doubletime(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + (tv.tv_usec / 10000) / 100.0;
+}
 
 static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
 {

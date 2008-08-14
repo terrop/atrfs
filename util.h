@@ -1,4 +1,4 @@
-/* util.h - 24.7.2008 - 13.8.2008 Ari & Tero Roponen */
+/* util.h - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
 #ifndef UTIL_H
 #define UTIL_H
 #include <stdbool.h>
@@ -18,5 +18,6 @@ void get_all_file_entries (struct atrfs_entry ***entries, size_t *count);
 char *get_pdir(int filelen, int watchcount, int watchtime);
 char *secs_to_time (double secs);
 char *pid_to_cmdline(pid_t pid);
+double doubletime(void);
 
 #endif
