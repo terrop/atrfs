@@ -1,4 +1,5 @@
 /* util.c - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,11 +200,11 @@ void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 	*count = nitems;
 }
 
-char *get_pdir(int filelen, int watchcount, int watchtime)
+char *get_pdir(double filelen, int watchcount, double watchtime)
 {
 	static char buf[10]; /* XXX */
-	int ret = (watchtime * 100 / watchcount) / filelen;
-	sprintf (buf, "%d", ret);
+	double ret = (watchtime * 100 / watchcount) / filelen;
+	sprintf (buf, "%d", (unsigned int)round(ret));
 	return buf;
 }
 
