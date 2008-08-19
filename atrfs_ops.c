@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -387,7 +388,7 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 	 * Increase watch-count every time the 'mplayer' opens
 	 * the file and its timer is not already running.
 	 */
-	if (!strcmp(cmd, "mplayer") && ent->file.start_time == 0)
+	if (!strcmp(cmd, "mplayer") && isless(ent->file.start_time, 0.0))
 	{
 		int count = get_ivalue (ent, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
@@ -645,7 +646,7 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
 {
 	/* start_time is only set by an open() called by 'mplayer'. */
-	if (ent->file.start_time > 0)
+	if (isgreaterequal(ent->file.start_time, 0.0))
 	{
 		/*
 		 * Calculate the time the 'mplayer' held the file open.
@@ -653,7 +654,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info
 		 * the video.
 		 */
 		double delta = doubletime () - ent->file.start_time;
-		ent->file.start_time = 0.0;
+		ent->file.start_time = -1.0;
 
 		/*
 		 * The file's length is considered to be the

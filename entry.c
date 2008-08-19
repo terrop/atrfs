@@ -58,7 +58,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		break;
 	case ATRFS_FILE_ENTRY:
 		ent->file.e_real_file_name = NULL;
-		ent->file.start_time = 0.0;
+		ent->file.start_time = -1.0;
 		ent->ops = &fileops;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:

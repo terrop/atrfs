@@ -12,8 +12,13 @@ extern char *get_srt(struct atrfs_entry *ent);
 double doubletime(void)
 {
 	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec + (tv.tv_usec / 10000) / 100.0;
+	double ret;
+	do
+	{
+		gettimeofday(&tv, NULL);
+		ret = tv.tv_sec + (tv.tv_usec / 10000) / 100.0;
+	} while (isnan(ret));
+	return ret;
 }
 
 static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
