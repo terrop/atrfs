@@ -1,9 +1,10 @@
-/* asc-srt.c - 23.7.2008 - 13.8.2008 Ari & Tero Roponen */
+/* asc-srt.c - 23.7.2008 - 25.8.2008 Ari & Tero Roponen */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "entry.h"
+#include "util.h"
 
 char *wanted_language[10] =
 {
