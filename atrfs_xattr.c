@@ -3,6 +3,7 @@
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include "entry.h"
 #include "util.h"
@@ -17,6 +18,20 @@ static char *get_length(struct atrfs_entry *ent)
 	return secs_to_time(get_dvalue(ent, "user.length", 0.0));
 }
 
+static char *get_watchtime(struct atrfs_entry *ent)
+{
+	static char buf[10]; //XXX
+	sprintf(buf, "%.2lf", get_dvalue(ent, "user.watchtime", 0.0));
+	return buf;
+}
+
+static char *get_count(struct atrfs_entry *ent)
+{
+	static char buf[10]; //XXX
+	sprintf(buf, "%d", get_ivalue(ent, "user.count", 0));
+	return buf;
+}
+
 static struct virtual_xattr
 {
 	char *name;
@@ -24,6 +39,8 @@ static struct virtual_xattr
 } atrfs_attributes[] = {
 	{"user.realname", get_realname},
 	{"user.length", get_length},
+	{"user.watchtime", get_watchtime},
+	{"user.count", get_count},
 	{NULL, NULL}
 };
 
