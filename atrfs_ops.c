@@ -868,5 +868,6 @@ struct fuse_lowlevel_ops atrfs_operations =
 	.listxattr = atrfs_listxattr,
 	.removexattr = atrfs_removexattr,
 	.getlk = atrfs_getlk,
+	.setlk = atrfs_setlk,
 	.bmap = atrfs_bmap,
 };
