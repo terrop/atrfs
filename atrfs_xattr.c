@@ -20,9 +20,7 @@ static char *get_length(struct atrfs_entry *ent)
 
 static char *get_watchtime(struct atrfs_entry *ent)
 {
-	static char buf[10]; //XXX
-	sprintf(buf, "%.2lf", get_dvalue(ent, "user.watchtime", 0.0));
-	return buf;
+	return secs_to_time(get_dvalue(ent, "user.watchtime", 0.0));
 }
 
 static char *get_count(struct atrfs_entry *ent)
