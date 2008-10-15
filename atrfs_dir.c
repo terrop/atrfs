@@ -13,12 +13,12 @@ struct directory_data
 
 static void set_data(struct fuse_file_info *fi, struct directory_data *data)
 {
-	fi->fh = (uint32_t)data;
+	fi->fh = (unsigned long)data;
 }
 
 static struct directory_data *get_data(struct fuse_file_info *fi)
 {
-	return (struct directory_data *)(uint32_t)fi->fh;
+	return (struct directory_data *)(unsigned long)fi->fh;
 }
 
 /*
@@ -91,7 +91,7 @@ void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
 	struct atrfs_entry *parent = ino_to_entry(ino);
-	struct directory_data *data = (struct directory_data *)(uint32_t)fi->fh;
+	struct directory_data *data = (struct directory_data *)(unsigned long)fi->fh;
 	int err = 0;
 
 	char *buf = malloc(size);
