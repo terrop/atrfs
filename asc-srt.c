@@ -106,7 +106,7 @@ static char *get_virtual_srt(struct atrfs_entry *ent)
 
 	asprintf (&ret,
 		  "1\n00:00:00,00 --> 00:00:05,00\n"
-		  "%.*s\n%s\n\n"
+		  "%.*s\n%s / %s\n\n"
 		  "2\n00:00:15.00 --> 00:00:16,00\n15\n\n"
 		  "3\n00:00:30.00 --> 00:00:31,00\n30\n\n"
 		  "4\n00:00:45.00 --> 00:00:46,00\n45\n\n"
@@ -128,7 +128,8 @@ static char *get_virtual_srt(struct atrfs_entry *ent)
 		  "20\n00:04:45.00 --> 00:04:46,00\n4:45\n\n"
 		  "21\n00:05:00.00 --> 01:00:00,00\n5:00+\n\n",
 		  ext - ent->name, ent->name,
-		  secs_to_time (get_dvalue (ent, "user.watchtime", 0.0)));
+		  secs_to_time (get_dvalue (ent, "user.watchtime", 0.0)),
+		  secs_to_time (get_dvalue (ent, "user.length", 0.0)));
 out:
 	return ret;
 }
