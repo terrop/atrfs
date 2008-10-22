@@ -37,10 +37,12 @@ void update_recent_file (struct atrfs_entry *ent)
 	if (! ent)
 		abort ();
 	if (recent_files[0] && ent == recent_files[0])
-		return;
-	for (i = LIST_SIZE - 1; i > 0; i--)
-		recent_files[i] = recent_files[i - 1];
-	recent_files[0] = ent;
+	{
+	} else {
+		for (i = LIST_SIZE - 1; i > 0; i--)
+			recent_files[i] = recent_files[i - 1];
+		recent_files[0] = ent;
+	}
 
 	char *buf = NULL;
 	size_t size;

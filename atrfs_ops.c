@@ -656,6 +656,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info
 		double delta = doubletime () - ent->file.start_time;
 		ent->file.start_time = -1.0;
 
+#if 0
 		/*
 		 * The file's length is considered to be the
 		 * same as its longest continuous watch-time.
@@ -663,6 +664,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info
 		double length = get_dvalue(ent, "user.length", 0.0);
 		if (delta > length)
 			set_dvalue(ent, "user.length", delta);
+#endif
 
 		/*
 		 * Update the total watch-time.

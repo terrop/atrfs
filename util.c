@@ -215,11 +215,13 @@ char *get_pdir(double filelen, int watchcount, double watchtime)
 
 char *secs_to_time (double secs)
 {
-	static char buf[10];	/* XXX */
+	static int count;
+	static char buf[2][10];	/* XXX */
 	int min = (int)secs / 60;
 	int sec = (int)secs % 60;
-	sprintf (buf, "%02d:%02d", min, sec);
-	return buf;
+	count = (count + 1) % 2;
+	sprintf (buf[count], "%02d:%02d", min, sec);
+	return buf[count];
 }
 
 char *pid_to_cmdline(pid_t pid)
