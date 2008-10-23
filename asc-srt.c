@@ -6,19 +6,13 @@
 #include "entry.h"
 #include "util.h"
 
-char *wanted_language[10] =
-{
-	[0] = "fi",
-	[1] = "it",
-	[2] = "en",
-	[3] = "la",
-};
-
+char *language_list;
 static bool has_many_languages = false;
 static bool found_language = false;
 
 static void print_correct_text (const char *line, char *lang, FILE *out)
 {
+	char *saved;
 	char *end = strchr (line+1, ']');
 	if (! end)
 	{
@@ -30,7 +24,7 @@ static void print_correct_text (const char *line, char *lang, FILE *out)
 	char *tags = strdup (line + 1);
 	tags[end - line - 1] = '\0';
 	char *s;
-	for (s = strtok (tags, ","); s; s = strtok (NULL, ","))
+	for (s = strtok_r (tags, ",", &saved); s; s = strtok_r (NULL, ",", &saved))
 	{
 		if (! strcmp (s, lang))
 		{
@@ -136,19 +130,20 @@ out:
 static char *get_real_srt(struct atrfs_entry *ent)
 {
 	char *ret = NULL;
-
+	char *lng = strdup(language_list);
+	char *s, *saved;
 	char *ascname = strdup (ent->file.e_real_file_name);
 	strcpy (strrchr (ascname, '.'), ".asc");
 
 	/* Try different languages in requested order */
-	int i;
-	for (i = 0; wanted_language[i]; i++)
+	for (s = strtok_r(lng, ", ", &saved); s; s = strtok_r(NULL, ", ", &saved))
 	{
-		ret = asc_read_subtitles(ascname, wanted_language[i]);
+		ret = asc_read_subtitles(ascname, s);
 		if (ret)
 			break;
 	}
 
+	free(lng);
 	free (ascname);
 	return ret;
 }

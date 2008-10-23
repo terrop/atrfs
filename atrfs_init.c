@@ -41,7 +41,7 @@ static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
 	return 0;
 }
 
-extern char *wanted_language[];
+extern char *language_list;
 
 static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
@@ -76,13 +76,8 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 
 			if (strncmp(buf, "language=", 9) == 0)
 			{
-				int i = 0;
-				char *lng = strdup(buf + 9);
-				char *s;
-				for (s = strtok(lng, ","); s; s = strtok(NULL, ","))
-					wanted_language[i++] = strdup(s);
-
-				free(lng);
+				free(language_list);
+				language_list = strdup(buf + 9);
 			}
 		}
 	}
@@ -132,6 +127,8 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	char *pwd = get_current_dir_name();
 	tmplog("init(pwd='%s')\n", pwd);
 	free(pwd);
+
+	language_list = strdup("fi,it,en,la");
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 	root->ops = &rootops;
 	root->name = "/";
