@@ -96,6 +96,8 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	attach_entry (statroot, ent, last_name);
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, recent_name);
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	attach_entry (statroot, ent, "language");
 	update_stats();
 }
 
@@ -128,7 +130,7 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	tmplog("init(pwd='%s')\n", pwd);
 	free(pwd);
 
-	language_list = strdup("fi,it,en,la");
+	language_list = strdup("fi, it, en, la\n");
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
 	root->ops = &rootops;
 	root->name = "/";

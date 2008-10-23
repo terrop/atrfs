@@ -136,7 +136,7 @@ static char *get_real_srt(struct atrfs_entry *ent)
 	strcpy (strrchr (ascname, '.'), ".asc");
 
 	/* Try different languages in requested order */
-	for (s = strtok_r(lng, ", ", &saved); s; s = strtok_r(NULL, ", ", &saved))
+	for (s = strtok_r(lng, ", \n", &saved); s; s = strtok_r(NULL, ", \n", &saved))
 	{
 		ret = asc_read_subtitles(ascname, s);
 		if (ret)

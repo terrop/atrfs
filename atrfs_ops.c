@@ -10,6 +10,8 @@
 #include "entry.h"
 #include "util.h"
 
+extern char *language_list;
+
 /* in statistics.c */
 extern struct atrfs_entry *statroot;
 extern void update_stats (void);
@@ -145,7 +147,9 @@ void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("setattr('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
+	struct stat st;
+	stat_entry(ent, &st);
+	fuse_reply_attr(req, &st, 0.0);
 }
 
 /*
@@ -547,11 +551,18 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("write('%s', '%.*s')\n", ent->name, size, buf);
 
-	char *list = strdup (buf);
-	create_listed_entries (list);
-	free (list);
+	if (ent->parent == statroot && !strcmp(ent->name, "language"))
+	{
+		free (language_list);
+		language_list = strdup(buf);
+		fuse_reply_write(req, size);
+	} else {
+		char *list = strdup (buf);
+		create_listed_entries (list);
+		free (list);
 
-	fuse_reply_write(req, size);
+		fuse_reply_write(req, size);
+	}
 }
 
 /*

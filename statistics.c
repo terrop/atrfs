@@ -12,6 +12,8 @@
 #include "entry.h"
 #include "util.h"
 
+extern char *language_list;
+
 #ifndef LIST_SIZE
 #define LIST_SIZE 10
 #endif
@@ -112,6 +114,13 @@ void update_stats (void)
 	}
 		
 	free (entries);
+
+	st_ents[0] = lookup_entry_by_name(statroot, "language");
+	if (st_ents[0])
+	{
+		st_ents[0]->virtual.data = language_list;
+		st_ents[0]->virtual.size = strlen(language_list);
+	}
 }
 
 extern void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name);
