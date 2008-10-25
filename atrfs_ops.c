@@ -554,7 +554,7 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	if (ent->parent == statroot && !strcmp(ent->name, "language"))
 	{
 		free (language_list);
-		language_list = strdup(buf);
+		language_list = strndup(buf, size);
 		fuse_reply_write(req, size);
 	} else {
 		char *list = strdup (buf);
