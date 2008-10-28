@@ -24,7 +24,7 @@ double doubletime(void)
 static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	char *name = ent->file.e_real_file_name;
+	char *name = get_real_file_name(ent);
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
 		return false;
@@ -53,7 +53,7 @@ static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, 
 	va_end (list);
 	if (ret < 0)
 		return false;
-	ret = setxattr (ent->file.e_real_file_name, attr, buf, strlen (buf) + 1, 0);
+	ret = setxattr (get_real_file_name(ent), attr, buf, strlen (buf) + 1, 0);
 	free (buf);
 	if (ret == 0)
 		return true;
@@ -245,7 +245,7 @@ bool check_file_type (struct atrfs_entry *ent, char *ext)
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	if (! ext)
 		abort ();
-	char *s = strrchr (ent->file.e_real_file_name, '.');
+	char *s = strrchr (get_real_file_name(ent), '.');
 	return (s && !strcmp (s, ext));
 }
 

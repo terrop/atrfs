@@ -78,4 +78,6 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to);
 
 int stat_entry (struct atrfs_entry *ent, struct stat *st);
 
+char *get_real_file_name(struct atrfs_entry *ent);
+
 #endif

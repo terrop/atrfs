@@ -10,7 +10,7 @@
 
 static char *get_realname(struct atrfs_entry *ent)
 {
-	return ent->file.e_real_file_name;
+	return get_real_file_name(ent);
 };
 
 static char *get_length(struct atrfs_entry *ent)

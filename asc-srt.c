@@ -132,7 +132,7 @@ static char *get_real_srt(struct atrfs_entry *ent)
 	char *ret = NULL;
 	char *lng = strdup(language_list);
 	char *s, *saved;
-	char *ascname = strdup (ent->file.e_real_file_name);
+	char *ascname = strdup (get_real_file_name(ent));
 	strcpy (strrchr (ascname, '.'), ".asc");
 
 	/* Try different languages in requested order */

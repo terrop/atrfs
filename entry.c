@@ -36,6 +36,13 @@ static struct entry_ops virtual_ops =
 	.read = read_virtual,
 };
 
+char *get_real_file_name(struct atrfs_entry *ent)
+{
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+		return ent->file.e_real_file_name;
+	abort();
+}
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent = malloc (sizeof (*ent));
@@ -181,7 +188,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		break;
 
 	case ATRFS_FILE_ENTRY:
-		if (stat (ent->file.e_real_file_name, st) < 0)
+		if (stat (get_real_file_name(ent), st) < 0)
 			return errno;
 
 		st->st_nlink = get_ivalue (ent, "user.count", 0);
