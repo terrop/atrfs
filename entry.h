@@ -25,6 +25,12 @@ struct entry_ops
 	void (*bmap)(fuse_req_t req, struct atrfs_entry *ent, size_t blocksize, uint64_t idx);
 };
 
+struct file_list
+{
+	char *name;
+	struct file_list *next;
+};
+
 struct atrfs_entry
 {
 	enum atrfs_entry_type e_type;
@@ -38,7 +44,7 @@ struct atrfs_entry
 	{
 		struct
 		{
-			char *e_real_file_name;
+			struct file_list *real_files;
 			double start_time;
 		} file;
 

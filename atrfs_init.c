@@ -15,8 +15,21 @@ extern char *top_name;
 extern char *last_name;
 extern char *recent_name;
 
+static char *get_group_name(char *fname)
+{
+	int idx;
+	static char gname[256];
+	if (sscanf(fname, "%[^_]_%2d.flv", gname, &idx) == 2)
+	{
+		strcat(gname, ".flv");
+		return gname;
+	}
+	return fname;
+}
+
 static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
 {
+	char *gname;
 	char *ext;
 
 	if (typeflag != FTW_F)
@@ -27,16 +40,18 @@ static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
 		return 0;
 
 	tmplog("%s\n", fpath);
+	gname = get_group_name(basename(fpath));
+	tmplog("group: '%s'\n", gname);
 
-	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
-	if (ent)
+	struct atrfs_entry *ent = lookup_entry_by_name(root, gname);
+
+	if (!ent)
 	{
-		char *name = uniquify_name (basename(fpath), root);
-		ent->file.e_real_file_name = strdup(fpath);
-
-		attach_entry (root, ent, name);
-		free (name);
+		ent = create_entry(ATRFS_FILE_ENTRY);
+		attach_entry(root, ent, gname);
 	}
+
+	add_real_file(ent, fpath);
 
 	return 0;
 }

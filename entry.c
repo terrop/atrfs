@@ -36,11 +36,41 @@ static struct entry_ops virtual_ops =
 	.read = read_virtual,
 };
 
+bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);
+
 char *get_real_file_name(struct atrfs_entry *ent)
 {
-	if (ent->e_type == ATRFS_FILE_ENTRY)
-		return ent->file.e_real_file_name;
-	abort();
+	if (ent->e_type != ATRFS_FILE_ENTRY)
+		abort();
+	struct file_list *fl;
+	char *shortest = ent->file.real_files->name;
+	double time = 9999999;
+
+	for (fl = ent->file.real_files; fl; fl = fl->next)
+	{
+		double value;
+		if (!get_value_internal (fl->name, "user.watchtime", 1, "%lf", &value))
+			value = 0.0;
+	//	tmplog("watchtime: %s, %lf\n", fl->name, value);
+		if (value < time)
+		{
+			shortest = fl->name;
+			time = value;
+		}
+	}
+
+	return shortest;
+}
+
+void add_real_file(struct atrfs_entry *ent, char *name)
+{
+	struct file_list *fl = malloc(sizeof(*fl));
+	if (fl)
+	{
+		fl->name = strdup(name);
+		fl->next = ent->file.real_files;
+		ent->file.real_files = fl;
+	}
 }
 
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
@@ -64,7 +94,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		ent->directory.dir_len = 0;
 		break;
 	case ATRFS_FILE_ENTRY:
-		ent->file.e_real_file_name = NULL;
+		ent->file.real_files = NULL;
 		ent->file.start_time = -1.0;
 		ent->ops = &fileops;
 		break;

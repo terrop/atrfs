@@ -21,10 +21,8 @@ double doubletime(void)
 	return ret;
 }
 
-static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
+bool get_value_internal (char *name, char *attr, int count, char *fmt, ...)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	char *name = get_real_file_name(ent);
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
 		return false;
@@ -63,7 +61,7 @@ static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, 
 int get_ivalue (struct atrfs_entry *ent, char *attr, int def)
 {
 	int value;
-	if (get_value_internal (ent, attr, 1, "%d", &value))
+	if (get_value_internal (get_real_file_name(ent), attr, 1, "%d", &value))
 		return value;
 	return def;
 }
@@ -71,7 +69,7 @@ int get_ivalue (struct atrfs_entry *ent, char *attr, int def)
 double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 {
 	double value;
-	if (get_value_internal (ent, attr, 1, "%lf", &value))
+	if (get_value_internal (get_real_file_name(ent), attr, 1, "%lf", &value))
 		return value;
 	return def;
 }
