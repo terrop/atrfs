@@ -62,6 +62,10 @@ void update_recent_file (struct atrfs_entry *ent)
 	recent->virtual.size = size;
 }
 
+int get_total_watchcount(struct atrfs_entry *ent);
+double get_total_watchtime(struct atrfs_entry *ent);
+double get_total_length(struct atrfs_entry *ent);
+
 void update_stats (void)
 {
 	struct atrfs_entry *st_ents[2];
@@ -77,7 +81,7 @@ void update_stats (void)
 		struct atrfs_entry *e1, *e2;
 		e1 = *(struct atrfs_entry **)a;
 		e2 = *(struct atrfs_entry **)b;
-		if (get_dvalue (e1, "user.watchtime",0.0) > get_dvalue (e2, "user.watchtime",0.0))
+		if (get_total_watchtime(e1) > get_total_watchtime(e2))
 			return -1;
 		return 1;
 	}
@@ -101,7 +105,7 @@ void update_stats (void)
 			else
 				ent = entries[count - 1 - i];
 
-			double val = get_dvalue (ent, "user.watchtime", 0.0);
+			double val = get_total_watchtime(ent);
 			fprintf (stfp, "%s\t%s%c%s\n", secs_to_time (val),
 				 ent->parent == root ? "" : ent->parent->name,
 				 ent->parent == root ? '\0' : '/', ent->name);
@@ -141,10 +145,6 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	}
 	move_entry (ent, dir);
 }
-
-int get_total_watchcount(struct atrfs_entry *ent);
-double get_total_watchtime(struct atrfs_entry *ent);
-double get_total_length(struct atrfs_entry *ent);
 
 void categorize_flv_entry (struct atrfs_entry *ent)
 {
