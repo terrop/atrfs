@@ -62,6 +62,56 @@ char *get_real_file_name(struct atrfs_entry *ent)
 	return shortest;
 }
 
+int get_total_watchcount(struct atrfs_entry *ent)
+{
+	int count = 0, ret = 0;
+	struct file_list *fl;
+
+	for (fl = ent->file.real_files; fl; fl = fl->next)
+	{
+		int value;
+		if (get_value_internal (fl->name, "user.count", 1, "%d", &value))
+			ret += value;
+		count++;
+	}
+
+	return ret / count;
+}
+
+double get_total_watchtime(struct atrfs_entry *ent)
+{
+	int count = 0;
+	double ret = 0.0;
+	struct file_list *fl;
+
+	for (fl = ent->file.real_files; fl; fl = fl->next)
+	{
+		double value;
+		if (get_value_internal (fl->name, "user.watchtime", 1, "%lf", &value))
+			ret += value;
+		count++;
+	}
+
+	return ret / count;
+}
+
+double get_total_length(struct atrfs_entry *ent)
+{
+	int count = 0;
+	double ret = 0.0;
+	struct file_list *fl;
+
+	for (fl = ent->file.real_files; fl; fl = fl->next)
+	{
+		double value;
+		if (get_value_internal (fl->name, "user.length", 1, "%lf", &value))
+			ret += value;
+		count++;
+	}
+
+	return ret / count;
+}
+
 void add_real_file(struct atrfs_entry *ent, char *name)
 {
 	struct file_list *fl = malloc(sizeof(*fl));

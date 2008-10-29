@@ -142,6 +142,10 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
+int get_total_watchcount(struct atrfs_entry *ent);
+double get_total_watchtime(struct atrfs_entry *ent);
+double get_total_length(struct atrfs_entry *ent);
+
 void categorize_flv_entry (struct atrfs_entry *ent)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
@@ -166,9 +170,9 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 		}
 	}
 
-	int count = get_ivalue(ent, "user.count", 0);
-	double total = get_dvalue(ent, "user.watchtime", 0.0);
-	double filelen = get_dvalue(ent, "user.length", 0.0);
+	int count = get_total_watchcount(ent);
+	double total = get_total_watchtime(ent);
+	double filelen = get_total_length(ent);
 
 	if (count && total > 0.0 && filelen > 0.0)
 	{
