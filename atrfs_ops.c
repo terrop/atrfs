@@ -657,12 +657,6 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info
 			set_dvalue(ent, "user.length", delta);
 #endif
 
-		/*
-		 * Update the total watch-time.
-		 */
-		double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
-		set_dvalue (ent, "user.watchtime", watchtime + delta);
-
 		/* Some special handling for flv-files. */
 		if (check_file_type (ent, ".flv"))
 		{
@@ -670,6 +664,12 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info
 			 * Remove virtual subtitles if needed.
 			 */
 			handle_srt_for_file (ent, false);
+
+			/*
+			 * Update the total watch-time.
+			 */
+			double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
+			set_dvalue (ent, "user.watchtime", watchtime + delta);
 
 			/*
 			 * Categorize the file by moving it
