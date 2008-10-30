@@ -19,8 +19,8 @@ struct atrfs_entry;
 
 struct entry_ops
 {
-	void (*read)(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off);
-	void (*release)(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi);
+	void (*read)(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
+	void (*release)(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 	void (*unlink)(fuse_req_t req, struct atrfs_entry *parent, const char *name);
 	void (*bmap)(fuse_req_t req, struct atrfs_entry *ent, size_t blocksize, uint64_t idx);
 };

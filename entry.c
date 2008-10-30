@@ -21,9 +21,9 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 }
 
 /* in atrfs_ops.c */
-extern void read_file(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off);
-extern void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off);
-extern void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi);
+extern void read_file(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
+extern void read_virtual(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
+extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
 static struct entry_ops fileops =
 {

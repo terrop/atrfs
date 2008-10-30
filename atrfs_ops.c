@@ -387,7 +387,11 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 		ent->file.start_time = doubletime ();
 	}
 
-	fuse_reply_open(req, fi);
+	fi->fh = open(get_real_file_name(ent), fi->flags);
+	if (fi->fh < 0)
+		fuse_reply_err(req, errno);
+	else
+		fuse_reply_open(req, fi);
 }
 
 /*
@@ -432,17 +436,19 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	switch (ent->e_type)
 	{
 	default:
+		fi->fh = -1;
 		fuse_reply_open(req, fi);
 		break;
 	case ATRFS_FILE_ENTRY:
 		return open_file(req, ent, fi);
 	case ATRFS_VIRTUAL_FILE_ENTRY:
+		fi->fh = -1;
 		fuse_reply_open(req, fi);
 		break;
 	}
 }
 
-void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
+void read_virtual(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off)
 {
 	size_t count = ent->virtual.size;
 	if (size < count)
@@ -450,22 +456,12 @@ void read_virtual(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t of
 	fuse_reply_buf(req, ent->virtual.data + off, count);
 }
 
-void read_file(fuse_req_t req, struct atrfs_entry *ent, size_t size, off_t off)
+void read_file(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off)
 {
 	char buf[size];
-	int ret, fd = open (get_real_file_name(ent), O_RDONLY);
-	if (fd < 0)
-	{
+	int ret = pread(fd, buf, size, off);
+	if (ret < 0)
 		fuse_reply_err(req, errno);
-		return;
-	}
-	ret = pread (fd, buf, size, off);
-	if (ret < 0)
-		ret = -errno;
-	close (fd);
-
-	if (ret < 0)
-		fuse_reply_err(req, -ret);
 	else
 		fuse_reply_buf(req, buf, ret);
 }
@@ -500,7 +496,7 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
 	if (ent->ops->read)
-		return ent->ops->read(req, ent, size, off);
+		return ent->ops->read(req, ent, fi->fh, size, off);
 	fuse_reply_err(req, ENOSYS);
 }
 
@@ -634,8 +630,11 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	fuse_reply_err(req, 0);
 }
 
-void release_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
+void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi)
 {
+	if (fd >= 0)
+		close(fd);
+
 	/* start_time is only set by an open() called by 'mplayer'. */
 	if (isgreaterequal(ent->file.start_time, 0.0))
 	{
@@ -724,7 +723,7 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	}
 
 	if (ent->ops->release)
-		return ent->ops->release(req, ent, fi);
+		return ent->ops->release(req, ent, fi->fh, fi);
 	fuse_reply_err(req, 0);
 }
 
