@@ -64,6 +64,7 @@ void update_recent_file (struct atrfs_entry *ent)
 
 void update_stats (void)
 {
+	struct atrfs_entry *language_ent;
 	struct atrfs_entry *st_ents[2];
 	st_ents[0] = lookup_entry_by_name(statroot, top_name);
 	st_ents[1] = lookup_entry_by_name(statroot, last_name);
@@ -115,11 +116,11 @@ void update_stats (void)
 		
 	free (entries);
 
-	st_ents[0] = lookup_entry_by_name(statroot, "language");
-	if (st_ents[0])
+	language_ent = lookup_entry_by_name(statroot, "language");
+	if (language_ent)
 	{
-		st_ents[0]->virtual.data = language_list;
-		st_ents[0]->virtual.size = strlen(language_list);
+		language_ent->virtual.data = language_list;
+		language_ent->virtual.size = strlen(language_list);
 	}
 }
 

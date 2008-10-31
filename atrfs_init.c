@@ -51,7 +51,7 @@ static void add_file_when_flv(const char *filename)
 
 extern char *language_list;
 
-static void for_each_file (char *dir_or_file, void (*file_handler)(char *filename))
+static void for_each_file (char *dir_or_file, void (*file_handler)(const char *filename))
 {
 	int handler (const char *fpath, const struct stat *sb, int type)
 	{
