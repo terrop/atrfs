@@ -55,9 +55,8 @@ static void for_each_file (char *dir_or_file, void (*file_handler)(char *filenam
 {
 	int handler (const char *fpath, const struct stat *sb, int type)
 	{
-		if (type != FTW_F)
-			return 0;
-		file_handler (fpath);
+		if (type == FTW_F)
+			file_handler (fpath);
 		return 0;
 	}
 	ftw (dir_or_file, handler, 10);
