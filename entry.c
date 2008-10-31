@@ -10,9 +10,9 @@ struct atrfs_entry *root = NULL;
 
 struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 {
-	if (ino == 1)
-		return root;
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
+	if (ino == 1)
+		ent = root;
 
 	if (ent->flags & ENTRY_DELETED)
 		tmplog("Warning: deleted entry accessed\n");
