@@ -11,9 +11,6 @@
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
-extern char *top_name;
-extern char *last_name;
-extern char *recent_name;
 
 static char *get_group_name(char *fname)
 {
@@ -27,48 +24,50 @@ static char *get_group_name(char *fname)
 	return fname;
 }
 
-static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
+static void add_file_when_flv(const char *filename)
 {
-	char *gname;
-	char *ext;
+	char *groupname;
+	char *ext = strrchr (filename, '.');
+	if (!ext || strcmp (ext, ".flv")) /* Add only flv-files. */
+		return;
 
-	if (typeflag != FTW_F)
-		return 0;
+	tmplog ("%s\n", filename);
+	groupname = get_group_name (basename (filename));
+	tmplog ("group: '%s'\n", groupname);
 
-	ext = strrchr(fpath, '.');
-	if (!ext || strcmp(ext, ".flv"))
-		return 0;
-
-	tmplog("%s\n", fpath);
-	gname = get_group_name(basename(fpath));
-	tmplog("group: '%s'\n", gname);
-
-	struct atrfs_entry *ent = lookup_entry_by_name(root, gname);
+	struct atrfs_entry *ent = lookup_entry_by_name (root, groupname);
 
 	if (!ent)
 	{
-		ent = create_entry(ATRFS_FILE_ENTRY);
-		attach_entry(root, ent, gname);
+		ent = create_entry (ATRFS_FILE_ENTRY);
+		attach_entry (root, ent, groupname);
 	}
 
-	add_real_file(ent, fpath);
+	add_real_file (ent, filename);
 
-	return 0;
+	/* Put file into right category directory. */
+	categorize_flv_entry (ent);
 }
 
 extern char *language_list;
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile)
+static void for_each_file (char *dir_or_file, void (*file_handler)(const char *filename))
 {
-	int categorize_helper (struct atrfs_entry *ent)
+	int handler (const char *fpath, const struct stat *sb, int type)
 	{
-		if (check_file_type (ent, ".flv"))
-			categorize_flv_entry (ent);
+		if (type == FTW_F)
+			file_handler (fpath);
 		return 0;
 	}
+	ftw (dir_or_file, handler, 10);
+}
 
+static void parse_config_file (char *datafile, struct atrfs_entry *root)
+{
+	/* Root-entry must be initialized. */
 	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
+	/* Parse config file. */
 	FILE *fp = fopen(datafile, "r");
 	if (fp)
 	{
@@ -85,7 +84,7 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 				case '#': /* Comment */
 					continue;
 				case '/': /* Path to search files */
-					ftw(buf, handle_file, 10);
+					for_each_file (buf, add_file_when_flv);
 					continue;
 			}
 
@@ -97,7 +96,6 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 		}
 	}
 
-	map_leaf_entries (root, categorize_helper);
 	free (datafile);
 }
 
@@ -106,18 +104,20 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	struct atrfs_entry *ent;
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, top_name);
+	attach_entry (statroot, ent, "top-list");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, last_name);
+	attach_entry (statroot, ent, "last-list");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, recent_name);
+	attach_entry (statroot, ent, "stat-count");
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	attach_entry (statroot, ent, "recent");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, "language");
 	update_stats();
 }
 
-extern void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name);
-extern void unlink_stat(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+extern int unlink_root(struct atrfs_entry *entry);
+extern int unlink_stat(struct atrfs_entry *entry);
 
 static struct entry_ops rootops =
 {
@@ -154,7 +154,7 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	statroot->ops = &statops;
 	attach_entry (root, statroot, "stats");
 
-	populate_root_dir (root, (char *)userdata);
+	parse_config_file ((char *)userdata, root);
 	populate_stat_dir (statroot);
 }
 
