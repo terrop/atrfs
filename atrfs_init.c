@@ -11,9 +11,6 @@
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
-extern char *top_name;
-extern char *last_name;
-extern char *recent_name;
 
 static char *get_group_name(char *fname)
 {
@@ -107,11 +104,13 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	struct atrfs_entry *ent;
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, top_name);
+	attach_entry (statroot, ent, "top-list");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, last_name);
+	attach_entry (statroot, ent, "last-list");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	attach_entry (statroot, ent, recent_name);
+	attach_entry (statroot, ent, "stat-count");
+	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	attach_entry (statroot, ent, "recent");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, "language");
 	update_stats();
