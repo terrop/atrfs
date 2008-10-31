@@ -47,11 +47,14 @@ static void add_file_when_flv(const char *filename)
 	}
 
 	add_real_file (ent, filename);
+
+	/* Put file into right category directory. */
+	categorize_flv_entry (ent);
 }
 
 extern char *language_list;
 
-static void for_each_file (char *dir_or_file, void (*file_handler)(char *filename))
+static void for_each_file (char *dir_or_file, void (*file_handler)(const char *filename))
 {
 	int handler (const char *fpath, const struct stat *sb, int type)
 	{
@@ -62,17 +65,12 @@ static void for_each_file (char *dir_or_file, void (*file_handler)(char *filenam
 	ftw (dir_or_file, handler, 10);
 }
 
-static void populate_root_dir (struct atrfs_entry *root, char *datafile)
+static void parse_config_file (char *datafile, struct atrfs_entry *root)
 {
-	int categorize_helper (struct atrfs_entry *ent)
-	{
-		if (check_file_type (ent, ".flv"))
-			categorize_flv_entry (ent);
-		return 0;
-	}
-
+	/* Root-entry must be initialized. */
 	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
+	/* Parse config file. */
 	FILE *fp = fopen(datafile, "r");
 	if (fp)
 	{
@@ -101,7 +99,6 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 		}
 	}
 
-	map_leaf_entries (root, categorize_helper);
 	free (datafile);
 }
 
@@ -158,7 +155,7 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 	statroot->ops = &statops;
 	attach_entry (root, statroot, "stats");
 
-	populate_root_dir (root, (char *)userdata);
+	parse_config_file ((char *)userdata, root);
 	populate_stat_dir (statroot);
 }
 
