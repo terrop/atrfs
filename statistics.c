@@ -13,25 +13,17 @@
 #include "util.h"
 
 extern char *language_list;
-
-#ifndef LIST_SIZE
-#define LIST_SIZE 10
-#endif
-#define XSTR(s) STR(s)
-#define STR(s) #s
-char *top_name = "top-" XSTR(LIST_SIZE);
-char *last_name = "last-" XSTR(LIST_SIZE);
-char *recent_name = "recent";
-#undef STR
-#undef XSTR
+unsigned int stat_count = 20;
+#define RECENT_COUNT 10
 
 struct atrfs_entry *statroot;
 
-static struct atrfs_entry *recent_files[LIST_SIZE];
 void update_recent_file (struct atrfs_entry *ent)
 {
+	static struct atrfs_entry *recent_files[RECENT_COUNT];
+
 	int i;
-	struct atrfs_entry *recent = lookup_entry_by_name (statroot, recent_name);
+	struct atrfs_entry *recent = lookup_entry_by_name (statroot, "recent");
 	if (! recent)
 		return;
 	CHECK_TYPE (recent, ATRFS_VIRTUAL_FILE_ENTRY);
@@ -41,7 +33,7 @@ void update_recent_file (struct atrfs_entry *ent)
 	if (recent_files[0] && ent == recent_files[0])
 	{
 	} else {
-		for (i = LIST_SIZE - 1; i > 0; i--)
+		for (i = RECENT_COUNT - 1; i > 0; i--)
 			recent_files[i] = recent_files[i - 1];
 		recent_files[0] = ent;
 	}
@@ -49,7 +41,7 @@ void update_recent_file (struct atrfs_entry *ent)
 	char *buf = NULL;
 	size_t size;
 	FILE *fp = open_memstream (&buf, &size);
-	for (i = 0; i < LIST_SIZE && recent_files[i]; i++)
+	for (i = 0; i < RECENT_COUNT && recent_files[i]; i++)
 	{
 		fprintf (fp, "%s%c%s\n",
 			recent_files[i]->parent->name,
@@ -64,10 +56,11 @@ void update_recent_file (struct atrfs_entry *ent)
 
 void update_stats (void)
 {
+	struct atrfs_entry *statcount_ent;
 	struct atrfs_entry *language_ent;
 	struct atrfs_entry *st_ents[2];
-	st_ents[0] = lookup_entry_by_name(statroot, top_name);
-	st_ents[1] = lookup_entry_by_name(statroot, last_name);
+	st_ents[0] = lookup_entry_by_name(statroot, "top-list");
+	st_ents[1] = lookup_entry_by_name(statroot, "last-list");
 
 	struct atrfs_entry **entries;
 	size_t count;
@@ -94,7 +87,7 @@ void update_stats (void)
 		size_t stsize;
 		FILE *stfp = open_memstream(&stbuf, &stsize);
 
-		for (i = 0; i < LIST_SIZE && entries[i]; i++)
+		for (i = 0; i < stat_count && entries[i]; i++)
 		{
 			struct atrfs_entry *ent;
 			if (j == 0)
@@ -121,6 +114,15 @@ void update_stats (void)
 	{
 		language_ent->virtual.data = language_list;
 		language_ent->virtual.size = strlen(language_list);
+	}
+
+	statcount_ent = lookup_entry_by_name(statroot, "stat-count");
+	if (statcount_ent)
+	{
+		static char buf[10];
+		sprintf(buf, "%d\n", stat_count);
+		statcount_ent->virtual.data = buf;
+		statcount_ent->virtual.size = strlen(buf);
 	}
 }
 

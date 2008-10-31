@@ -500,6 +500,8 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	fuse_reply_err(req, ENOSYS);
 }
 
+extern int stat_count;
+
 /*
  * Write data
  *
@@ -534,6 +536,9 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	{
 		free (language_list);
 		language_list = strndup(buf, size);
+		fuse_reply_write(req, size);
+	} else if (ent->parent == statroot && !strcmp(ent->name, "stat-count")) {
+		stat_count = atoi(buf);
 		fuse_reply_write(req, size);
 	} else {
 		fuse_reply_err(req, EROFS);
