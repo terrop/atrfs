@@ -124,7 +124,7 @@ void update_stats (void)
 	}
 }
 
-extern void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+extern int unlink_subdir(struct atrfs_entry *entry);
 
 static struct entry_ops subdirops =
 {

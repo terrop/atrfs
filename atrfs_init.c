@@ -117,8 +117,8 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-extern void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name);
-extern void unlink_stat(fuse_req_t req, struct atrfs_entry *parent, const char *name);
+extern int unlink_root(struct atrfs_entry *entry);
+extern int unlink_stat(struct atrfs_entry *entry);
 
 static struct entry_ops rootops =
 {

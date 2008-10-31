@@ -229,43 +229,26 @@ void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const ch
 	fuse_reply_err(req, ENOSYS);
 }
 
-void unlink_stat(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+int unlink_stat(struct atrfs_entry *entry)
 {
 	/* Files under 'stat' cannot be removed. */
-	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
-	if (ent)
-		fuse_reply_err(req, EROFS);
-	else
-		fuse_reply_err(req, ENOENT);
+	return EROFS;
 }
 
-void unlink_root(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+int unlink_root(struct atrfs_entry *entry)
 {
-	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
-	if (ent)
+	if (entry->e_type == ATRFS_FILE_ENTRY)
 	{
-		if (ent->e_type == ATRFS_FILE_ENTRY)
-		{
-			set_ivalue (ent, "user.count", 0);
-			set_dvalue (ent, "user.watchtime", 0.0);
-		}
-
-		fuse_reply_err(req, 0);
-	} else {
-		fuse_reply_err(req, ENOENT);
+		set_ivalue (entry, "user.count", 0);
+		set_dvalue (entry, "user.watchtime", 0.0);
 	}
+	return 0;
 }
 
-void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name)
+int unlink_subdir(struct atrfs_entry *entry)
 {
-	struct atrfs_entry *ent = lookup_entry_by_name(parent, name);
-	if (ent)
-	{
-		move_entry (ent, root);
-		fuse_reply_err(req, 0);
-	} else {
-		fuse_reply_err(req, ENOENT);
-	}
+	move_entry (entry, root);
+	return 0;
 }
 
 /*
@@ -281,9 +264,15 @@ void unlink_subdir(fuse_req_t req, struct atrfs_entry *parent, const char *name)
 void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
 	struct atrfs_entry *pent = ino_to_entry(parent);
+	int err = ENOSYS;
 	if (pent->ops->unlink)
-		return pent->ops->unlink(req, pent, name);
-	fuse_reply_err(req, ENOSYS);
+	{
+		err = ENOENT;
+		struct atrfs_entry *entry = lookup_entry_by_name (pent, name);
+		if (entry)
+			err = pent->ops->unlink(entry);
+	}
+	fuse_reply_err(req, err);
 }
 
 /*
