@@ -27,36 +27,41 @@ static char *get_group_name(char *fname)
 	return fname;
 }
 
-static int handle_file(const char *fpath, const struct stat *sb, int typeflag)
+static void add_file_when_flv(const char *filename)
 {
-	char *gname;
-	char *ext;
+	char *groupname;
+	char *ext = strrchr (filename, '.');
+	if (!ext || strcmp (ext, ".flv")) /* Add only flv-files. */
+		return;
 
-	if (typeflag != FTW_F)
-		return 0;
+	tmplog ("%s\n", filename);
+	groupname = get_group_name (basename (filename));
+	tmplog ("group: '%s'\n", groupname);
 
-	ext = strrchr(fpath, '.');
-	if (!ext || strcmp(ext, ".flv"))
-		return 0;
-
-	tmplog("%s\n", fpath);
-	gname = get_group_name(basename(fpath));
-	tmplog("group: '%s'\n", gname);
-
-	struct atrfs_entry *ent = lookup_entry_by_name(root, gname);
+	struct atrfs_entry *ent = lookup_entry_by_name (root, groupname);
 
 	if (!ent)
 	{
-		ent = create_entry(ATRFS_FILE_ENTRY);
-		attach_entry(root, ent, gname);
+		ent = create_entry (ATRFS_FILE_ENTRY);
+		attach_entry (root, ent, groupname);
 	}
 
-	add_real_file(ent, fpath);
-
-	return 0;
+	add_real_file (ent, filename);
 }
 
 extern char *language_list;
+
+static void for_each_file (char *dir_or_file, void (*file_handler)(char *filename))
+{
+	int handler (const char *fpath, const struct stat *sb, int type)
+	{
+		if (type != FTW_F)
+			return 0;
+		file_handler (fpath);
+		return 0;
+	}
+	ftw (dir_or_file, handler, 10);
+}
 
 static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 {
@@ -85,7 +90,7 @@ static void populate_root_dir (struct atrfs_entry *root, char *datafile)
 				case '#': /* Comment */
 					continue;
 				case '/': /* Path to search files */
-					ftw(buf, handle_file, 10);
+					for_each_file (buf, add_file_when_flv);
 					continue;
 			}
 
