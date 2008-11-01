@@ -286,8 +286,7 @@ int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *e
 	GList *p, *entries = g_hash_table_get_values (root->directory.e_contents);
 	struct atrfs_entry *ent;
 
-	p = entries;
-	while (p)
+	for (p = entries; p; p = p->next)
 	{
 		ent = p->data;
 		switch (ent->e_type)
@@ -309,7 +308,6 @@ int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *e
 				goto out;
 			break;
 		}
-		p = p->next;
 	}
 out:
 	g_list_free (entries);
