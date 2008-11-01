@@ -44,9 +44,6 @@ static void add_file_when_flv(const char *filename)
 	}
 
 	add_real_file (ent, filename);
-
-	/* Put file into right category directory. */
-	categorize_flv_entry (ent);
 }
 
 extern char *language_list;
@@ -141,6 +138,13 @@ static struct entry_ops statops =
  */
 void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 {
+	int categorize_flv_helper (struct atrfs_entry *ent)
+	{
+		if (ent->e_type == ATRFS_FILE_ENTRY)
+			categorize_flv_entry (ent);
+		return 0;
+	}
+
 	char *pwd = get_current_dir_name();
 	tmplog("init(pwd='%s')\n", pwd);
 	free(pwd);
@@ -156,6 +160,10 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 
 	parse_config_file ((char *)userdata, root);
 	populate_stat_dir (statroot);
+
+	/* Put file into right category directory. We assume that
+	 * there are only flv-files. */
+	map_leaf_entries (root, categorize_flv_helper);
 }
 
 /*
