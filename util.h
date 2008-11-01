@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "entry.h"
 
-int get_ivalue (struct atrfs_entry *ent, char *attr, int def);
+int get_ivalue (char *filename, char *attr, int def);
 double get_dvalue (char *filename, char *attr, double def);
 
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value);
