@@ -1,4 +1,4 @@
-/* asc-srt.c - 23.7.2008 - 25.8.2008 Ari & Tero Roponen */
+/* asc-srt.c - 23.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,21 +90,20 @@ static char *asc_read_subtitles (char *ascfile, char *lang)
 	return text;
 }
 
-static char *get_virtual_srt(struct atrfs_entry *ent)
+static char *get_virtual_srt(char *filename)
 {
-	char *filename = get_real_file_name(ent);
+	char *base = basename (filename);
 	char *ret = NULL;
 	int i, linenum;
 
-	char *ext = strrchr(ent->name, '.');
+	char *ext = strrchr(base, '.');
 	if (!ext || strcmp(ext, ".flv"))
 		goto out;
 
 	asprintf (&ret,
 		  "1\n00:00:00,00 --> 00:00:05,00\n"
 		  "%.*s\n%s / %s\n\n",
-		  ext - ent->name,
-		  ent->name,
+		  ext - base, base,
 		  secs_to_time (get_dvalue (filename, "user.watchtime", 0.0)),
 		  secs_to_time (get_dvalue (filename, "user.length", 0.0)));
 
@@ -128,12 +127,12 @@ out:
 	return ret;
 }
 
-static char *get_real_srt(struct atrfs_entry *ent)
+static char *get_real_srt(char *filename)
 {
 	char *ret = NULL;
 	char *lng = strdup(language_list);
 	char *s, *saved;
-	char *ascname = strdup (get_real_file_name(ent));
+	char *ascname = strdup (filename);
 	strcpy (strrchr (ascname, '.'), ".asc");
 
 	/* Try different languages in requested order */
@@ -149,14 +148,14 @@ static char *get_real_srt(struct atrfs_entry *ent)
 	return ret;
 }
 
-char *get_srt(struct atrfs_entry *ent)
+char *get_srt(char *filename)
 {
 	/*
 	 * Try to load real subtitles from asc-file. If this
 	 * fails, use virtual subtitles instead.
 	 * */
-	char *ret = get_real_srt(ent);
+	char *ret = get_real_srt(filename);
 	if (!ret)
-		ret = get_virtual_srt(ent);
+		ret = get_virtual_srt(filename);
 	return ret;
 }

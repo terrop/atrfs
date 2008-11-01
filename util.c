@@ -7,7 +7,7 @@
 #include <sys/time.h>
 #include "util.h"
 
-extern char *get_srt(struct atrfs_entry *ent);
+extern char *get_srt(char *filename);
 
 double doubletime(void)
 {
@@ -133,7 +133,7 @@ void handle_srt_for_file (struct atrfs_entry *ent, bool insert)
 		if (insert)
 		{
 			int i;
-			char *data = get_srt(ent);
+			char *data = get_srt(get_real_file_name (ent));
 
 			srt_ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			srt_ent->virtual.data = data;
