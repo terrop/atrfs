@@ -347,17 +347,16 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		char *srtname = get_related_name (ent->name, ".flv", ".srt");
 		if (srtname)
 		{
-			char *tmp = basename (srtname);
-
-			if (! lookup_entry_by_name (ent->parent, tmp))
+			if (! lookup_entry_by_name (ent->parent, srtname))
 			{
 				char *data = get_srt (get_real_file_name (ent));
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 				srt->virtual.data = data;
 				srt->virtual.size = strlen (data);
 				attach_entry (ent->parent, srt, srtname);
-				free (srtname);
 			}
+
+			free (srtname);
 		}
 
 		ent->file.start_time = doubletime ();
@@ -625,14 +624,16 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 {
 	/* Remove subtitle file. */
 	char *srt_name = get_related_name (ent->name, ".flv", ".srt");
-	struct atrfs_entry *srt;
 
-	if (srt_name && (srt = lookup_entry_by_name (ent->parent, srt_name)))
+	if (srt_name)
 	{
-		detach_entry (srt);
-		free (srt->virtual.data);
-		destroy_entry (srt);
-		free (srt_name);
+		struct atrfs_entry *srt = lookup_entry_by_name (ent->parent, srt_name);
+		if (srt)
+		{
+			detach_entry (srt);
+			free (srt->virtual.data);
+			destroy_entry (srt);
+		}
 	}
 
 	/* If this was a flv-file, then srt_name != NULL */
@@ -648,6 +649,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		categorize_flv_entry (ent);
 	}
 
+	free (srt_name);
 	update_recent_file (ent);
 }
 
