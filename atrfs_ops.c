@@ -11,6 +11,7 @@
 #include "util.h"
 
 extern char *language_list;
+extern char *get_srt (char *filename);
 
 /* in statistics.c */
 extern struct atrfs_entry *statroot;
@@ -342,8 +343,22 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		int count = get_ivalue (filename, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
 
-		if (check_file_type (ent, ".flv"))
-			handle_srt_for_file (ent, true);
+		/* Add subtitles to flv-files. */
+		char *srtname = get_related_name (ent->name, ".flv", ".srt");
+		if (srtname)
+		{
+			char *tmp = basename (srtname);
+
+			if (! lookup_entry_by_name (ent->parent, tmp))
+			{
+				char *data = get_srt (get_real_file_name (ent));
+				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+				srt->virtual.data = data;
+				srt->virtual.size = strlen (data);
+				attach_entry (ent->parent, srt, srtname);
+				free (srtname);
+			}
+		}
 
 		ent->file.start_time = doubletime ();
 	}
@@ -606,48 +621,34 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	fuse_reply_err(req, 0);
 }
 
-void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi)
+static void release_file(struct atrfs_entry *ent, double playtime)
 {
-	if (fd >= 0)
-		close(fd);
+	/* Remove subtitle file. */
+	char *srt_name = get_related_name (ent->name, ".flv", ".srt");
+	struct atrfs_entry *srt;
 
-	/* start_time is only set by an open() called by 'mplayer'. */
-	if (isgreaterequal(ent->file.start_time, 0.0))
+	if (srt_name && (srt = lookup_entry_by_name (ent->parent, srt_name)))
 	{
-		/*
-		 * Calculate the time the 'mplayer' held the file open.
-		 * This is a good approximate of how long we watched
-		 * the video.
-		 */
-		double delta = doubletime () - ent->file.start_time;
-		ent->file.start_time = -1.0;
-
-		/* Some special handling for flv-files. */
-		if (check_file_type (ent, ".flv"))
-		{
-			char *filename = get_real_file_name(ent);
-			/*
-			 * Remove virtual subtitles if needed.
-			 */
-			handle_srt_for_file (ent, false);
-
-			/*
-			 * Update the total watch-time.
-			 */
-			double watchtime = get_dvalue (filename, "user.watchtime", 0.0);
-			set_dvalue (ent, "user.watchtime", watchtime + delta);
-
-			/*
-			 * Categorize the file by moving it
-			 * to a proper subdirectory.
-			 */
-			categorize_flv_entry (ent);
-		}
-
-		update_recent_file (ent);
+		detach_entry (srt);
+		free (srt->virtual.data);
+		destroy_entry (srt);
+		free (srt_name);
 	}
 
-	fuse_reply_err(req, 0);
+	/* If this was a flv-file, then srt_name != NULL */
+	if (srt_name && isgreaterequal (playtime, 0.0))
+	{
+		char *filename = get_real_file_name (ent);
+
+		/* * Update the total watch-time. */
+		double watchtime = get_dvalue (filename, "user.watchtime", 0.0);
+		set_dvalue (ent, "user.watchtime", watchtime + playtime);
+
+		/* * Categorize the file by moving it to a proper subdirectory. */
+		categorize_flv_entry (ent);
+	}
+
+	update_recent_file (ent);
 }
 
 /*
@@ -690,7 +691,16 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	}
 
 	if (ent->e_type == ATRFS_FILE_ENTRY)
-		return release_file (req, ent, fi->fh, fi);
+	{
+		double playtime = 0.0;
+		if (isgreaterequal(ent->file.start_time, 0.0))
+			playtime = doubletime () - ent->file.start_time;
+		ent->file.start_time = -1.0;
+
+		release_file (ent, playtime);
+		if (fi->fh >= 0)
+			close (fi->fh);
+	}
 	fuse_reply_err(req, 0);
 }
 

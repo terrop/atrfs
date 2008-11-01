@@ -125,40 +125,6 @@ char *get_related_name (char *filename, char *old_ext, char *new_ext)
 	return srtname;
 }
 
-void handle_srt_for_file (struct atrfs_entry *ent, bool insert)
-{
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-
-	char *name = ent->name;
-	char *srtname = get_related_name (name, ".flv", ".srt");
-
-	if (srtname)
-	{
-		struct atrfs_entry *srt_ent;
-		srtname = basename (srtname);
-
-		if (insert)
-		{
-			int i;
-			char *data = get_srt(get_real_file_name (ent));
-
-			srt_ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-			srt_ent->virtual.data = data;
-			srt_ent->virtual.size = strlen (data);
-			attach_entry (ent->parent, srt_ent, srtname);
-		} else {
-			srt_ent = lookup_entry_by_name (ent->parent, srtname);
-			if (srt_ent && srt_ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
-			{
-				detach_entry (srt_ent);
-				free (srt_ent->virtual.data);
-				destroy_entry (srt_ent);
-			}
-		}
-		free (srtname);
-	}
-}
-
 void tmplog(char *fmt, ...)
 {
 	static FILE *fp;

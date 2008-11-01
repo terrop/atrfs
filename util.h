@@ -11,7 +11,6 @@ void set_ivalue (struct atrfs_entry *ent, char *attr, int value);
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value);
 
 char *uniquify_name (char *name, struct atrfs_entry *root);
-void handle_srt_for_file (struct atrfs_entry *file, bool insert);
 
 void tmplog(char *fmt, ...);
 void get_all_file_entries (struct atrfs_entry ***entries, size_t *count);
