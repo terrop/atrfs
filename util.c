@@ -1,4 +1,4 @@
-/* util.c - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
+/* util.c - 24.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -41,9 +41,8 @@ bool get_value_internal (char *name, char *attr, int count, char *fmt, ...)
 	return true;
 }
 
-static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
+static bool set_value_internal (char *name, char *attr, char *fmt, ...)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	char *buf = NULL;
 	va_list list;
 	va_start (list, fmt);
@@ -51,7 +50,7 @@ static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, 
 	va_end (list);
 	if (ret < 0)
 		return false;
-	ret = setxattr (get_real_file_name(ent), attr, buf, strlen (buf) + 1, 0);
+	ret = setxattr (name, attr, buf, strlen (buf) + 1, 0);
 	free (buf);
 	if (ret == 0)
 		return true;
@@ -76,12 +75,14 @@ double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 {
-	set_value_internal (ent, attr, "%d", value);
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	set_value_internal (get_real_file_name (ent), attr, "%d", value);
 }
 
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value)
 {
-	set_value_internal (ent, attr, "%lf", value);
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	set_value_internal (get_real_file_name (ent), attr, "%lf", value);
 }
 
 char *uniquify_name (char *name, struct atrfs_entry *root)
