@@ -335,24 +335,7 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 {
 	struct atrfs_entry *pent = ino_to_entry(parent);
 	tmplog("create('%s', '%s')\n", pent->name, name);
-	char *ext = strrchr(name, '.');
-	if (!ext || strcmp(ext, ".txt"))
-	{
-		fuse_reply_err(req, ENOMSG); /* "No message of desired type" */
-		return;
-	}
-
-	struct atrfs_entry *ent = create_entry(ATRFS_FILE_ENTRY);
-	struct fuse_entry_param fep =
-	{
-		.ino = (fuse_ino_t)ent,
-		.generation = 1,
-		.attr.st_mode = mode,
-		.attr_timeout = 1.0,
-		.entry_timeout = 1.0,
-	};
-
-	fuse_reply_create(req, &fep, fi);
+	fuse_reply_err(req, ENOSYS);
 }
 
 static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
