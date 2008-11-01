@@ -340,6 +340,8 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 
 static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 {
+	char *filename = get_real_file_name(ent);
+
 	/*
 	 * Increase watch-count every time the 'mplayer' opens
 	 * the file and its timer is not already running.
@@ -347,7 +349,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 	if ((!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem")) &&
 		isless(ent->file.start_time, 0.0))
 	{
-		int count = get_ivalue (ent, "user.count", 0) + 1;
+		int count = get_ivalue (filename, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
 
 		if (check_file_type (ent, ".flv"))
@@ -356,7 +358,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		ent->file.start_time = doubletime ();
 	}
 
-	int fd = open(get_real_file_name(ent), flags);
+	int fd = open(filename, flags);
 	if (fd < 0)
 		fd = -errno;
 	return fd;

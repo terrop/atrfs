@@ -26,7 +26,7 @@ static char *get_watchtime(struct atrfs_entry *ent)
 static char *get_count(struct atrfs_entry *ent)
 {
 	static char buf[10]; //XXX
-	sprintf(buf, "%d", get_ivalue(ent, "user.count", 0));
+	sprintf(buf, "%d", get_ivalue(get_real_file_name(ent), "user.count", 0));
 	return buf;
 }
 

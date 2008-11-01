@@ -57,10 +57,10 @@ static bool set_value_internal (char *name, char *attr, char *fmt, ...)
 	return false;
 }
 
-int get_ivalue (struct atrfs_entry *ent, char *attr, int def)
+int get_ivalue (char *filename, char *attr, int def)
 {
 	int value;
-	if (get_value_internal (get_real_file_name(ent), attr, 1, "%d", &value))
+	if (get_value_internal (filename, attr, 1, "%d", &value))
 		return value;
 	return def;
 }
