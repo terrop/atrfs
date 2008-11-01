@@ -635,7 +635,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_f
 		 * The file's length is considered to be the
 		 * same as its longest continuous watch-time.
 		 */
-		double length = get_dvalue(ent, "user.length", 0.0);
+		double length = get_dvalue(get_real_file_name(ent), "user.length", 0.0);
 		if (delta > length)
 			set_dvalue(ent, "user.length", delta);
 #endif
@@ -643,6 +643,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_f
 		/* Some special handling for flv-files. */
 		if (check_file_type (ent, ".flv"))
 		{
+			char *filename = get_real_file_name(ent);
 			/*
 			 * Remove virtual subtitles if needed.
 			 */
@@ -651,7 +652,7 @@ void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_f
 			/*
 			 * Update the total watch-time.
 			 */
-			double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
+			double watchtime = get_dvalue (filename, "user.watchtime", 0.0);
 			set_dvalue (ent, "user.watchtime", watchtime + delta);
 
 			/*

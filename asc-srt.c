@@ -92,6 +92,7 @@ static char *asc_read_subtitles (char *ascfile, char *lang)
 
 static char *get_virtual_srt(struct atrfs_entry *ent)
 {
+	char *filename = get_real_file_name(ent);
 	char *ret = NULL;
 	int i, linenum;
 
@@ -104,11 +105,11 @@ static char *get_virtual_srt(struct atrfs_entry *ent)
 		  "%.*s\n%s / %s\n\n",
 		  ext - ent->name,
 		  ent->name,
-		  secs_to_time (get_dvalue (ent, "user.watchtime", 0.0)),
-		  secs_to_time (get_dvalue (ent, "user.length", 0.0)));
+		  secs_to_time (get_dvalue (filename, "user.watchtime", 0.0)),
+		  secs_to_time (get_dvalue (filename, "user.length", 0.0)));
 
 	linenum = 2;
-	for (i = 15; i < (int)get_dvalue (ent, "user.length", 0.0); i += 15)
+	for (i = 15; i < (int)get_dvalue (filename, "user.length", 0.0); i += 15)
 	{
 		char *tmp = NULL;
 		char *line = NULL;

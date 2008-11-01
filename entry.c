@@ -264,14 +264,17 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		break;
 
 	case ATRFS_FILE_ENTRY:
-		if (stat (get_real_file_name(ent), st) < 0)
+	{
+		char *filename = get_real_file_name(ent);
+		if (stat (filename, st) < 0)
 			return errno;
 
 		st->st_nlink = get_ivalue (ent, "user.count", 0);
 		/* start at 1.1.2000 */
-		st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
+		st->st_mtime = (time_t)(get_dvalue (filename, "user.watchtime", 0.0) + 946677600.0);
 		st->st_ino = (ino_t)(unsigned long) ent;
 		break;
+	}
 	}
 
 	return 0;

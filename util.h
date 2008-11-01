@@ -5,7 +5,7 @@
 #include "entry.h"
 
 int get_ivalue (struct atrfs_entry *ent, char *attr, int def);
-double get_dvalue (struct atrfs_entry *ent, char *attr, double def);
+double get_dvalue (char *filename, char *attr, double def);
 
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value);
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value);
