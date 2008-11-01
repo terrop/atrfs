@@ -132,8 +132,7 @@ static char *get_real_srt(char *filename)
 	char *ret = NULL;
 	char *lng = strdup(language_list);
 	char *s, *saved;
-	char *ascname = strdup (filename);
-	strcpy (strrchr (ascname, '.'), ".asc");
+	char *ascname = get_related_name (filename, ".flv", ".asc");
 
 	/* Try different languages in requested order */
 	for (s = strtok_r(lng, ", \n", &saved); s; s = strtok_r(NULL, ", \n", &saved))
@@ -143,8 +142,8 @@ static char *get_real_srt(char *filename)
 			break;
 	}
 
-	free(lng);
 	free (ascname);
+	free(lng);
 	return ret;
 }
 

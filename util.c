@@ -116,19 +116,26 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 	}
 }
 
+char *get_related_name (char *filename, char *old_ext, char *new_ext)
+{
+	char *srtname = NULL;
+	char *ext = strrchr (filename, '.');
+	if (ext && !strcmp (ext, old_ext))
+		asprintf (&srtname, "%.*s%s", ext - filename, filename, new_ext);
+	return srtname;
+}
+
 void handle_srt_for_file (struct atrfs_entry *ent, bool insert)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 
 	char *name = ent->name;
+	char *srtname = get_related_name (name, ".flv", ".srt");
 
-	/* Add/remove subtitles for flv-files. */
-	char *ext = strrchr (name, '.');
-	if (ext && !strcmp (ext, ".flv"))
+	if (srtname)
 	{
 		struct atrfs_entry *srt_ent;
-		char srtname[strlen (name) + 1];
-		sprintf (srtname, "%.*s.srt", ext - name, name);
+		srtname = basename (srtname);
 
 		if (insert)
 		{
@@ -148,6 +155,7 @@ void handle_srt_for_file (struct atrfs_entry *ent, bool insert)
 				destroy_entry (srt_ent);
 			}
 		}
+		free (srtname);
 	}
 }
 

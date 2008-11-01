@@ -1,4 +1,4 @@
-/* util.h - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
+/* util.h - 24.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #ifndef UTIL_H
 #define UTIL_H
 #include <stdbool.h>
@@ -19,5 +19,7 @@ char *get_pdir(double filelen, int watchcount, double watchtime);
 char *secs_to_time (double secs);
 char *pid_to_cmdline(pid_t pid);
 double doubletime(void);
+
+char *get_related_name (char *filename, char *old_ext, char *new_ext);
 
 #endif
