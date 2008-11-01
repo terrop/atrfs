@@ -137,7 +137,6 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		abort ();
 	case ATRFS_DIRECTORY_ENTRY:
 		ent->directory.e_contents = g_hash_table_new (g_str_hash, g_str_equal);
-		ent->directory.dir_len = 0;
 		break;
 	case ATRFS_FILE_ENTRY:
 		ent->file.real_files = NULL;
@@ -191,7 +190,6 @@ void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name)
 	ent->name = strdup (name);
 	g_hash_table_replace (dir->directory.e_contents, ent->name, ent);
 	ent->parent = dir;
-	dir->directory.dir_len++;
 }
 
 /*
@@ -204,7 +202,6 @@ void detach_entry (struct atrfs_entry *ent)
 	char *name = ent->name;
 	if (name)
 		g_hash_table_remove (ent->parent->directory.e_contents, name);
-	ent->parent->directory.dir_len--;
 	ent->parent = NULL;
 
 	free (ent->name);
@@ -246,7 +243,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_nlink = 1;
 		st->st_uid = getuid();
 		st->st_gid = getgid();
-		st->st_size = ent->directory.dir_len;
+		st->st_size = g_hash_table_size(ent->directory.e_contents);
 		st->st_atime =
 		st->st_mtime =
 		st->st_ctime = time (NULL);
