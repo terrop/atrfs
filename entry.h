@@ -1,4 +1,4 @@
-/* entry.h - 24.7.2008 - 31.10.2008 Ari & Tero Roponen */
+/* entry.h - 24.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #ifndef ENTRY_H
 #define ENTRY_H
 #include <fuse/fuse_lowlevel.h>
@@ -19,7 +19,6 @@ struct atrfs_entry;
 
 struct entry_ops
 {
-	void (*read)(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
 	void (*release)(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 	int (*unlink)(struct atrfs_entry *entry);
 	void (*bmap)(fuse_req_t req, struct atrfs_entry *ent, size_t blocksize, uint64_t idx);

@@ -1,4 +1,4 @@
-/* entry.c - 24.7.2008 - 14.8.2008 Ari & Tero Roponen */
+/* entry.c - 24.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,19 +21,15 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 }
 
 /* in atrfs_ops.c */
-extern void read_file(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
-extern void read_virtual(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off);
 extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
 static struct entry_ops fileops =
 {
-	.read = read_file,
 	.release = release_file,
 };
 
 static struct entry_ops virtual_ops =
 {
-	.read = read_virtual,
 };
 
 bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);

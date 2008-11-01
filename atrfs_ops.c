@@ -1,4 +1,4 @@
-/* atrfs_ops.c - 28.7.2008 - 14.8.2008 Ari & Tero Roponen */
+/* atrfs_ops.c - 28.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #include <errno.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
@@ -421,24 +421,6 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	}
 }
 
-void read_virtual(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off)
-{
-	size_t count = ent->virtual.size;
-	if (size < count)
-		count = size;
-	fuse_reply_buf(req, ent->virtual.data + off, count);
-}
-
-void read_file(fuse_req_t req, struct atrfs_entry *ent, int fd, size_t size, off_t off)
-{
-	char buf[size];
-	int ret = pread(fd, buf, size, off);
-	if (ret < 0)
-		fuse_reply_err(req, errno);
-	else
-		fuse_reply_buf(req, buf, ret);
-}
-
 /*
  * Read data
  *
@@ -468,9 +450,33 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
-	if (ent->ops->read)
-		return ent->ops->read(req, ent, fi->fh, size, off);
-	fuse_reply_err(req, ENOSYS);
+
+	switch (ent->e_type)
+	{
+	default:
+		fuse_reply_err(req, ENOSYS);
+		break;
+
+	case ATRFS_FILE_ENTRY:
+	{
+		char buf[size];
+		int ret = pread (fi->fh, buf, size, off);
+		if (ret < 0)
+			fuse_reply_err (req, errno);
+		else
+			fuse_reply_buf (req, buf, ret);
+		break;
+	}
+
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+	{
+		size_t count = ent->virtual.size;
+		if (size + off > count)
+			size = count - off;
+		fuse_reply_buf (req, ent->virtual.data + off, size);
+		break;
+	}
+	}
 }
 
 extern int stat_count;
