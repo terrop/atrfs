@@ -50,7 +50,6 @@ struct atrfs_entry
 		struct
 		{
 			GHashTable *e_contents;
-			int dir_len;
 		} directory;
 
 		struct
