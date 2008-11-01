@@ -95,20 +95,24 @@ static char *get_virtual_srt(char *filename)
 	char *base = basename (filename);
 	char *ret = NULL;
 	int i, linenum;
+	double watchtime, length;
 
 	char *ext = strrchr(base, '.');
 	if (!ext || strcmp(ext, ".flv"))
 		goto out;
 
+	watchtime = get_dvalue (filename, "user.watchtime", 0.0);
+	length = get_dvalue (filename, "user.length", 0.0);
+
 	asprintf (&ret,
 		  "1\n00:00:00,00 --> 00:00:05,00\n"
-		  "%.*s\n%s / %s\n\n",
+		  "%.*s\n%.2lf × %s\n\n",
 		  ext - base, base,
-		  secs_to_time (get_dvalue (filename, "user.watchtime", 0.0)),
-		  secs_to_time (get_dvalue (filename, "user.length", 0.0)));
+		  length >= 1.0 ? watchtime / length : 0,
+		  secs_to_time (length));
 
 	linenum = 2;
-	for (i = 15; i < (int)get_dvalue (filename, "user.length", 0.0); i += 15)
+	for (i = 15; i < (int)length; i += 15)
 	{
 		char *tmp = NULL;
 		char *line = NULL;
