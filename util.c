@@ -116,36 +116,36 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 	}
 }
 
-void handle_srt_for_file (struct atrfs_entry *file, bool insert)
+void handle_srt_for_file (struct atrfs_entry *ent, bool insert)
 {
-	CHECK_TYPE (file, ATRFS_FILE_ENTRY);
+	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 
-	char *name = file->name;
+	char *name = ent->name;
 
 	/* Add/remove subtitles for flv-files. */
 	char *ext = strrchr (name, '.');
 	if (ext && !strcmp (ext, ".flv"))
 	{
-		struct atrfs_entry *ent;
+		struct atrfs_entry *srt_ent;
 		char srtname[strlen (name) + 1];
 		sprintf (srtname, "%.*s.srt", ext - name, name);
 
 		if (insert)
 		{
 			int i;
-			char *data = get_srt(file);
+			char *data = get_srt(ent);
 
-			ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-			ent->virtual.data = data;
-			ent->virtual.size = strlen (data);
-			attach_entry (file->parent, ent, srtname);
+			srt_ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+			srt_ent->virtual.data = data;
+			srt_ent->virtual.size = strlen (data);
+			attach_entry (ent->parent, srt_ent, srtname);
 		} else {
-			ent = lookup_entry_by_name (file->parent, srtname);
-			if (ent && ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
+			srt_ent = lookup_entry_by_name (ent->parent, srtname);
+			if (srt_ent && srt_ent->e_type == ATRFS_VIRTUAL_FILE_ENTRY)
 			{
-				detach_entry (ent);
-				free (ent->virtual.data);
-				destroy_entry (ent);
+				detach_entry (srt_ent);
+				free (srt_ent->virtual.data);
+				destroy_entry (srt_ent);
 			}
 		}
 	}
