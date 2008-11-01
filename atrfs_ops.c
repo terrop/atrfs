@@ -338,11 +338,8 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 	fuse_reply_err(req, ENOSYS);
 }
 
-static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_info *fi)
+static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 {
-	const struct fuse_ctx *ctx = fuse_req_ctx(req);
-	char *cmd = pid_to_cmdline(ctx->pid);
-
 	/*
 	 * Increase watch-count every time the 'mplayer' opens
 	 * the file and its timer is not already running.
@@ -359,11 +356,10 @@ static void open_file(fuse_req_t req, struct atrfs_entry *ent, struct fuse_file_
 		ent->file.start_time = doubletime ();
 	}
 
-	fi->fh = open(get_real_file_name(ent), fi->flags);
-	if (fi->fh < 0)
-		fuse_reply_err(req, errno);
-	else
-		fuse_reply_open(req, fi);
+	int fd = open(get_real_file_name(ent), flags);
+	if (fd < 0)
+		fd = -errno;
+	return fd;
 }
 
 /*
@@ -412,7 +408,12 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		fuse_reply_open(req, fi);
 		break;
 	case ATRFS_FILE_ENTRY:
-		return open_file(req, ent, fi);
+		fi->fh = open_file (cmd, ent, fi->flags);
+		if (fi->fh < 0)
+			fuse_reply_err (req, -fi->fh);
+		else
+			fuse_reply_open (req, fi);
+		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		fi->fh = -1;
 		fuse_reply_open(req, fi);
