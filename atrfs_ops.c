@@ -229,28 +229,6 @@ void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const ch
 	fuse_reply_err(req, ENOSYS);
 }
 
-int unlink_stat(struct atrfs_entry *entry)
-{
-	/* Files under 'stat' cannot be removed. */
-	return EROFS;
-}
-
-int unlink_root(struct atrfs_entry *entry)
-{
-	if (entry->e_type == ATRFS_FILE_ENTRY)
-	{
-		set_ivalue (entry, "user.count", 0);
-		set_dvalue (entry, "user.watchtime", 0.0);
-	}
-	return 0;
-}
-
-int unlink_subdir(struct atrfs_entry *entry)
-{
-	move_entry (entry, root);
-	return 0;
-}
-
 /*
  * Remove a file
  *
@@ -263,14 +241,26 @@ int unlink_subdir(struct atrfs_entry *entry)
  */
 void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
+	int err = ENOENT;
 	struct atrfs_entry *pent = ino_to_entry(parent);
-	int err = ENOSYS;
-	if (pent->ops->unlink)
+	struct atrfs_entry *entry = lookup_entry_by_name (pent, name);
+	if (entry)
 	{
-		err = ENOENT;
-		struct atrfs_entry *entry = lookup_entry_by_name (pent, name);
-		if (entry)
-			err = pent->ops->unlink(entry);
+		if (entry->parent == statroot)
+		{
+			/* Files under 'stat' cannot be removed. */
+			err = EROFS;
+		} else if (entry->parent == root) {
+			if (entry->e_type == ATRFS_FILE_ENTRY)
+			{
+				set_ivalue (entry, "user.count", 0);
+				set_dvalue (entry, "user.watchtime", 0.0);
+			}
+			err = 0;
+		} else {	/* subdir */
+			move_entry (entry, root);
+			err = 0;
+		}
 	}
 	fuse_reply_err(req, err);
 }
@@ -709,8 +699,8 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		return;
 	}
 
-	if (ent->ops->release)
-		return ent->ops->release(req, ent, fi->fh, fi);
+	if (ent->e_type == ATRFS_FILE_ENTRY)
+		return release_file (req, ent, fi->fh, fi);
 	fuse_reply_err(req, 0);
 }
 
@@ -808,8 +798,6 @@ void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
 static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
-	if (ent->ops->bmap)
-		return ent->ops->bmap(req, ent, blocksize, idx);
 	fuse_reply_err(req, ENOSYS);
 }
 

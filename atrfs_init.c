@@ -113,19 +113,6 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-extern int unlink_root(struct atrfs_entry *entry);
-extern int unlink_stat(struct atrfs_entry *entry);
-
-static struct entry_ops rootops =
-{
-	.unlink = unlink_root,
-};
-
-static struct entry_ops statops =
-{
-	.unlink = unlink_stat,
-};
-
 /*
  * Initialize filesystem
  *
@@ -151,11 +138,9 @@ void atrfs_init(void *userdata, struct fuse_conn_info *conn)
 
 	language_list = strdup("fi, it, en, la\n");
 	root = create_entry (ATRFS_DIRECTORY_ENTRY);
-	root->ops = &rootops;
 	root->name = "/";
 
 	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
-	statroot->ops = &statops;
 	attach_entry (root, statroot, "stats");
 
 	parse_config_file ((char *)userdata, root);

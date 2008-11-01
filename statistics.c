@@ -130,20 +130,12 @@ void update_stats (void)
 	}
 }
 
-extern int unlink_subdir(struct atrfs_entry *entry);
-
-static struct entry_ops subdirops =
-{
-	.unlink = unlink_subdir,
-};
-
 static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 {
 	struct atrfs_entry *dir = lookup_entry_by_name (root, subdir);
 	if (! dir)
 	{
 		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-		dir->ops = &subdirops;
 		attach_entry (root, dir, subdir);
 	}
 	move_entry (ent, dir);

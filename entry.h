@@ -15,15 +15,6 @@ enum atrfs_entry_type
 	ATRFS_VIRTUAL_FILE_ENTRY,
 };
 
-struct atrfs_entry;
-
-struct entry_ops
-{
-	void (*release)(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
-	int (*unlink)(struct atrfs_entry *entry);
-	void (*bmap)(fuse_req_t req, struct atrfs_entry *ent, size_t blocksize, uint64_t idx);
-};
-
 struct file_list
 {
 	char *name;
@@ -36,8 +27,6 @@ struct atrfs_entry
 	struct atrfs_entry *parent;
 	char *name;
 	unsigned char flags;
-
-	struct entry_ops *ops;
 
 	union
 	{

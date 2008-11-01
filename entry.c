@@ -23,15 +23,6 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 /* in atrfs_ops.c */
 extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
-static struct entry_ops fileops =
-{
-	.release = release_file,
-};
-
-static struct entry_ops virtual_ops =
-{
-};
-
 bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);
 
 char *get_real_file_name(struct atrfs_entry *ent)
@@ -129,7 +120,6 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	ent->parent = NULL;
 	ent->name = NULL;
 	ent->flags = 0;
-	ent->ops = NULL;
 
 	switch (type)
 	{
@@ -141,12 +131,10 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	case ATRFS_FILE_ENTRY:
 		ent->file.real_files = NULL;
 		ent->file.start_time = -1.0;
-		ent->ops = &fileops;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		ent->virtual.data = NULL;
 		ent->virtual.size = 0;
-		ent->ops = &virtual_ops;
 		break;
 	}
 	return ent;
