@@ -247,8 +247,8 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_uid = getuid();
 		st->st_gid = getgid();
 		st->st_size = ent->directory.dir_len;
-		st->st_atime = time (NULL);
-		st->st_mtime = time (NULL);
+		st->st_atime =
+		st->st_mtime =
 		st->st_ctime = time (NULL);
 		break;
 
@@ -258,8 +258,8 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_mode = S_IFREG | S_IRUSR;
 		st->st_uid = getuid();
 		st->st_gid = getgid();
-		st->st_atime = time (NULL);
-		st->st_mtime = time (NULL);
+		st->st_atime =
+		st->st_mtime =
 		st->st_ctime = time (NULL);
 		break;
 
