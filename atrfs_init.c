@@ -14,14 +14,21 @@ extern struct atrfs_entry *statroot;
 
 static char *get_group_name(char *fname)
 {
-	int idx;
 	static char gname[256];
+#if 0
+	int idx;
 	if (sscanf(fname, "%[^_]_%2d.flv", gname, &idx) == 2)
 	{
 		strcat(gname, ".flv");
 		return gname;
 	}
 	return fname;
+#else
+	char *uniq_name = uniquify_name(fname, root);
+	strcpy(gname, uniq_name);
+	free(uniq_name);
+	return gname;
+#endif
 }
 
 static void add_file_when_flv(const char *filename)

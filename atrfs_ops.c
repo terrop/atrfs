@@ -637,7 +637,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 	}
 
 	/* If this was a flv-file, then srt_name != NULL */
-	if (srt_name && isgreaterequal (playtime, 0.0))
+	if (srt_name && isgreater (playtime, 0.0))
 	{
 		char *filename = get_real_file_name (ent);
 
