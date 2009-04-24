@@ -1,6 +1,6 @@
 # Makefile - 21.7.2008 - 28.7.2008 Ari & Tero Roponen
 
-CFLAGS=-D_GNU_SOURCE -DFUSE_USE_VERSION=26 -DLIST_SIZE=20 \
+CFLAGS=-D_GNU_SOURCE -DFUSE_USE_VERSION=26 \
 	$(shell pkg-config --cflags fuse glib-2.0) -g
 LIBS=$(shell pkg-config --libs fuse glib-2.0) -lm
 
