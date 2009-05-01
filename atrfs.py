@@ -90,7 +90,19 @@ class ATRStat(fuse.Stat):
 		self.st_mtime = 0
 		self.st_ctime = 0
 
+class FLVFuseFile():
+	def __init__(self, path, flags, *mode):
+		self.entry = flv_resolve_path(path)
+
+	def read(self, size, offset):
+		f = file(self.entry.get_real_name())
+		f.seek(offset)
+		buf = f.read(size)
+		f.close()
+		return buf
+
 class ATRFS(fuse.Fuse):
+	file_class = FLVFuseFile
 	def getattr(self, path):
 		st = ATRStat()
 		entry = flv_resolve_path(path)
@@ -112,15 +124,7 @@ class ATRFS(fuse.Fuse):
 		entry = flv_resolve_path(path)
 		for name in entry.get_names():
 			yield fuse.Direntry(name)
-
-	def read(self, path, size, offset):
-		entry = flv_resolve_path(path)
-		f = file(entry.get_real_name())
-		f.seek(offset)
-		buf = f.read(size)
-		f.close()
-		return buf
-
+	
 def flv_populate(dir):
 	for directory, subdirs, filenames in os.walk(dir):
 		for name in filter(lambda (name): name[-4:] == ".flv", filenames):
