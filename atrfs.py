@@ -90,19 +90,36 @@ class ATRStat(fuse.Stat):
 		self.st_mtime = 0
 		self.st_ctime = 0
 
+def pid_to_command(pid):
+	try:
+		pid = os.getpid()
+		f = file("/proc/%d/cmdline" % pid)
+		return f.readline().split("\x00")[0].split("/")[-1]
+	finally:
+		f.close()
+
 class FLVFuseFile():
-	def __init__(self, path, flags, *mode):
+	def __init__(self, fuse, path, flags, *mode):
+		self.cmd = pid_to_command(fuse.GetContext()["pid"])
 		self.entry = flv_resolve_path(path)
+		self.file = file(self.entry.get_real_name())
 
 	def read(self, size, offset):
-		f = file(self.entry.get_real_name())
-		f.seek(offset)
-		buf = f.read(size)
-		f.close()
-		return buf
+		self.file.seek(offset)
+		return self.file.read(size)
+
+	def release(self, flags):
+		self.file.close()
 
 class ATRFS(fuse.Fuse):
-	file_class = FLVFuseFile
+	def __init__(self):
+		# Hack to allow FLVFuseFile to see this class
+		class wrapped_file_class(FLVFuseFile):
+			def __init__(self2, *a, **kw):
+				FLVFuseFile.__init__(self2, self, *a, **kw)
+		self.file_class = wrapped_file_class
+		fuse.Fuse.__init__(self)
+
 	def getattr(self, path):
 		st = ATRStat()
 		entry = flv_resolve_path(path)
