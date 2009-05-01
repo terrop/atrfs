@@ -121,19 +121,28 @@ class ATRFS(fuse.Fuse):
 		f.close()
 		return buf
 
-def flv_init():
-	for directory, subdirs, filenames in os.walk("/home/terrop/Videos"):
+def flv_populate(dir):
+	for directory, subdirs, filenames in os.walk(dir):
 		for name in filter(lambda (name): name[-4:] == ".flv", filenames):
 			flv_root.add_entry(name, FLVFile(directory, name), True)
 	for name in flv_root.get_names():
 		flv_categorize(flv_root, name)
+
+def flv_parse_config_file(filename):
+	cfg = file(filename)
+	lines = cfg.readlines()
+	cfg.close()
+	for line in lines:
+		if line[0] == "#": pass
+		elif line[:9] == "language=": raise IOError("Not implemented: language")
+		else: flv_populate(line[:-1]) # line ends with '\n'
 
 fuse.fuse_python_api = (0,2)
 flv_root = None
 def main():
 	global flv_root
 	flv_root = FLVDirectory("/")
-	flv_init()
+	flv_parse_config_file("atrfs.conf")
 	server = ATRFS()
 	server.parse()
 	server.main()
