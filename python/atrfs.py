@@ -10,18 +10,6 @@ sys.path.append(".")
 from FLVTree import VirtualFile, FLVFile, FLVDirectory
 from asc import *
 
-def flv_categorize(parent, name):
-	entry = parent.lookup(name)
-	if not isinstance(entry, FLVFile):
-		return
-	category = entry.get_attrs().get("user.count", "0\x00")[:-1]
-	cat = flv_root.lookup(category)
-	if not cat:
-		cat = FLVDirectory(category)
-		flv_root.add_entry(category, cat)
-	parent.del_entry(name)
-	cat.add_entry(name, entry)
-
 def flv_resolve_path(path):
 	parts = filter(lambda (str): not str == "", path.split(os.path.sep))
 	entry = flv_root
@@ -52,7 +40,7 @@ def add_asc_file(flv_entry):
 	real_flv = flv_entry.get_real_name()
 	real_asc = "%s.asc" % real_flv[:-4]
 	text = None
-	for lang in flv_languages.split(","):
+	for lang in stats.get_lang_entry().get_contents().split(","):
 		if not text:
 			try:
 				text = asc_read_subtitles(real_asc, lang)
@@ -94,35 +82,30 @@ class FLVFuseFile():
 			raise IOError("Unknown file type")
 
 	def release(self, flags):
-		global flv_recent
 		if isinstance(self.entry, FLVFile):
 			self.file.close()
 			if self.cmd in ["mplayer"]:
 				timing.finish()
-				last_time = flv_resolve_path("/stat/last-time")
-				if last_time:
-					last_time.set_contents("%s\n" % timing.milli())
+				# TODO: update view count and watchtime here
+				# timing.milli()
+				parent, name = self.entry.get_pos()
+				flv_categorize(parent, name)
+				# top-list and last-list are updated in flv_categorize
+				stats.update_recent(self.entry)
 				if self.asc:
 					del_asc_file(self.asc)
-				# update recent list
-				parent, name = self.entry.get_pos()
-				flv_recent.insert(0, name)
-				flv_recent = flv_recent[:10] # max 10 items
-				recent = flv_resolve_path("/stat/recent")
-				recent.set_contents("\n".join(flv_recent) + "\n")
 		else:
 			pass
 
 	def write(self, buf, offset):
-		global flv_languages
-		if not self.entry == flv_resolve_path("/stat/language"):
+		lang = stats.get_lang_entry()
+		if not self.entry == lang:
 			return -errno.EROFS
 		# Check that the string is valid: "xx,yy,zz"
 		for elt in buf.rstrip().split(","):
 			if len(elt) != 2:
 				return -errno.ERANGE
-		flv_languages = buf
-		self.entry.set_contents(flv_languages)
+		lang.set_contents(buf.rstrip())
 		return len(buf)
 
 class ATRFS(fuse.Fuse):
@@ -163,27 +146,79 @@ class ATRFS(fuse.Fuse):
 	def truncate(self, path, len):
 		return 0
 
+class FLVStatistics():
+	def __init__(self):
+		self.statroot = FLVDirectory("stat")
+		self.statroot.add_entry("language", VirtualFile("fi,en,la,it"))
+		self.statroot.add_entry("recent", VirtualFile(""))
+		self.statroot.add_entry("top-list", VirtualFile(""))
+		self.statroot.add_entry("last-list", VirtualFile(""))
+		self.recent = []
+		self.toplist = []
+		self.lastlist = []
+	def get_root(self):
+		return self.statroot
+	def get_lang_entry(self):
+		return self.statroot.lookup("language")
+	def _entry_to_recent_str(self, entry):
+		parent, name = entry.get_pos()
+		(_, pname) = parent.get_pos()
+		return "%s%c%s\n" % (pname, os.path.sep, name)
+	def _entry_to_timed_str(self, entry):
+		time = int(float(entry.get_attrs().get("user.watchtime", "0\x00")[:-1]))
+		parent, name = entry.get_pos()
+		(_, pname) = parent.get_pos()
+		return "%02d:%02d\t%s%c%s\n" % (time / 60, time % 60, pname, os.path.sep, name)
+	def _cmp_for_top(self,ent1, ent2):
+		c1 = int(ent1.get_attrs().get("user.count", "0\x00")[:-1])
+		c2 = int(ent2.get_attrs().get("user.count", "0\x00")[:-1])
+		return c2 - c1
+	def _cmp_for_last(self,ent1, ent2):
+		return self._cmp_for_top(ent2, ent1)
+	def update_recent(self, entry):
+		if (self.recent != []) and (entry == self.recent[0]):
+			return
+		self.recent.insert(0, entry)
+		self.recent = self.recent[:10] # max 10 items
+		rfile = self.statroot.lookup("recent")
+		rfile.set_contents("".join(map(self._entry_to_recent_str, self.recent)))
+	def update_toplist(self, entry):
+		if not entry in self.toplist:
+			self.toplist.insert(0, entry)
+		self.toplist = sorted(self.toplist, self._cmp_for_top)
+		self.toplist = self.toplist[:10]
+		top = self.statroot.lookup("top-list")
+		top.set_contents("".join(map(self._entry_to_timed_str, self.toplist)))
+	def update_lastlist(self, entry):
+		if not entry in self.lastlist:
+			self.lastlist.insert(0, entry)
+		self.lastlist = sorted(self.lastlist, self._cmp_for_last)
+		self.lastlist = self.lastlist[:10]
+		last = self.statroot.lookup("last-list")
+		last.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
+
+def flv_categorize(parent, name):
+	entry = parent.lookup(name)
+	if not isinstance(entry, FLVFile):
+		return
+	# XXX
+	category = entry.get_attrs().get("user.count", "0\x00")[:-1]
+	cat = flv_root.lookup(category)
+	if not cat:
+		cat = FLVDirectory(category)
+		flv_root.add_entry(category, cat)
+	parent.del_entry(name)
+	cat.add_entry(name, entry)
+	# initialize top-list and last-list here since here we see all the files.
+	stats.update_toplist(entry)
+	stats.update_lastlist(entry)
+
 def flv_populate(dir):
 	for directory, subdirs, filenames in os.walk(dir):
 		for name in filter(lambda (name): name[-4:] == ".flv", filenames):
 			flv_root.add_entry(name, FLVFile(directory, name), True)
 	for name in flv_root.get_names():
 		flv_categorize(flv_root, name)
-	# stat-directory
-	stat = FLVDirectory("stat")
-	flv_root.add_entry("stat", stat)
-	# version
-	ver = VirtualFile("ATRFS 1.0 (python version)\n")
-	stat.add_entry("version", ver)
-	# last-time
-	time = VirtualFile("(empty)\n")
-	stat.add_entry("last-time", time)
-	# language
-	lang = VirtualFile(flv_languages)
-	stat.add_entry("language", lang)
-	# recent
-	recent = VirtualFile("(empty)")
-	stat.add_entry("recent", recent)
 
 def flv_parse_config_file(filename):
 	cfg = file(filename)
@@ -191,17 +226,21 @@ def flv_parse_config_file(filename):
 	cfg.close()
 	for line in lines:
 		if line[0] == "#": pass
-		elif line[:9] == "language=": raise IOError("Not implemented: language")
+		elif line[:9] == "language=":
+			stats.get_lang_entry().set_contents(line[9:].rstrip())
 		else: flv_populate(line[:-1]) # line ends with '\n'
 
 fuse.fuse_python_api = (0,2)
 flv_root = None
-flv_languages = "fi,en,la,it"
-flv_recent = []
+stats = None
 def main():
-	global flv_root
+	global flv_root, stats
 	flv_root = FLVDirectory("/")
+	stats = FLVStatistics()
+	flv_root.add_entry("stat", stats.get_root())
+	stats.get_lang_entry().set_contents("fi,en,la,it")
 	flv_parse_config_file("atrfs.conf")
+
 	server = ATRFS()
 	server.parse()
 	server.main()
