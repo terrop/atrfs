@@ -8,6 +8,7 @@ import timing
 import sys
 sys.path.append(".")
 from FLVTree import VirtualFile, FLVFile, FLVDirectory
+from asc import *
 
 def flv_categorize(parent, name):
 	entry = parent.lookup(name)
@@ -48,14 +49,30 @@ def pid_to_command(pid):
 	finally:
 		f.close()
 
+def add_asc_file(flv_path):
+	entry = flv_resolve_path(flv_path)
+	real_flv = entry.get_real_name()
+	text = asc_read_subtitles("%s.asc" % real_flv[:-4], "it")
+	name = "%s.srt" % flv_path.split(os.path.sep)[-1][:-4]
+	asc_ent = VirtualFile(text)
+	parent = flv_resolve_path(flv_path[:flv_path.rindex(os.path.sep)])
+	parent.add_entry(name, asc_ent)
+	return (parent, name)
+
+def del_asc_file(data):
+	parent, name = data
+	parent.del_entry(name)
+
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
 		self.entry = flv_resolve_path(path)
 		self.cmd = None
+		self.asc = None
 		if isinstance(self.entry, FLVFile):
 			self.cmd = pid_to_command(fuse.GetContext()["pid"])
 			self.file = file(self.entry.get_real_name())
 			if self.cmd in ["mplayer"]:
+				self.asc = add_asc_file(path)
 				timing.start()
 		elif isinstance(self.entry, VirtualFile):
 			pass
@@ -79,6 +96,8 @@ class FLVFuseFile():
 				last_time = flv_resolve_path("/stat/last-time")
 				if last_time:
 					last_time.set_contents("%s\n" % timing.milli())
+				if self.asc:
+					del_asc_file(self.asc)
 		else:
 			pass
 
