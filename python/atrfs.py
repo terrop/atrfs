@@ -49,18 +49,21 @@ def pid_to_command(pid):
 	finally:
 		f.close()
 
-def add_asc_file(flv_path):
-	entry = flv_resolve_path(flv_path)
-	real_flv = entry.get_real_name()
-	text = asc_read_subtitles("%s.asc" % real_flv[:-4], "it")
-	name = "%s.srt" % flv_path.split(os.path.sep)[-1][:-4]
-	asc_ent = VirtualFile(text)
-	parent = flv_resolve_path(flv_path[:flv_path.rindex(os.path.sep)])
-	parent.add_entry(name, asc_ent)
-	return (parent, name)
+def add_asc_file(flv_entry):
+	parent, flv_name = flv_entry.get_pos()
+	asc_name = "%s.srt" % flv_name[:-4]
+	real_flv = flv_entry.get_real_name()
+	real_asc = "%s.asc" % real_flv[:-4]
+	try:
+		text = asc_read_subtitles(real_asc, "it")
+	except IOError, e:
+		text = asc_fake_subtitles(flv_name[:-4], 120)
+	asc_entry = VirtualFile(text)
+	parent.add_entry(asc_name, asc_entry)
+	return asc_entry
 
-def del_asc_file(data):
-	parent, name = data
+def del_asc_file(asc_entry):
+	parent, name = asc_entry.get_pos()
 	parent.del_entry(name)
 
 class FLVFuseFile():
@@ -72,7 +75,7 @@ class FLVFuseFile():
 			self.cmd = pid_to_command(fuse.GetContext()["pid"])
 			self.file = file(self.entry.get_real_name())
 			if self.cmd in ["mplayer"]:
-				self.asc = add_asc_file(path)
+				self.asc = add_asc_file(self.entry)
 				timing.start()
 		elif isinstance(self.entry, VirtualFile):
 			pass

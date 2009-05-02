@@ -2,8 +2,17 @@
 import os
 import xattr
 
-class VirtualFile():
+class BaseFile():
+	def __init__(self):
+		self.entry_pos = None
+	def set_pos(self, parent, name):
+		self.entry_pos = (parent, name)
+	def get_pos(self):
+		return self.entry_pos
+
+class VirtualFile(BaseFile):
 	def __init__(self, contents=""):
+		BaseFile.__init__(self)
 		self.data = contents
 	def __repr__(self):
 		return "<VirtualFile (%d bytes)>" % len(self.data)
@@ -12,10 +21,11 @@ class VirtualFile():
 	def set_contents(self, contents):
 		self.data = contents
 
-class FLVFile():
+class FLVFile(BaseFile):
 	flv_dirs = []
 
 	def __init__(self, directory, file_name):
+		BaseFile.__init__(self)
 		if directory not in self.flv_dirs: self.flv_dirs.append(directory)
 		self.real_dir_idx = self.flv_dirs.index(directory)
 		self.real_name = file_name
@@ -41,8 +51,9 @@ class FLVFile():
 				raise IOError("Attribute value must end with '\x00'")
 			print("Change %s from %s to %s" % (attr, old_attrs[attr], attrs[attr]))
 
-class FLVDirectory():
+class FLVDirectory(BaseFile):
 	def __init__(self, name):
+		BaseFile.__init__(self)
 		self.name = name
 		self.contents = {}
 
@@ -58,8 +69,11 @@ class FLVDirectory():
 		if tmp in self.contents:
 			raise IOError("Name already in use: %s" % tmp)
 		self.contents[tmp] = entry
+		entry.set_pos(self, tmp)
 
 	def del_entry(self, name):
+		entry = self.contents[name]
+		entry.set_pos(None, None)
 		del(self.contents[name])
 
 	def lookup(self, name):
