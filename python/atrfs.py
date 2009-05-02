@@ -3,6 +3,7 @@
 # atrfs.py - 1.5.2009 - 2.5.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat, xattr
+import timing
 
 import sys
 sys.path.append(".")
@@ -49,10 +50,13 @@ def pid_to_command(pid):
 
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
-		self.cmd = pid_to_command(fuse.GetContext()["pid"])
 		self.entry = flv_resolve_path(path)
+		self.cmd = None
 		if isinstance(self.entry, FLVFile):
+			self.cmd = pid_to_command(fuse.GetContext()["pid"])
 			self.file = file(self.entry.get_real_name())
+			if self.cmd in ["mplayer"]:
+				timing.start()
 		elif isinstance(self.entry, VirtualFile):
 			pass
 		else:
@@ -70,6 +74,11 @@ class FLVFuseFile():
 	def release(self, flags):
 		if isinstance(self.entry, FLVFile):
 			self.file.close()
+			if self.cmd in ["mplayer"]:
+				timing.finish()
+				last_time = flv_resolve_path("/stat/last-time")
+				if last_time:
+					last_time.set_contents("%s\n" % timing.milli())
 		else:
 			pass
 
@@ -119,6 +128,8 @@ def flv_populate(dir):
 	flv_root.add_entry("stat", stat)
 	ver = VirtualFile("ATRFS 1.0 (python version)\n")
 	stat.add_entry("version", ver)
+	time = VirtualFile("(empty)\n")
+	stat.add_entry("last-time", time)
 
 def flv_parse_config_file(filename):
 	cfg = file(filename)
