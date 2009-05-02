@@ -1,110 +1,5 @@
 # asc.py - 2.5.2009 - 2.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 
-"""
-char *language_list;
-static bool has_many_languages = false;
-static bool found_language = false;
-
-static void print_correct_text (const char *line, char *lang, FILE *out)
-{
-	char *saved;
-	char *end = strchr (line+1, ']');
-	if (! end)
-	{
-		fprintf (out, "%s", line);
-		return;
-	}
-	has_many_languages = true;
-
-	char *tags = strdup (line + 1);
-	tags[end - line - 1] = '\0';
-	char *s;
-	for (s = strtok_r (tags, ",", &saved); s; s = strtok_r (NULL, ",", &saved))
-	{
-		if (! strcmp (s, lang))
-		{
-			found_language = true;
-			fprintf (out, "%s", end + 1 + 1); /* space */
-			break;
-		}
-	}
-	free (tags);
-}
-
-static char *get_virtual_srt(char *filename)
-{
-	char *base = basename (filename);
-	char *ret = NULL;
-	int i, linenum;
-	double watchtime, length;
-
-	char *ext = strrchr(base, '.');
-	if (!ext || strcmp(ext, ".flv"))
-		goto out;
-
-	watchtime = get_dvalue (filename, "user.watchtime", 0.0);
-	length = get_dvalue (filename, "user.length", 0.0);
-
-	asprintf (&ret,
-		  "1\n00:00:00,00 --> 00:00:05,00\n"
-		  "%.*s\n%.2lf × %s\n\n",
-		  ext - base, base,
-		  length >= 1.0 ? watchtime / length : 0,
-		  secs_to_time (length));
-
-	linenum = 2;
-	for (i = 15; i < (int)length; i += 15)
-	{
-		char *tmp = NULL;
-		char *line = NULL;
-		asprintf (&line,
-			"%d\n00:%s.00 --> 00:%s,00\n%s\n\n",
-			linenum++,
-			secs_to_time(i),
-			secs_to_time(i+1),
-			secs_to_time(i));
-
-		asprintf (&tmp, "%s%s", ret, line);
-		free (ret);
-		ret = tmp;
-	}
-out:
-	return ret;
-}
-
-static char *get_real_srt(char *filename)
-{
-	char *ret = NULL;
-	char *lng = strdup(language_list);
-	char *s, *saved;
-	char *ascname = get_related_name (filename, ".flv", ".asc");
-
-	/* Try different languages in requested order */
-	for (s = strtok_r(lng, ", \n", &saved); s; s = strtok_r(NULL, ", \n", &saved))
-	{
-		ret = asc_read_subtitles(ascname, s);
-		if (ret)
-			break;
-	}
-
-	free (ascname);
-	free(lng);
-	return ret;
-}
-
-char *get_srt(char *filename)
-{
-	/*
-	 * Try to load real subtitles from asc-file. If this
-	 * fails, use virtual subtitles instead.
-	 * */
-	char *ret = get_real_srt(filename);
-	if (!ret)
-		ret = get_virtual_srt(filename);
-	return ret;
-}
-"""
-
 asc_text = None
 has_many_languages = False
 found_language = False
@@ -149,3 +44,19 @@ def asc_read_subtitles(filename, lang):
     if has_many_languages and not found_language:
         return None
     return "".join(asc_text)
+
+def asc_fake_subtitle(time):
+    bm, bs = (time / 60, time % 60)
+    em, es = ((time+1) / 60, (time + 1) % 60)
+    begin = "%02d:%02d" % (bm, bs)
+    end = "%02d:%02d" % (em, es)
+    return "00:%s,000 --> 00:%s,000\n%s\n" % (begin, end, begin)
+
+def asc_fake_subtitles(name, length):
+    text = ["0\n00:00:00,000 --> 00:00:05,000\n%s\n" % name]
+    if length < 16: return text
+    pos = 1
+    for time in range(15, length, 15):
+        text.append("%d\n%s" % (pos, asc_fake_subtitle(time)))
+        pos = pos + 1
+    return "\n".join(text)
