@@ -43,11 +43,8 @@ class ATRStat(fuse.Stat):
 		self.st_ctime = 0
 
 def pid_to_command(pid):
-	try:
-		f = file("/proc/%d/cmdline" % pid)
+	with open("/proc/%d/cmdline" % pid) as f:
 		return f.readline().split("\x00")[0].split("/")[-1]
-	finally:
-		f.close()
 
 def add_asc_file(flv_entry):
 	parent, flv_name = flv_entry.get_pos()
