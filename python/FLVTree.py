@@ -56,7 +56,7 @@ class FLVDirectory():
 			count = count + 1
 			tmp = "%s_%d.flv" % (name[:-4], count)
 		if tmp in self.contents:
-			raise IOError("Name already in use")
+			raise IOError("Name already in use: %s" % tmp)
 		self.contents[tmp] = entry
 
 	def del_entry(self, name):
