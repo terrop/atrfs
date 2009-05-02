@@ -51,9 +51,14 @@ def add_asc_file(flv_entry):
 	asc_name = "%s.srt" % flv_name[:-4]
 	real_flv = flv_entry.get_real_name()
 	real_asc = "%s.asc" % real_flv[:-4]
-	try:
-		text = asc_read_subtitles(real_asc, "it")
-	except IOError, e:
+	text = None
+	for lang in flv_languages.split(","):
+		if not text:
+			try:
+				text = asc_read_subtitles(real_asc, lang)
+			except IOError, e:
+				pass
+	if not text:
 		text = asc_fake_subtitles(flv_name[:-4], 600) # TODO: oikea pituus
 	asc_entry = VirtualFile(text)
 	parent.add_entry(asc_name, asc_entry)
@@ -111,11 +116,11 @@ class FLVFuseFile():
 	def write(self, buf, offset):
 		global flv_languages
 		if not self.entry == flv_resolve_path("/stat/language"):
-			return -errno.EINVAL
+			return -errno.EROFS
 		# Check that the string is valid: "xx,yy,zz"
-		for elt in buf.split(","):
+		for elt in buf.rstrip().split(","):
 			if len(elt) != 2:
-				return -errno.EINVAL
+				return -errno.ERANGE
 		flv_languages = buf
 		self.entry.set_contents(flv_languages)
 		return len(buf)
@@ -154,6 +159,9 @@ class ATRFS(fuse.Fuse):
 		entry = flv_resolve_path(path)
 		for name in entry.get_names():
 			yield fuse.Direntry(name)
+
+	def truncate(self, path, len):
+		return 0
 
 def flv_populate(dir):
 	for directory, subdirs, filenames in os.walk(dir):
