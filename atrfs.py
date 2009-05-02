@@ -92,7 +92,6 @@ class ATRStat(fuse.Stat):
 
 def pid_to_command(pid):
 	try:
-		pid = os.getpid()
 		f = file("/proc/%d/cmdline" % pid)
 		return f.readline().split("\x00")[0].split("/")[-1]
 	finally:
