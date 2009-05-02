@@ -1,8 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 1.5.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 2.5.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat, xattr
+
+class VirtualFile():
+	def __init__(self, contents=""):
+		self.data = contents
+	def __repr__(self):
+		return "<VirtualFile (%d bytes)>" % len(self.data)
+	def get_contents(self):
+		return self.data
+	def set_contents(self, contents):
+		self.data = contents
 
 class FLVFile():
 	flv_dirs = []
@@ -62,6 +72,8 @@ class FLVDirectory():
 
 def flv_categorize(parent, name):
 	entry = parent.lookup(name)
+	if not isinstance(entry, FLVFile):
+		return
 	category = entry.get_attrs().get("user.count", "0\x00")[:-1]
 	cat = flv_root.lookup(category)
 	if not cat:
@@ -101,14 +113,27 @@ class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
 		self.cmd = pid_to_command(fuse.GetContext()["pid"])
 		self.entry = flv_resolve_path(path)
-		self.file = file(self.entry.get_real_name())
+		if isinstance(self.entry, FLVFile):
+			self.file = file(self.entry.get_real_name())
+		elif isinstance(self.entry, VirtualFile):
+			pass
+		else:
+			raise IOError("Unknown file type")
 
 	def read(self, size, offset):
-		self.file.seek(offset)
-		return self.file.read(size)
+		if isinstance(self.entry, FLVFile):
+			self.file.seek(offset)
+			return self.file.read(size)
+		elif isinstance(self.entry, VirtualFile):
+			return self.entry.get_contents()[offset:offset+size]
+		else:
+			raise IOError("Unknown file type")
 
 	def release(self, flags):
-		self.file.close()
+		if isinstance(self.entry, FLVFile):
+			self.file.close()
+		else:
+			pass
 
 class ATRFS(fuse.Fuse):
 	def __init__(self):
@@ -134,6 +159,10 @@ class ATRFS(fuse.Fuse):
 			st.st_size = stbuf.st_size
 			st.st_mtime = stbuf.st_mtime
 			st.st_nlink = 1
+		elif isinstance(entry, VirtualFile):
+			st.st_mode = stat.S_IFREG | 0444
+			st.st_size = len(entry.get_contents())
+			st.st_nlink = 1
 		return st
 
 	def readdir(self, path, offset):
@@ -147,6 +176,11 @@ def flv_populate(dir):
 			flv_root.add_entry(name, FLVFile(directory, name), True)
 	for name in flv_root.get_names():
 		flv_categorize(flv_root, name)
+	# stat-directory
+	stat = FLVDirectory("stat")
+	flv_root.add_entry("stat", stat)
+	ver = VirtualFile("ATRFS 1.0 (python version)")
+	stat.add_entry("version", ver)
 
 def flv_parse_config_file(filename):
 	cfg = file(filename)
