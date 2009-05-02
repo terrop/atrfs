@@ -54,7 +54,7 @@ def add_asc_file(flv_entry):
 	try:
 		text = asc_read_subtitles(real_asc, "it")
 	except IOError, e:
-		text = asc_fake_subtitles(flv_name[:-4], 120)
+		text = asc_fake_subtitles(flv_name[:-4], 600) # TODO: oikea pituus
 	asc_entry = VirtualFile(text)
 	parent.add_entry(asc_name, asc_entry)
 	return asc_entry
@@ -66,14 +66,14 @@ def del_asc_file(asc_entry):
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
 		self.entry = flv_resolve_path(path)
-		self.cmd = None
-		self.asc = None
 		if isinstance(self.entry, FLVFile):
 			self.cmd = pid_to_command(fuse.GetContext()["pid"])
 			self.file = file(self.entry.get_real_name())
 			if self.cmd in ["mplayer"]:
 				self.asc = add_asc_file(self.entry)
 				timing.start()
+			else:
+				self.asc = None
 		elif isinstance(self.entry, VirtualFile):
 			pass
 		else:
@@ -89,6 +89,7 @@ class FLVFuseFile():
 			raise IOError("Unknown file type")
 
 	def release(self, flags):
+		global flv_recent
 		if isinstance(self.entry, FLVFile):
 			self.file.close()
 			if self.cmd in ["mplayer"]:
@@ -98,8 +99,26 @@ class FLVFuseFile():
 					last_time.set_contents("%s\n" % timing.milli())
 				if self.asc:
 					del_asc_file(self.asc)
+				# update recent list
+				parent, name = self.entry.get_pos()
+				flv_recent.insert(0, name)
+				flv_recent = flv_recent[:10] # max 10 items
+				recent = flv_resolve_path("/stat/recent")
+				recent.set_contents("\n".join(flv_recent) + "\n")
 		else:
 			pass
+
+	def write(self, buf, offset):
+		global flv_languages
+		if not self.entry == flv_resolve_path("/stat/language"):
+			return -errno.EINVAL
+		# Check that the string is valid: "xx,yy,zz"
+		for elt in buf.split(","):
+			if len(elt) != 2:
+				return -errno.EINVAL
+		flv_languages = buf
+		self.entry.set_contents(flv_languages)
+		return len(buf)
 
 class ATRFS(fuse.Fuse):
 	def __init__(self):
@@ -126,7 +145,7 @@ class ATRFS(fuse.Fuse):
 			st.st_mtime = stbuf.st_mtime
 			st.st_nlink = 1
 		elif isinstance(entry, VirtualFile):
-			st.st_mode = stat.S_IFREG | 0444
+			st.st_mode = stat.S_IFREG | 0666
 			st.st_size = len(entry.get_contents())
 			st.st_nlink = 1
 		return st
@@ -135,7 +154,7 @@ class ATRFS(fuse.Fuse):
 		entry = flv_resolve_path(path)
 		for name in entry.get_names():
 			yield fuse.Direntry(name)
-	
+
 def flv_populate(dir):
 	for directory, subdirs, filenames in os.walk(dir):
 		for name in filter(lambda (name): name[-4:] == ".flv", filenames):
@@ -145,10 +164,18 @@ def flv_populate(dir):
 	# stat-directory
 	stat = FLVDirectory("stat")
 	flv_root.add_entry("stat", stat)
+	# version
 	ver = VirtualFile("ATRFS 1.0 (python version)\n")
 	stat.add_entry("version", ver)
+	# last-time
 	time = VirtualFile("(empty)\n")
 	stat.add_entry("last-time", time)
+	# language
+	lang = VirtualFile(flv_languages)
+	stat.add_entry("language", lang)
+	# recent
+	recent = VirtualFile("(empty)")
+	stat.add_entry("recent", recent)
 
 def flv_parse_config_file(filename):
 	cfg = file(filename)
@@ -161,6 +188,8 @@ def flv_parse_config_file(filename):
 
 fuse.fuse_python_api = (0,2)
 flv_root = None
+flv_languages = "fi,en,la,it"
+flv_recent = []
 def main():
 	global flv_root
 	flv_root = FLVDirectory("/")
