@@ -25,89 +25,25 @@ extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct
 
 bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);
 
-char *get_real_file_name(struct atrfs_entry *ent)
-{
-	if (ent->e_type != ATRFS_FILE_ENTRY)
-		abort();
-	struct file_list *fl;
-	char *shortest = ent->file.real_files->name;
-	double time = 9999999;
-
-	for (fl = ent->file.real_files; fl; fl = fl->next)
-	{
-		double value;
-		if (!get_value_internal (fl->name, "user.watchtime", 1, "%lf", &value))
-			value = 0.0;
-	//	tmplog("watchtime: %s, %lf\n", fl->name, value);
-		if (value < time)
-		{
-			shortest = fl->name;
-			time = value;
-		}
-	}
-
-	return shortest;
-}
-
 int get_total_watchcount(struct atrfs_entry *ent)
 {
-	int count = 0, ret = 0;
-	struct file_list *fl;
-
-	for (fl = ent->file.real_files; fl; fl = fl->next)
-	{
-		int value;
-		if (get_value_internal (fl->name, "user.count", 1, "%d", &value))
-			ret += value;
-		count++;
-	}
-
-	return ret / count;
+	int value;
+	get_value_internal(ent->file.real_path, "user.count", 1, "%d", &value);
+	return value;
 }
 
 double get_total_watchtime(struct atrfs_entry *ent)
 {
-	int count = 0;
-	double ret = 0.0;
-	struct file_list *fl;
-
-	for (fl = ent->file.real_files; fl; fl = fl->next)
-	{
-		double value;
-		if (get_value_internal (fl->name, "user.watchtime", 1, "%lf", &value))
-			ret += value;
-		count++;
-	}
-
-	return ret / count;
+	double value;
+	get_value_internal(ent->file.real_path, "user.watchtime", 1, "%lf", &value);
+	return value;
 }
 
 double get_total_length(struct atrfs_entry *ent)
 {
-	int count = 0;
-	double ret = 0.0;
-	struct file_list *fl;
-
-	for (fl = ent->file.real_files; fl; fl = fl->next)
-	{
-		double value;
-		if (get_value_internal (fl->name, "user.length", 1, "%lf", &value))
-			ret += value;
-		count++;
-	}
-
-	return ret / count;
-}
-
-void add_real_file(struct atrfs_entry *ent, char *name)
-{
-	struct file_list *fl = malloc(sizeof(*fl));
-	if (fl)
-	{
-		fl->name = strdup(name);
-		fl->next = ent->file.real_files;
-		ent->file.real_files = fl;
-	}
+	double value;
+	get_value_internal(ent->file.real_path, "user.length", 1, "%lf", &value);
+	return value;
 }
 
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
@@ -129,7 +65,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		ent->directory.e_contents = g_hash_table_new (g_str_hash, g_str_equal);
 		break;
 	case ATRFS_FILE_ENTRY:
-		ent->file.real_files = NULL;
+		ent->file.real_path = NULL;
 		ent->file.start_time = -1.0;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
@@ -250,7 +186,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 
 	case ATRFS_FILE_ENTRY:
 	{
-		char *filename = get_real_file_name(ent);
+		char *filename = ent->file.real_path;
 		if (stat (filename, st) < 0)
 			return errno;
 

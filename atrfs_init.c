@@ -50,7 +50,7 @@ static void add_file_when_flv(const char *filename)
 		attach_entry (root, ent, groupname);
 	}
 
-	add_real_file (ent, filename);
+	ent->file.real_path = strdup(filename);
 }
 
 extern char *language_list;

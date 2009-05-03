@@ -331,7 +331,7 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 
 static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 {
-	char *filename = get_real_file_name(ent);
+	char *filename = ent->file.real_path;
 
 	/*
 	 * Increase watch-count every time the 'mplayer' opens
@@ -349,7 +349,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		{
 			if (! lookup_entry_by_name (ent->parent, srtname))
 			{
-				char *data = get_srt (get_real_file_name (ent));
+				char *data = get_srt(ent->file.real_path);
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 				srt->virtual.data = data;
 				srt->virtual.size = strlen (data);
@@ -639,7 +639,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 	/* If this was a flv-file, then srt_name != NULL */
 	if (srt_name && isgreater (playtime, 0.0))
 	{
-		char *filename = get_real_file_name (ent);
+		char *filename = ent->file.real_path;
 
 		/* * Update the total watch-time. */
 		double watchtime = get_dvalue (filename, "user.watchtime", 0.0);

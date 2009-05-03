@@ -76,13 +76,13 @@ double get_dvalue (char *filename, char *attr, double def)
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	set_value_internal (get_real_file_name (ent), attr, "%d", value);
+	set_value_internal(ent->file.real_path, attr, "%d", value);
 }
 
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	set_value_internal (get_real_file_name (ent), attr, "%lf", value);
+	set_value_internal(ent->file.real_path, attr, "%lf", value);
 }
 
 char *uniquify_name (char *name, struct atrfs_entry *root)
@@ -218,7 +218,7 @@ bool check_file_type (struct atrfs_entry *ent, char *ext)
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	if (! ext)
 		abort ();
-	char *s = strrchr (get_real_file_name(ent), '.');
+	char *s = strrchr (ent->file.real_path, '.');
 	return (s && !strcmp (s, ext));
 }
 
