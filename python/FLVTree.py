@@ -1,4 +1,4 @@
-# FLVTree.py - 2.5.2009 - 2.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# FLVTree.py - 2.5.2009 - 3.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 import os
 import xattr
 
@@ -36,20 +36,29 @@ class FLVFile(BaseFile):
 	def get_real_name(self):
 		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
 
-	def get_attrs(self):
-		attrs = {}
+	def _get_attr_str(self, attr, default):
 		name = self.get_real_name()
-		for attr in xattr.list(name):
-			attrs[attr] = xattr.get(name, attr)
-		return attrs
+		if attr in xattr.list(name):
+			str = xattr.get(name, attr)
+		else:
+			str = "%s\x00" % default
+		return str[:-1]
 
-	def set_attrs(self, attrs):
-		old_attrs = self.get_attrs()
-		new_attrs = [ attr for attr, value in attrs.items() if old_attrs[attr] != value ]
-		for attr in new_attrs:
-			if attrs[attr][-1] != "\x00":
-				raise IOError("Attribute value must end with '\x00'")
-			print("Change %s from %s to %s" % (attr, old_attrs[attr], attrs[attr]))
+	def _set_attr_str(self, attr, value):
+		name = self.get_real_name()
+		str = "%s\x00" % value
+		xattr.setxattr(name, attr, str)
+
+	def get_count(self):
+		return int(self._get_attr_str("user.count", "0"))
+	def set_count(self, count):
+		self._set_attr_str("user.count", "%d" % count)
+	def get_watchtime(self):
+		return int(float(self._get_attr_str("user.watchtime", "0")))
+	def set_watchtime(self, time):
+		self._set_attr_str("user.watchtime", "%2.2f" % time)
+	def get_length(self):
+		return int(float(self._get_attr_str("user.length", "600"))) # XXX
 
 class FLVDirectory(BaseFile):
 	def __init__(self, name):
@@ -75,6 +84,10 @@ class FLVDirectory(BaseFile):
 		entry = self.contents[name]
 		entry.set_pos(None, None)
 		del(self.contents[name])
+		if (len(self.contents) == 0):
+			(parent, name) = self.get_pos()
+			if (name != "/"):
+				parent.del_entry(name)
 
 	def lookup(self, name):
 		return self.contents.get(name,  None)
