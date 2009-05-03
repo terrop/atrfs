@@ -15,12 +15,6 @@ enum atrfs_entry_type
 	ATRFS_VIRTUAL_FILE_ENTRY,
 };
 
-struct file_list
-{
-	char *name;
-	struct file_list *next;
-};
-
 struct atrfs_entry
 {
 	enum atrfs_entry_type e_type;
@@ -32,7 +26,7 @@ struct atrfs_entry
 	{
 		struct
 		{
-			struct file_list *real_files;
+			char *real_path;
 			double start_time;
 		} file;
 
