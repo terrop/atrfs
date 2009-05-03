@@ -47,7 +47,10 @@ def add_asc_file(flv_entry):
 			except IOError, e:
 				pass
 	if not text:
-		text = asc_fake_subtitles(flv_name[:-4], 600) # TODO: oikea pituus
+		length = flv_entry.get_length()
+		cat = stats.get_category_name(flv_entry)
+		title = "%s\n%s × %02d:%02d" % (flv_name[:-4], cat, length / 60, length % 60)
+		text = asc_fake_subtitles(title, length)
 	asc_entry = VirtualFile(text)
 	parent.add_entry(asc_name, asc_entry)
 	return asc_entry
@@ -206,16 +209,18 @@ class FLVStatistics():
 		self.lastlist = sorted(self.lastlist, self._cmp_for_last)
 		self.lastlist = self.lastlist[:10]
 		self.last.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
-	def categorize(self, entry):
-		if not isinstance(entry, FLVFile):
-			return
+	def get_category_name(self, entry):
 		# cat = (100 * average watchtime) / len
 		count = entry.get_count()
 		if count == 0:
 			avg = 0
 		else:
 			avg = entry.get_watchtime() / count
-		cat = str((100 * avg) / entry.get_length())
+		return str((100 * avg) / entry.get_length())
+	def categorize(self, entry):
+		if not isinstance(entry, FLVFile):
+			return
+		cat = self.get_category_name(entry)
 		cat_dir = flv_root.lookup(cat)
 		if not cat_dir:
 			cat_dir = FLVDirectory(cat)
