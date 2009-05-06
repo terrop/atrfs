@@ -39,6 +39,13 @@ class FLVFile(BaseFile):
 	def get_real_name(self):
 		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
 
+	def _get_flv_len(self, name):
+		cmd = "mplayer -identify -frames 0 -ao null -vo null 2>/dev/null -- \"%s\"" % name
+		f = os.popen(cmd)
+		lines = f.readlines()
+		f.close()
+		return filter(lambda(line):line[:10]=="ID_LENGTH=", lines)[0][10:-1]
+
 	def _get_attr_str(self, attr, default):
 		name = self.get_real_name()
 		if attr in xattr.list(name):
@@ -61,7 +68,11 @@ class FLVFile(BaseFile):
 	def set_watchtime(self, time):
 		self._set_attr_str("user.watchtime", "%2.2f" % time)
 	def get_length(self):
-		return int(float(self._get_attr_str("user.length", "600"))) # XXX
+		name = self.get_real_name()
+		if not "user.length" in xattr.list(name):
+			lenstr = self._get_flv_len(name)
+			self._set_attr_str("user.length", lenstr)
+		return int(float(self._get_attr_str("user.length", "600")))
 
 class FLVDirectory(BaseFile):
 	def __init__(self, name):
