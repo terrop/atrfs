@@ -1,4 +1,6 @@
 # FLVTree.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+from hashlib import sha1
+import anydbm
 import os
 import xattr
 
@@ -31,6 +33,7 @@ class VirtualFile(BaseFile):
 
 class FLVFile(BaseFile):
 	flv_dirs = []
+	db = None
 
 	def __init__(self, directory, file_name):
 		BaseFile.__init__(self)
@@ -44,44 +47,69 @@ class FLVFile(BaseFile):
 	def get_real_name(self):
 		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
 
-	def _get_flv_len(self, name):
-		cmd = "mplayer -identify -frames 0 -ao null -vo null 2>/dev/null -- \"%s\"" % name
-		f = os.popen(cmd)
-		lines = f.readlines()
-		f.close()
-		return filter(lambda(line):line[:10]=="ID_LENGTH=", lines)[0][10:-1]
+	def get_attr(self, attr, default=None):
+		if self.db:
+			data = self.db.get(self.get_sha1(), "")
+			pref = "%s:" % attr
+			l = len(pref)
+			for items in data.split("\x00"):
+				if items[:len] == pref:
+					return items[len:]
+		else: # use xattrs
+			name = self.get_real_name()
+			if attr in xattr.list(name):
+				return xattr.get(name, attr)[:-1]
+		return default
 
-	def _get_attr_str(self, attr, default):
-		name = self.get_real_name()
-		if attr in xattr.list(name):
-			str = xattr.get(name, attr)
+	def set_attr(self, attr, value):
+		if self.db:
+			sha = self.get_sha1()
+			data = self.db.get(sha, "")
+			pref = "%s:" % attr
+			l = len(pref)
+			items = filter(lambda (name): not name[:len] == pref, data.split("\x00"))
+			items.insert(0, "%s:%s" % (attr, value))
+			self.db[attr] = "\x00".join(items)
+			self.db.sync()
 		else:
-			str = "%s\x00" % default
-		return str[:-1]
-
-	def _set_attr_str(self, attr, value):
-		name = self.get_real_name()
-		str = "%s\x00" % value
-		xattr.setxattr(name, attr, str)
+			name = self.get_real_name()
+			valstr = "%s\x00" % value
+			xattr.setxattr(name, attr, valstr)
 
 	def get_count(self):
-		return int(self._get_attr_str("user.count", "0"))
+		return int(self.get_attr("user.count", "0"))
 
 	def set_count(self, count):
-		self._set_attr_str("user.count", "%d" % count)
+		self.set_attr("user.count", "%d" % count)
 
 	def get_watchtime(self):
-		return int(float(self._get_attr_str("user.watchtime", "0")))
+		return int(float(self.get_attr("user.watchtime", "0")))
 
 	def set_watchtime(self, time):
-		self._set_attr_str("user.watchtime", "%2.2f" % time)
+		self.set_attr("user.watchtime", "%2.2f" % time)
 
 	def get_length(self):
+		lenstr = self.get_attr("user.length")
+		if not lenstr:
+			name = self.get_real_name()
+			cmd = "mplayer -identify -frames 0 -ao null -vo null 2>/dev/null -- \"%s\"" % name
+			f = os.popen(cmd)
+			lines = f.readlines()
+			f.close()
+			lenstr = filter(lambda(line):line[:10]=="ID_LENGTH=", lines)[0][10:-1]
+			self.set_attr("user.length", lenstr)
+		return int(float(lenstr))
+
+	# sha1 is always put into xattr
+	def get_sha1(self):
 		name = self.get_real_name()
-		if not "user.length" in xattr.list(name):
-			lenstr = self._get_flv_len(name)
-			self._set_attr_str("user.length", lenstr)
-		return int(float(self._get_attr_str("user.length", "600")))
+		if "user.sha1" in xattr.list(name):
+			val = xattr.get(name, "user.sha1")
+		else:
+			with open(name) as f:
+				val = sha1(f.read()).hexdigest()
+			xattr.setxattr(name, "user.sha1", "%s\x00" % val)
+		return val
 
 class FLVDirectory(BaseFile):
 	def __init__(self, name):
