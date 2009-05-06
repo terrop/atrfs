@@ -1,4 +1,4 @@
-# asc.py - 2.5.2009 - 2.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# asc.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 
 asc_text = None
 has_many_languages = False
@@ -15,7 +15,7 @@ def add_correct_text(line, lang):
         found_language = True
         asc_text.append(line[line.index("]")+1+1:]) # skip space
 
-def asc_read_subtitles(filename, lang):
+def asc_read_subtitles(filename, lang, return_as_list = False):
     global asc_text, has_many_languages, found_language
     asc_text = []
     has_many_languages = False
@@ -43,7 +43,10 @@ def asc_read_subtitles(filename, lang):
             asc_text.append(line)
     if has_many_languages and not found_language:
         return None
-    return "".join(asc_text)
+    if return_as_list:
+        return asc_text
+    else:
+        return "".join(asc_text)
 
 def asc_fake_subtitle(time):
     bm, bs = (time / 60, time % 60)
