@@ -48,8 +48,8 @@ def add_asc_file(flv_entry):
 				pass
 	if not text:
 		length = flv_entry.get_length()
-		cat = stats.get_category_name(flv_entry)
-		title = "%s\n%2.2f × %02d:%02d" % (flv_name[:-4], int(cat) / 100.0, length / 60, length % 60)
+		val = 1.0 * flv_entry.get_watchtime() / length
+		title = "%s\n%2.2f × %02d:%02d" % (flv_name[:-4], val, length / 60, length % 60)
 		text = asc_fake_subtitles(title, length)
 	asc_entry = VirtualFile(text)
 	parent.add_entry(asc_name, asc_entry)
