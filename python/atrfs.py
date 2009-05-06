@@ -5,8 +5,6 @@
 import errno, fuse, os, stat, xattr
 import timing
 
-import sys
-sys.path.append(".")
 from FLVTree import VirtualFile, FLVFile, FLVDirectory
 from asc import *
 
