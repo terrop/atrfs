@@ -98,9 +98,7 @@ class FLVFuseFile():
 				self.entry.set_watchtime(wt)
 				self.entry.set_count(self.entry.get_count() + 1)
 				stats.categorize(self.entry)
-				stats.update_recent(self.entry)
-				stats.update_toplist(self.entry)
-				stats.update_lastlist(self.entry)
+				stats.update_stat_lists(self.entry)
 				if self.asc:
 					del_asc_file(self.asc)
 		elif isinstance(self.entry, VirtualFile):
@@ -174,11 +172,11 @@ class FLVStatistics():
 
 		for ent in entries:
 			self.categorize(ent)
-		entries = sorted(entries, self._cmp_for_top)
+		self.entries = sorted(entries, self._cmp_for_top)
 
 		self.rlist = []
-		self.toplist = entries[:10]
-		self.lastlist = entries[-10:]
+		self.toplist = self.entries[:10]
+		self.lastlist = self.entries[-10:]
 
 	# These methods update the file contents just before they are
 	# used. If mplayer uses these files, we must keep the
@@ -191,52 +189,55 @@ class FLVStatistics():
 			else:
 				f.mplayer = 1
 		f.set_contents("".join(map(mapper, lst)))
+
 	def _update_recent_file(self, rfile):
 		self._update_helper(rfile, self.rlist, self._entry_to_recent_str)
+
 	def _update_top_file(self, tfile):
 		self._update_helper(tfile, self.toplist, self._entry_to_timed_str)
+
 	def _update_last_file(self, lfile):
 		self._update_helper(lfile, self.lastlist, self._entry_to_timed_str)
 
+
 	def get_root(self):
 		return self.root
+
 	def get_lang_entry(self):
 		return self.lang
+
 	def _entry_to_recent_str(self, entry):
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "%s%c%s\n" % (pname, os.path.sep, name)
+
 	def _entry_to_timed_str(self, entry):
 		time = entry.get_watchtime()
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "%02d:%02d\t%s%c%s\n" % (time / 60, time % 60, pname, os.path.sep, name)
+
 	def _entry_to_mplayer_str(self, entry):
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "..%c%s%c%s\n" % (os.path.sep, pname, os.path.sep, name)
+
 	def _cmp_for_top(self,ent1, ent2):
 		c1 = ent1.get_watchtime()
 		c2 = ent2.get_watchtime()
 		return c2 - c1
+
 	def _cmp_for_last(self,ent1, ent2):
 		return self._cmp_for_top(ent2, ent1)
 
-	# These methods update the lists that are used to create stat-files' contents.
-	def update_recent(self, entry):
+	# This method updates the lists that are used to create stat-files' contents.
+	def update_stat_lists(self, entry):
 		if not entry in self.rlist[:1]:
 			self.rlist.insert(0, entry)
 			self.rlist = self.rlist[:10] # max 10 items
-	def update_toplist(self, entry):
-		if not entry in self.toplist:
-			self.toplist.insert(0, entry)
-		self.toplist = sorted(self.toplist, self._cmp_for_top)
-		self.toplist = self.toplist[:10]
-	def update_lastlist(self, entry):
-		if not entry in self.lastlist:
-			self.lastlist.insert(0, entry)
-		self.lastlist = sorted(self.lastlist, self._cmp_for_last)
-		self.lastlist = self.lastlist[:10]
+		self.entries = sorted(self.entries, self._cmp_for_top)
+		self.toplist = self.entries[:10]
+		self.lastlist = self.entries[-10:]
 
 	def get_category_name(self, entry):
 		# cat = (100 * average watchtime) / len
@@ -246,6 +247,7 @@ class FLVStatistics():
 		else:
 			avg = entry.get_watchtime() / count
 		return str((100 * avg) / entry.get_length())
+
 	def categorize(self, entry):
 		if not isinstance(entry, FLVFile):
 			return
@@ -257,6 +259,7 @@ class FLVStatistics():
 		(parent, name) = entry.get_pos()
 		parent.del_entry(name)
 		cat_dir.add_entry(name, entry)
+
 
 def flv_parse_config_file(filename):
 	global def_lang, all_entries
@@ -279,6 +282,7 @@ flv_root = None
 stats = None
 def_lang = None
 all_entries = None
+
 def main():
 	global flv_root, stats, def_lang, all_entries
 	flv_root = FLVDirectory("/")
