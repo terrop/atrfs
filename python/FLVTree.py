@@ -1,4 +1,4 @@
-# FLVTree.py - 2.5.2009 - 3.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# FLVTree.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 import os
 import xattr
 
@@ -11,12 +11,15 @@ class BaseFile():
 		return self.entry_pos
 
 class VirtualFile(BaseFile):
-	def __init__(self, contents=""):
+	def __init__(self, contents="", update_fun = None):
 		BaseFile.__init__(self)
 		self.data = contents
+		self.updater = update_fun
 	def __repr__(self):
 		return "<VirtualFile (%d bytes)>" % len(self.data)
 	def get_contents(self):
+		if self.updater:
+			self.updater(self)
 		return self.data
 	def set_contents(self, contents):
 		self.data = contents

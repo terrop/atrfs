@@ -160,11 +160,11 @@ class FLVStatistics():
 		self.root = FLVDirectory("stat")
 		self.lang = VirtualFile("fi,en,la,it")
 		self.root.add_entry("language", self.lang)
-		self.top = VirtualFile("")
+		self.top = VirtualFile("", self._update_top_file)
 		self.root.add_entry("top-list", self.top)
-		self.last = VirtualFile("")
+		self.last = VirtualFile("", self._update_last_file)
 		self.root.add_entry("last-list", self.last)
-		self.recent = VirtualFile("")
+		self.recent = VirtualFile("", self._update_recent_file)
 		self.root.add_entry("recent", self.recent)
 
 		for ent in entries:
@@ -174,8 +174,14 @@ class FLVStatistics():
 		self.rlist = []
 		self.toplist = entries[:10]
 		self.lastlist = entries[-10:]
-		self.top.set_contents("".join(map(self._entry_to_timed_str, self.toplist)))
-		self.last.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
+
+	# These methods update the file contents just before they are used.
+	def _update_recent_file(self, rfile):
+		rfile.set_contents("".join(map(self._entry_to_recent_str, self.rlist)))
+	def _update_top_file(self, tfile):
+		tfile.set_contents("".join(map(self._entry_to_timed_str, self.toplist)))
+	def _update_last_file(self, lfile):
+		lfile.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
 
 	def get_root(self):
 		return self.root
@@ -196,23 +202,23 @@ class FLVStatistics():
 		return c2 - c1
 	def _cmp_for_last(self,ent1, ent2):
 		return self._cmp_for_top(ent2, ent1)
+
+	# These methods update the lists that are used to create stat-files' contents.
 	def update_recent(self, entry):
 		if not entry in self.rlist[:1]:
 			self.rlist.insert(0, entry)
 			self.rlist = self.rlist[:10] # max 10 items
-		self.recent.set_contents("".join(map(self._entry_to_recent_str, self.rlist)))
 	def update_toplist(self, entry):
 		if not entry in self.toplist:
 			self.toplist.insert(0, entry)
 		self.toplist = sorted(self.toplist, self._cmp_for_top)
 		self.toplist = self.toplist[:10]
-		self.top.set_contents("".join(map(self._entry_to_timed_str, self.toplist)))
 	def update_lastlist(self, entry):
 		if not entry in self.lastlist:
 			self.lastlist.insert(0, entry)
 		self.lastlist = sorted(self.lastlist, self._cmp_for_last)
 		self.lastlist = self.lastlist[:10]
-		self.last.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
+
 	def get_category_name(self, entry):
 		# cat = (100 * average watchtime) / len
 		count = entry.get_count()
