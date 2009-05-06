@@ -48,29 +48,29 @@ class FLVFile(BaseFile):
 		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
 
 	def get_attr(self, attr, default=None):
-		if self.db:
-			data = self.db.get(self.get_sha1(), "")
+		if FLVFile.db != None:
+			data = FLVFile.db.get(self.get_sha1(), "")
 			pref = "%s:" % attr
 			l = len(pref)
 			for items in data.split("\x00"):
-				if items[:len] == pref:
-					return items[len:]
-		else: # use xattrs
-			name = self.get_real_name()
-			if attr in xattr.list(name):
-				return xattr.get(name, attr)[:-1]
+				if items[:l] == pref:
+					return items[l:]
+		# use xattrs
+		name = self.get_real_name()
+		if attr in xattr.list(name):
+			return xattr.get(name, attr)[:-1]
 		return default
 
 	def set_attr(self, attr, value):
-		if self.db:
+		if FLVFile.db != None:
 			sha = self.get_sha1()
-			data = self.db.get(sha, "")
+			data = FLVFile.db.get(sha, "")
 			pref = "%s:" % attr
 			l = len(pref)
-			items = filter(lambda (name): not name[:len] == pref, data.split("\x00"))
+			items = filter(lambda (name): not name[:l] == pref, data.split("\x00"))
 			items.insert(0, "%s:%s" % (attr, value))
-			self.db[attr] = "\x00".join(items)
-			self.db.sync()
+			FLVFile.db[sha] = "\x00".join(items)
+			FLVFile.db.sync()
 		else:
 			name = self.get_real_name()
 			valstr = "%s\x00" % value
