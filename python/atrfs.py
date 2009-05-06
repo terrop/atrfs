@@ -186,33 +186,19 @@ class FLVStatistics():
 	# used. If mplayer uses these files, we must keep the
 	# contents unchanged. When the file is opened by mplayer, the
 	# attribute "mplayer" has the value True.
+	def _update_helper(self, f, lst, mapper):
+		if hasattr(f, "mplayer"):
+			if f.mplayer == True:
+				mapper = self._entry_to_mplayer_str
+			else:
+				f.mplayer = 1
+		f.set_contents("".join(map(mapper, lst)))
 	def _update_recent_file(self, rfile):
-		if hasattr(rfile, "mplayer"):
-			if rfile.mplayer == True:
-				mapper = self._entry_to_mplayer_str
-			else:
-				rfile.mplayer = 1
-		else:
-			mapper = self._entry_to_recent_str
-		rfile.set_contents("".join(map(mapper, self.rlist)))
+		self._update_helper(rfile, self.rlist, self._entry_to_recent_str)
 	def _update_top_file(self, tfile):
-		if hasattr(tfile, "mplayer"):
-			if tfile.mplayer == True:
-				mapper = self._entry_to_mplayer_str
-			else:
-				tfile.mplayer = 1
-		else:
-			mapper = self._entry_to_timed_str
-		tfile.set_contents("".join(map(mapper, self.toplist)))
+		self._update_helper(tfile, self.toplist, self._entry_to_timed_str)
 	def _update_last_file(self, lfile):
-		if hasattr(lfile, "mplayer"):
-			if lfile.mplayer == True:
-				mapper = self._entry_to_mplayer_str
-			else:
-				lfile.mplayer = 1
-		else:
-			mapper = self._entry_to_timed_str
-		lfile.set_contents("".join(map(mapper, self.lastlist)))
+		self._update_helper(lfile, self.lastlist, self._entry_to_timed_str)
 
 	def get_root(self):
 		return self.root
