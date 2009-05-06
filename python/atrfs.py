@@ -187,8 +187,8 @@ class FLVStatistics():
 		(_, pname) = parent.get_pos()
 		return "%02d:%02d\t%s%c%s\n" % (time / 60, time % 60, pname, os.path.sep, name)
 	def _cmp_for_top(self,ent1, ent2):
-		c1 = ent1.get_count()
-		c2 = ent2.get_count()
+		c1 = ent1.get_watchtime()
+		c2 = ent2.get_watchtime()
 		return c2 - c1
 	def _cmp_for_last(self,ent1, ent2):
 		return self._cmp_for_top(ent2, ent1)
