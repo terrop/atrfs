@@ -66,8 +66,8 @@ def del_asc_file(asc_entry):
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
 		self.entry = flv_resolve_path(path)
+		self.cmd = pid_to_command(fuse.GetContext()["pid"])
 		if isinstance(self.entry, FLVFile):
-			self.cmd = pid_to_command(fuse.GetContext()["pid"])
 			self.file = file(self.entry.get_real_name())
 			if self.cmd in ["mplayer"]:
 				self.asc = add_asc_file(self.entry)
@@ -75,7 +75,9 @@ class FLVFuseFile():
 			else:
 				self.asc = None
 		elif isinstance(self.entry, VirtualFile):
-			pass
+			if self.cmd in ["mplayer"]:
+				if not hasattr(self.entry, "mplayer"):
+					self.entry.mplayer = True
 		else:
 			raise IOError("Unknown file type")
 
@@ -103,6 +105,11 @@ class FLVFuseFile():
 				stats.update_lastlist(self.entry)
 				if self.asc:
 					del_asc_file(self.asc)
+		elif isinstance(self.entry, VirtualFile):
+			try:
+				del(self.entry.mplayer)
+			except AttributeError, e:
+				pass
 		else:
 			pass
 
@@ -175,13 +182,37 @@ class FLVStatistics():
 		self.toplist = entries[:10]
 		self.lastlist = entries[-10:]
 
-	# These methods update the file contents just before they are used.
+	# These methods update the file contents just before they are
+	# used. If mplayer uses these files, we must keep the
+	# contents unchanged. When the file is opened by mplayer, the
+	# attribute "mplayer" has the value True.
 	def _update_recent_file(self, rfile):
-		rfile.set_contents("".join(map(self._entry_to_recent_str, self.rlist)))
+		if hasattr(rfile, "mplayer"):
+			if rfile.mplayer == True:
+				mapper = self._entry_to_mplayer_str
+			else:
+				rfile.mplayer = 1
+		else:
+			mapper = self._entry_to_recent_str
+		rfile.set_contents("".join(map(mapper, self.rlist)))
 	def _update_top_file(self, tfile):
-		tfile.set_contents("".join(map(self._entry_to_timed_str, self.toplist)))
+		if hasattr(tfile, "mplayer"):
+			if tfile.mplayer == True:
+				mapper = self._entry_to_mplayer_str
+			else:
+				tfile.mplayer = 1
+		else:
+			mapper = self._entry_to_timed_str
+		tfile.set_contents("".join(map(mapper, self.toplist)))
 	def _update_last_file(self, lfile):
-		lfile.set_contents("".join(map(self._entry_to_timed_str, self.lastlist)))
+		if hasattr(lfile, "mplayer"):
+			if lfile.mplayer == True:
+				mapper = self._entry_to_mplayer_str
+			else:
+				lfile.mplayer = 1
+		else:
+			mapper = self._entry_to_timed_str
+		lfile.set_contents("".join(map(mapper, self.lastlist)))
 
 	def get_root(self):
 		return self.root
@@ -196,6 +227,10 @@ class FLVStatistics():
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "%02d:%02d\t%s%c%s\n" % (time / 60, time % 60, pname, os.path.sep, name)
+	def _entry_to_mplayer_str(self, entry):
+		(parent, name) = entry.get_pos()
+		(_, pname) = parent.get_pos()
+		return "..%c%s%c%s\n" % (os.path.sep, pname, os.path.sep, name)
 	def _cmp_for_top(self,ent1, ent2):
 		c1 = ent1.get_watchtime()
 		c2 = ent2.get_watchtime()
