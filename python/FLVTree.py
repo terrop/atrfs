@@ -5,8 +5,10 @@ import xattr
 class BaseFile():
 	def __init__(self):
 		self.entry_pos = None
+
 	def set_pos(self, parent, name):
 		self.entry_pos = (parent, name)
+
 	def get_pos(self):
 		return self.entry_pos
 
@@ -15,12 +17,15 @@ class VirtualFile(BaseFile):
 		BaseFile.__init__(self)
 		self.data = contents
 		self.updater = update_fun
+
 	def __repr__(self):
 		return "<VirtualFile (%d bytes)>" % len(self.data)
+
 	def get_contents(self):
 		if self.updater:
 			self.updater(self)
 		return self.data
+
 	def set_contents(self, contents):
 		self.data = contents
 
@@ -61,12 +66,16 @@ class FLVFile(BaseFile):
 
 	def get_count(self):
 		return int(self._get_attr_str("user.count", "0"))
+
 	def set_count(self, count):
 		self._set_attr_str("user.count", "%d" % count)
+
 	def get_watchtime(self):
 		return int(float(self._get_attr_str("user.watchtime", "0")))
+
 	def set_watchtime(self, time):
 		self._set_attr_str("user.watchtime", "%2.2f" % time)
+
 	def get_length(self):
 		name = self.get_real_name()
 		if not "user.length" in xattr.list(name):
