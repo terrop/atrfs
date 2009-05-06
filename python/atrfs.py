@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # atrfs.py - 1.5.2009 - 6.5.2009 Ari & Tero Roponen
 
+import anydbm
 import errno, fuse, os, stat, xattr
 import timing
 
@@ -270,6 +271,8 @@ def flv_parse_config_file(filename):
 		if line[0] == "#": pass
 		elif line[:9] == "language=":
 			def_lang = line[9:].rstrip()
+		elif line[:9] == "database=":
+			FLVFile.db = anydbm.open(line[9:].rstrip(), "c")
 		else:		# add files in directory (line ends with '\n'
 			for d, sd, fnames in os.walk(line[:-1]):
 				for name in filter(lambda (n): n[-4:] == ".flv", fnames):
