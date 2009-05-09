@@ -104,7 +104,7 @@ class FLVFile(BaseFile):
 	def get_sha1(self):
 		name = self.get_real_name()
 		if "user.sha1" in xattr.list(name):
-			val = xattr.get(name, "user.sha1")
+			val = xattr.get(name, "user.sha1")[:-1]
 		else:
 			with open(name) as f:
 				val = sha1(f.read()).hexdigest()
