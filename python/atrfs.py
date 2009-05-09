@@ -171,13 +171,19 @@ class FLVStatistics():
 		self.recent = VirtualFile("", self._update_recent_file)
 		self.root.add_entry("recent", self.recent)
 
-		for ent in entries:
+		self.entries = entries;
+		self._sort_entries()
+		for ent in self.entries:
 			self.categorize(ent)
-		self.entries = sorted(entries, self._cmp_for_top)
 
 		self.rlist = []
 		self.toplist = self.entries[:10]
 		self.lastlist = self.entries[-10:]
+
+	def _sort_entries(self):
+		tmp = [(ent.get_watchtime(), ent) for ent in self.entries]
+		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
+		self.entries = [elt[1] for elt in tmp]
 
 	# These methods update the file contents just before they are
 	# used. If mplayer uses these files, we must keep the
@@ -225,20 +231,12 @@ class FLVStatistics():
 		(_, pname) = parent.get_pos()
 		return "..%c%s%c%s\n" % (os.path.sep, pname, os.path.sep, name)
 
-	def _cmp_for_top(self,ent1, ent2):
-		c1 = ent1.get_watchtime()
-		c2 = ent2.get_watchtime()
-		return c2 - c1
-
-	def _cmp_for_last(self,ent1, ent2):
-		return self._cmp_for_top(ent2, ent1)
-
 	# This method updates the lists that are used to create stat-files' contents.
 	def update_stat_lists(self, entry):
 		if not entry in self.rlist[:1]:
 			self.rlist.insert(0, entry)
 			self.rlist = self.rlist[:10] # max 10 items
-		self.entries = sorted(self.entries, self._cmp_for_top)
+		self._sort_entries()
 		self.toplist = self.entries[:10]
 		self.lastlist = self.entries[-10:]
 
