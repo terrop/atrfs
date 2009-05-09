@@ -187,9 +187,11 @@ class FLVStatistics():
 		if hasattr(f, "mplayer"):
 			if f.mplayer == True:
 				mapper = self._entry_to_mplayer_str
+				f.set_contents("".join(map(mapper, lst)))
 			else:
 				f.mplayer = 1
-		f.set_contents("".join(map(mapper, lst)))
+		else:
+			f.set_contents("".join(map(mapper, lst)))
 
 	def _update_recent_file(self, rfile):
 		self._update_helper(rfile, self.rlist, self._entry_to_recent_str)
