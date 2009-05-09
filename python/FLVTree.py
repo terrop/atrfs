@@ -1,4 +1,4 @@
-# FLVTree.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# FLVTree.py - 2.5.2009 - 9.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 from hashlib import sha1
 import anydbm
 import os
@@ -104,7 +104,7 @@ class FLVFile(BaseFile):
 	def get_sha1(self):
 		name = self.get_real_name()
 		if "user.sha1" in xattr.list(name):
-			val = xattr.get(name, "user.sha1")
+			val = xattr.get(name, "user.sha1")[:-1]
 		else:
 			with open(name) as f:
 				val = sha1(f.read()).hexdigest()
