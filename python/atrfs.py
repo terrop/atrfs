@@ -170,11 +170,17 @@ class FLVStatistics():
 		self.root.add_entry("last-list", self.last)
 		self.recent = VirtualFile("", self._update_recent_file)
 		self.root.add_entry("recent", self.recent)
+		self.counts = VirtualFile("", self.update_counts)
+		self.root.add_entry("statistics", self.counts)
 
-		self.entries = entries;
+		self.total_wtime = 0
+		self.total_time = 0
+		self.entries = entries
 		self._sort_entries()
 		for ent in self.entries:
 			self.categorize(ent)
+			self.total_wtime = self.total_wtime + ent.get_watchtime()
+			self.total_time = self.total_time + ent.get_length()
 
 		self.rlist = []
 		self.toplist = self.entries[:10]
@@ -184,6 +190,16 @@ class FLVStatistics():
 		tmp = [(ent.get_watchtime(), ent) for ent in self.entries]
 		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
 		self.entries = [elt[1] for elt in tmp]
+
+	def update_counts(self, fil):
+		time = self.total_wtime
+		wtstr = "total watchtime: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		time = time / len(self.entries)
+		astr = "average watchtime: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		time = self.total_time
+		tstr = "total time: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		fil.set_contents("files: %d\n%s\n%s\n%s\n" \
+					 % (len(self.entries), wtstr, tstr, astr))
 
 	# These methods update the file contents just before they are
 	# used. If mplayer uses these files, we must keep the
