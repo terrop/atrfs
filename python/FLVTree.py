@@ -1,4 +1,4 @@
-# FLVTree.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# FLVTree.py - 2.5.2009 - 9.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 from hashlib import sha1
 import anydbm
 import os

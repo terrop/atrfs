@@ -257,6 +257,8 @@ class FLVStatistics():
 		self.lastlist = self.entries[-10:]
 
 	def get_category_name(self, entry):
+		name = entry.get_attr("user.cat")
+		if name: return name
 		# cat = (100 * average watchtime) / len
 		count = entry.get_count()
 		if count == 0:
