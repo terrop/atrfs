@@ -257,8 +257,10 @@ class FLVStatistics():
 		self.lastlist = self.entries[-10:]
 
 	def get_category_name(self, entry):
-		name = entry.get_attr("user.cat")
-		if name: return name
+		catfile = "%s%c%s" % (entry.flv_dirs[entry.real_dir_idx], os.sep, "cat.txt")
+		if os.access(catfile, os.R_OK):
+			with file(catfile) as f:
+				return f.readline().split("\n")[0]
 		# cat = (100 * average watchtime) / len
 		count = entry.get_count()
 		if count == 0:
