@@ -116,14 +116,34 @@ class FLVFuseFile():
 
 	def write(self, buf, offset):
 		lang = stats.get_lang_entry()
-		if not self.entry == lang:
+		dyncat = stats.get_dyncat_entry()
+		if self.entry not in [lang, dyncat]:
 			return -errno.EROFS
-		# Check that the string is valid: "xx,yy,zz"
-		for elt in buf.rstrip().split(","):
-			if len(elt) != 2:
-				return -errno.ERANGE
-		lang.set_contents(buf.rstrip())
-		return len(buf)
+		if self.entry == lang:
+			# Check that the string is valid: "xx,yy,zz"
+			for elt in buf.rstrip().split(","):
+				if len(elt) != 2:
+					return -errno.ERANGE
+			lang.set_contents(buf.rstrip())
+			return len(buf)
+		elif self.entry == dyncat:
+			class FileData():
+				pass
+			# Create a new list of entries that pass the
+			# filter given by the user.
+			test_fn = compile(buf.rstrip(), "name", "eval") # ?, but works.
+			user = FileData()
+			dyncat.entries = []
+			for entry in stats._get_entries():
+				# Add other attributes here when needed.
+				user.count = entry.get_count()
+				user.watchtime = entry.get_watchtime()
+				user.length = entry.get_length()
+				user.sha1 = entry.get_sha1()
+				user.cat = stats.get_category_name(entry)
+				if eval(test_fn):
+					dyncat.entries.insert(0, entry)
+			return len(buf)
 
 class ATRFS(fuse.Fuse):
 	def __init__(self):
@@ -176,6 +196,8 @@ class FLVStatistics():
 		self.root.add_entry("recent", self.recent)
 		self.counts = VirtualFile("", self.update_counts)
 		self.root.add_entry("statistics", self.counts)
+		self.dyncat = VirtualFile("", self._update_dyncat)
+		self.root.add_entry("dyncat", self.dyncat)
 
 		self.total_wtime = 0
 		self.total_time = 0
@@ -189,6 +211,7 @@ class FLVStatistics():
 		self.rlist = []
 		self.toplist = self.entries[:10]
 		self.lastlist = self.entries[-10:]
+		self.dyncat.entries = []
 
 	def _sort_entries(self):
 		tmp = [(ent.get_watchtime(), ent) for ent in self.entries]
@@ -220,12 +243,21 @@ class FLVStatistics():
 	def _update_last_file(self, lfile):
 		self._update_helper(lfile, self.lastlist, self._entry_to_timed_str)
 
+	def _update_dyncat(self, dfile):
+		self._update_helper(dfile, dfile.entries, self._entry_to_timed_str)
+
 
 	def get_root(self):
 		return self.root
 
 	def get_lang_entry(self):
 		return self.lang
+
+	def get_dyncat_entry(self):
+		return self.dyncat
+
+	def _get_entries(self):
+		return self.entries
 
 	def _entry_to_recent_str(self, entry):
 		(parent, name) = entry.get_pos()
