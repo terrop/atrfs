@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 6.5.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 26.9.2009 Ari & Tero Roponen
 
 import anydbm
 import errno, fuse, os, stat, xattr
@@ -74,9 +74,18 @@ class FLVFuseFile():
 			else:
 				self.asc = None
 		elif isinstance(self.entry, VirtualFile):
-			if self.cmd in ["mplayer"]:
-				if not hasattr(self.entry, "mplayer"):
-					self.entry.mplayer = True
+			# Mplayer may use virtual files as playlists.
+			# Since file contents should not change when
+			# mplayer is using it, we copy the contents
+			# here instead of reading the latest data.
+
+			# A hack to get mplayer's playlist compatible
+			# contents.
+			self.entry.mplayer = self.cmd in ["mplayer"]
+			self.virt_data = self.entry.get_contents()
+			# This causes recent-list's last item name to
+			# be truncated.
+			#del self.entry.mplayer
 		else:
 			raise IOError("Unknown file type")
 
@@ -85,7 +94,7 @@ class FLVFuseFile():
 			self.file.seek(offset)
 			return self.file.read(size)
 		elif isinstance(self.entry, VirtualFile):
-			return self.entry.get_contents()[offset:offset+size]
+			return self.virt_data[offset:offset + size]
 		else:
 			raise IOError("Unknown file type")
 
@@ -102,11 +111,6 @@ class FLVFuseFile():
 				stats.update_stat_lists(self.entry)
 				if self.asc:
 					del_asc_file(self.asc)
-		elif isinstance(self.entry, VirtualFile):
-			try:
-				del(self.entry.mplayer)
-			except AttributeError, e:
-				pass
 		else:
 			pass
 
@@ -201,19 +205,11 @@ class FLVStatistics():
 		fil.set_contents("files: %d\n%s\n%s\n%s\n" \
 					 % (len(self.entries), wtstr, tstr, astr))
 
-	# These methods update the file contents just before they are
-	# used. If mplayer uses these files, we must keep the
-	# contents unchanged. When the file is opened by mplayer, the
-	# attribute "mplayer" has the value True.
+	# These methods update the file contents just before they are used.
 	def _update_helper(self, f, lst, mapper):
-		if hasattr(f, "mplayer"):
-			if f.mplayer == True:
-				mapper = self._entry_to_mplayer_str
-				f.set_contents("".join(map(mapper, lst)))
-			else:
-				f.mplayer = 1
-		else:
-			f.set_contents("".join(map(mapper, lst)))
+		if hasattr(f, "mplayer") and f.mplayer == True:
+			mapper = self._entry_to_mplayer_str
+		f.set_contents("".join(map(mapper, lst)))
 
 	def _update_recent_file(self, rfile):
 		self._update_helper(rfile, self.rlist, self._entry_to_recent_str)
