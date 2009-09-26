@@ -62,6 +62,23 @@ def del_asc_file(asc_entry):
 	parent, name = asc_entry.get_pos()
 	parent.del_entry(name)
 
+class FileData():
+	pass
+
+def filter_entry(entry, test_fn):
+	"Return True, if ENTRY passes TEST_FN."
+	user = FileData()
+	# Add other attributes here when needed.
+	user.count = entry.get_count()
+	user.watchtime = entry.get_watchtime()
+	user.length = entry.get_length()
+	user.sha1 = entry.get_sha1()
+	user.name = entry.real_name # XXX
+	#user.cat = stats.get_category_name(entry)
+	if eval(test_fn):
+		return True
+	return False
+
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
 		self.entry = flv_resolve_path(path)
@@ -127,10 +144,9 @@ class FLVFuseFile():
 			lang.set_contents(buf.rstrip())
 			return len(buf)
 		elif self.entry == dyncat:
-			class FileData():
-				pass
 			# Create a new list of entries that pass the
-			# filter given by the user.
+			# filter given by the user. We could use filter_entry, but
+			# then we couldn't filter entries by their category.
 			test_fn = compile(buf.rstrip(), "name", "eval") # ?, but works.
 			user = FileData()
 			dyncat.entries = []
@@ -140,6 +156,7 @@ class FLVFuseFile():
 				user.watchtime = entry.get_watchtime()
 				user.length = entry.get_length()
 				user.sha1 = entry.get_sha1()
+				user.name = entry.real_name # XXX
 				user.cat = stats.get_category_name(entry)
 				if eval(test_fn):
 					dyncat.entries.insert(0, entry)
@@ -285,6 +302,10 @@ class FLVStatistics():
 		self.lastlist = self.entries[-10:]
 
 	def get_category_name(self, entry):
+		global filters
+		for (cat, test_fn) in filters:
+			if filter_entry(entry, test_fn):
+				return cat
 		catfile = "%s%c%s" % (entry.flv_dirs[entry.real_dir_idx], os.sep, "cat.txt")
 		if os.access(catfile, os.R_OK):
 			with file(catfile) as f:
@@ -311,7 +332,7 @@ class FLVStatistics():
 
 
 def flv_parse_config_file(filename):
-	global def_lang, all_entries
+	global def_lang, all_entries, filters
 	cfg = file(filename)
 	lines = cfg.readlines()
 	cfg.close()
@@ -321,7 +342,11 @@ def flv_parse_config_file(filename):
 			def_lang = line[9:].rstrip()
 		elif line[:9] == "database=":
 			FLVFile.db = anydbm.open(line[9:].rstrip(), "c")
-		else:		# add files in directory (line ends with '\n'
+		elif line[:4] == "cat=":
+			idx = line.index(":")
+			filters.append((line[4:idx],
+					compile(line[idx+1:].rstrip(), "name", "eval")))
+		else:		# add files in directory (line ends with '\n')
 			for d, sd, fnames in os.walk(line[:-1]):
 				for name in filter(lambda (n): n[-4:] == ".flv", fnames):
 					ent = FLVFile(d, name)
@@ -333,12 +358,14 @@ flv_root = None
 stats = None
 def_lang = None
 all_entries = None
+filters = None
 
 def main():
-	global flv_root, stats, def_lang, all_entries
+	global flv_root, stats, def_lang, all_entries, filters
 	flv_root = FLVDirectory("/")
 	def_lang = "fi,en,la,it"
 	all_entries = []
+	filters = []
 	flv_parse_config_file("atrfs.conf")
 
 	stats = FLVStatistics(all_entries)
