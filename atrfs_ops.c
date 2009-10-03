@@ -797,7 +797,7 @@ void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
  * @param blocksize unit of block index
  * @param idx block index within file
  */
-static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
+void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	fuse_reply_err(req, ENOSYS);
@@ -830,7 +830,7 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
  * @param in_bufsz number of fetched bytes
  * @param out_bufsz maximum size of output data
  */
-static void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
+void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
 	struct fuse_file_info *fi, unsigned flags,
 	const void *in_buf, size_t in_bufsz, size_t out_bufsz)
 {
@@ -864,7 +864,7 @@ static void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
  * @param fi file information
  * @param ph poll handle to be used for notification
  */
-static void atrfs_poll(fuse_req_t req, fuse_ino_t ino,
+void atrfs_poll(fuse_req_t req, fuse_ino_t ino,
 	struct fuse_file_info *fi, struct fuse_pollhandle *ph)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
