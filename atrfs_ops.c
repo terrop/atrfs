@@ -91,85 +91,6 @@ void atrfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 }
 
 /*
- * Get file attributes
- *
- * Valid replies:
- *   fuse_reply_attr
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- * @param fi for future use, currently always NULL
- */
-void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
-{
-	struct stat st;
-	struct atrfs_entry *ent = ino_to_entry(ino);
-
-	tmplog("getattr('%s')\n", ent->name);
-
-	int err = stat_entry (ent, &st);
-	if (err)
-		fuse_reply_err (req, err);
-	else
-		fuse_reply_attr (req, &st, 0.0);
-}
-
-/*
- * Set file attributes
- *
- * In the 'attr' argument only members indicated by the 'to_set'
- * bitmask contain valid values.  Other members contain undefined
- * values.
- *
- * If the setattr was invoked from the ftruncate() system call
- * under Linux kernel versions 2.6.15 or later, the fi->fh will
- * contain the value set by the open method or will be undefined
- * if the open method didn't set any value.  Otherwise (not
- * ftruncate call, or kernel version earlier than 2.6.15) the fi
- * parameter will be NULL.
- *
- * Valid replies:
- *   fuse_reply_attr
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- * @param attr the attributes
- * @param to_set bit mask of attributes which should be set
- * @param fi file information, or NULL
- *
- * Changed in version 2.5:
- *     file information filled in for ftruncate
- */
-void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
-	struct stat *attr, int to_set, struct fuse_file_info *fi)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("setattr('%s')\n", ent->name);
-	struct stat st;
-	stat_entry(ent, &st);
-	fuse_reply_attr(req, &st, 0.0);
-}
-
-/*
- * Read symbolic link
- *
- * Valid replies:
- *   fuse_reply_readlink
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- */
-void atrfs_readlink(fuse_req_t req, fuse_ino_t ino)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("readlink('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
  * Create file node
  *
  * Create a regular file, character device, block device, fifo or
@@ -190,80 +111,6 @@ void atrfs_mknod(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mod
 	struct atrfs_entry *pent = ino_to_entry(parent);
 	tmplog("mknod('%s', '%s')\n", pent->name, name);
 	fuse_reply_err(req, ENOSYS);
-}
-
-/*
- * Create a hard link
- *
- * Valid replies:
- *   fuse_reply_entry
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the old inode number
- * @param newparent inode number of the new parent directory
- * @param newname new name to create
- */
-void atrfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	struct atrfs_entry *npent = ino_to_entry(newparent);
-	tmplog("link('%s' -> '%s', '%s'\n", ent->name, npent->name, newname);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
- * Create a symbolic link
- *
- * Valid replies:
- *   fuse_reply_entry
- *   fuse_reply_err
- *
- * @param req request handle
- * @param link the contents of the symbolic link
- * @param parent inode number of the parent directory
- * @param name to create
- */
-void atrfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name)
-{
-	tmplog("symlink('%s' -> '%s')\n", link, name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
- * Remove a file
- *
- * Valid replies:
- *   fuse_reply_err
- *
- * @param req request handle
- * @param parent inode number of the parent directory
- * @param name to remove
- */
-void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	int err = ENOENT;
-	struct atrfs_entry *pent = ino_to_entry(parent);
-	struct atrfs_entry *entry = lookup_entry_by_name (pent, name);
-	if (entry)
-	{
-		if (entry->parent == statroot)
-		{
-			/* Files under 'stat' cannot be removed. */
-			err = EROFS;
-		} else if (entry->parent == root) {
-			if (entry->e_type == ATRFS_FILE_ENTRY)
-			{
-				set_ivalue (entry, "user.count", 0);
-				set_dvalue (entry, "user.watchtime", 0.0);
-			}
-			err = 0;
-		} else {	/* subdir */
-			move_entry (entry, root);
-			err = 0;
-		}
-	}
-	fuse_reply_err(req, err);
 }
 
 /*
@@ -728,59 +575,6 @@ void atrfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_
 }
 
 /*
- * Test for a POSIX file lock
- *
- * Introduced in version 2.6
- *
- * Valid replies:
- *   fuse_reply_lock
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- * @param fi file information
- * @param lock the region/type to test
- */
-void atrfs_getlk(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi, struct flock *lock)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("getlk('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
- * Acquire, modify or release a POSIX file lock
- *
- * For POSIX threads (NPTL) there's a 1-1 relation between pid and
- * owner, but otherwise this is not always the case.  For checking
- * lock ownership, 'fi->owner' must be used.  The l_pid field in
- * 'struct flock' should only be used to fill in this field in
- * getlk().
- *
- * Note: if the locking methods are not implemented, the kernel
- * will still allow file locking to work locally.  Hence these are
- * only interesting for network filesystems and similar.
- *
- * Introduced in version 2.6
- *
- * Valid replies:
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- * @param fi file information
- * @param lock the region/type to test
- * @param sleep locking operation may sleep
- */
-void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
-	struct fuse_file_info *fi, struct flock *lock, int sleep)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	tmplog("setlk('%s')\n", ent->name);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
  * Map block index within file to block index within device
  *
  * Note: This makes sense only for block device backed filesystems
@@ -797,42 +591,7 @@ void atrfs_setlk(fuse_req_t req, fuse_ino_t ino,
  * @param blocksize unit of block index
  * @param idx block index within file
  */
-static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
-{
-	struct atrfs_entry *ent = ino_to_entry(ino);
-	fuse_reply_err(req, ENOSYS);
-}
-
-/*
- * ioctl
- *
- * Note: For unrestricted ioctls (not allowed for FUSE
- * servers), data in and out areas can be discovered by giving
- * iovs and setting FUSE_IOCTL_RETRY in @flags.  For
- * restricted ioctls, kernel prepares in/out data area
- * according to the information encoded in cmd.
- *
- * Introduced in version 2.8
- *
- * Valid replies:
- *   fuse_reply_ioctl_retry
- *   fuse_reply_ioctl
- *   fuse_reply_ioctl_iov
- *   fuse_reply_err
- *
- * @param req request handle
- * @param ino the inode number
- * @param cmd ioctl command
- * @param arg ioctl argument
- * @param fi file information
- * @param flags for FUSE_IOCTL_* flags
- * @param in_buf data fetched from the caller
- * @param in_bufsz number of fetched bytes
- * @param out_bufsz maximum size of output data
- */
-static void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
-	struct fuse_file_info *fi, unsigned flags,
-	const void *in_buf, size_t in_bufsz, size_t out_bufsz)
+void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	fuse_reply_err(req, ENOSYS);
@@ -864,7 +623,7 @@ static void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
  * @param fi file information
  * @param ph poll handle to be used for notification
  */
-static void atrfs_poll(fuse_req_t req, fuse_ino_t ino,
+void atrfs_poll(fuse_req_t req, fuse_ino_t ino,
 	struct fuse_file_info *fi, struct fuse_pollhandle *ph)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);

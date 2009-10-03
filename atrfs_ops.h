@@ -45,6 +45,12 @@ extern void atrfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name,
 extern void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size);
 extern void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size);
 extern void atrfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name);
+extern void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_t idx);
+extern void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
+	struct fuse_file_info *fi, unsigned flags, const void *in_buf,
+	size_t in_bufsz, size_t out_bufsz);
+extern void atrfs_poll(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi,
+	struct fuse_pollhandle *ph);
 
 extern struct fuse_lowlevel_ops atrfs_operations;
 
