@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 26.9.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 3.10.2009 Ari & Tero Roponen
 
-import anydbm
-import errno, fuse, os, stat, xattr
+import errno, fuse, os, stat
 import timing
 
-from FLVTree import VirtualFile, FLVFile, FLVDirectory
+from FLVTree import VirtualFile, FLVFile, FLVDirectory, FLVDatabase
 from asc import *
 
 def flv_resolve_path(path):
@@ -341,7 +340,7 @@ def flv_parse_config_file(filename):
 		elif line[:9] == "language=":
 			def_lang = line[9:].rstrip()
 		elif line[:9] == "database=":
-			FLVFile.db = anydbm.open(line[9:].rstrip(), "c")
+			FLVFile.db = FLVDatabase(line[9:].rstrip())
 		elif line[:4] == "cat=":
 			idx = line.index(":")
 			filters.append((line[4:idx],

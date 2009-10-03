@@ -1,4 +1,4 @@
-# FLVTree.py - 2.5.2009 - 27.9.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# FLVTree.py - 2.5.2009 - 3.10.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 from hashlib import sha1
 import anydbm
 import os
@@ -31,6 +31,28 @@ class VirtualFile(BaseFile):
 	def set_contents(self, contents):
 		self.data = contents
 
+class FLVDatabase():
+	def __init__(self, filename):
+		self.db = anydbm.open(filename, "c")
+
+	def get_attr(self, sha1, attr, default=None):
+		data = self.db.get(sha1, "")
+		pref = "%s:" % attr
+		l = len(pref)
+		for items in data.split("\x00"):
+			if items[:l] == pref:
+				return items[l:]
+		return default
+
+	def set_attr(self, sha1, attr, value):
+		data = self.db.get(sha1, "")
+		pref = "%s:" % attr
+		l = len(pref)
+		items = filter(lambda (name): not name[:l] == pref, data.split("\x00"))
+		items.insert(0, "%s:%s" % (attr, value))
+		self.db[sha1] = "\x00".join(items)
+		self.db.sync()
+
 class FLVFile(BaseFile):
 	flv_dirs = []
 	db = None
@@ -48,23 +70,10 @@ class FLVFile(BaseFile):
 		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
 
 	def get_attr(self, attr, default=None):
-		data = FLVFile.db.get(self.get_sha1(), "")
-		pref = "%s:" % attr
-		l = len(pref)
-		for items in data.split("\x00"):
-			if items[:l] == pref:
-				return items[l:]
-		return default
+		return FLVFile.db.get_attr(self.get_sha1(), attr, default)
 
 	def set_attr(self, attr, value):
-		sha = self.get_sha1()
-		data = FLVFile.db.get(sha, "")
-		pref = "%s:" % attr
-		l = len(pref)
-		items = filter(lambda (name): not name[:l] == pref, data.split("\x00"))
-		items.insert(0, "%s:%s" % (attr, value))
-		FLVFile.db[sha] = "\x00".join(items)
-		FLVFile.db.sync()
+		FLVFile.db.set_attr(self.get_sha1(), attr, value)
 
 	def get_count(self):
 		return int(self.get_attr("user.count", "0"))
