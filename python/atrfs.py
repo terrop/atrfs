@@ -61,24 +61,33 @@ def del_asc_file(asc_entry):
 	parent, name = asc_entry.get_pos()
 	parent.del_entry(name)
 
-def filter_entry(entry, test_fn, gvars = {}):
-	"Return True, if ENTRY passes TEST_FN."
-	for var in test_fn.co_names:
+def filter_entry(entry, filt, gvars = {}):
+	"Return category if ENTRY passes FILT, else None."
+	for var in filt.co_names:
 		if var == "sha1":
 			gvars[var] = entry.get_sha1()
 		elif var == "name":
-			gvars[var] = entry.real_name # XXX
+			gvars[var] = entry.real_name
+		elif var == "cat":
+			pass
+		elif var == "catfile":
+			catfile = "%s%c%s" % (entry.flv_dirs[entry.real_dir_idx], os.sep, "cat.txt")
+			if os.access(catfile, os.R_OK):
+				with file(catfile) as f:
+					gvars[var] = f.readline().split("\n")[0]
+			else:
+				gvars[var] = None
 		else:
 			val = entry.get_attr("user.%s" % var, None)
-			if val is not None:
+			if not val is None:
 				gvars[var] = val
 	# Convert some values numeric by default.
 	for var in gvars.keys():
 		if var in ["count", "watchtime", "length"]:
 			gvars[var] = int(float(gvars[var]))
-	if eval(test_fn, gvars):
-		return True
-	return False
+	gvars["cat"] = None
+	exec filt in gvars
+	return gvars.get("cat", None)
 
 class FLVFuseFile():
 	def __init__(self, fuse, path, flags, *mode):
@@ -147,11 +156,11 @@ class FLVFuseFile():
 		elif self.entry == dyncat:
 			# Create a new list of entries that pass the
 			# filter given by the user.
-			test_fn = compile(buf.rstrip(), "name", "eval") # ?, but works.
+			test_fn = compile(buf, "dyncat", "single")
 			dyncat.entries = []
 			gvars = {}
 			for entry in stats._get_entries():
-				gvars["cat"] = stats.get_category_name(entry)
+				gvars["category"] = stats.get_category_name(entry)
 				if filter_entry(entry, test_fn, gvars):
 					dyncat.entries.insert(0, entry)
 			return len(buf)
@@ -297,20 +306,11 @@ class FLVStatistics():
 
 	def get_category_name(self, entry):
 		global filters
-		for (cat, test_fn) in filters:
-			if filter_entry(entry, test_fn):
+		for filt in filters:
+			cat = filter_entry(entry, filt)
+			if not cat is None:
 				return cat
-		catfile = "%s%c%s" % (entry.flv_dirs[entry.real_dir_idx], os.sep, "cat.txt")
-		if os.access(catfile, os.R_OK):
-			with file(catfile) as f:
-				return f.readline().split("\n")[0]
-		# cat = (100 * average watchtime) / len
-		count = entry.get_count()
-		if count == 0:
-			avg = 0
-		else:
-			avg = entry.get_watchtime() / count
-		return str((100 * avg) / entry.get_length())
+		return "unknown"
 
 	def categorize(self, entry):
 		if not isinstance(entry, FLVFile):
@@ -336,10 +336,8 @@ def flv_parse_config_file(filename):
 			def_lang = line[9:].rstrip()
 		elif line[:9] == "database=":
 			FLVFile.db = FLVDatabase(line[9:].rstrip())
-		elif line[:4] == "cat=":
-			idx = line.index(":")
-			filters.append((line[4:idx],
-					compile(line[idx+1:].rstrip(), "name", "eval")))
+		elif line[:7] == "filter=":
+			filters.append(compile(line[7:], filename, "single"))
 		else:		# add files in directory (line ends with '\n')
 			for d, sd, fnames in os.walk(line[:-1]):
 				for name in filter(lambda (n): n[-4:] == ".flv", fnames):
