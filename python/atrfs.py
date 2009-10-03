@@ -61,20 +61,22 @@ def del_asc_file(asc_entry):
 	parent, name = asc_entry.get_pos()
 	parent.del_entry(name)
 
-class FileData():
-	pass
-
-def filter_entry(entry, test_fn):
+def filter_entry(entry, test_fn, gvars = {}):
 	"Return True, if ENTRY passes TEST_FN."
-	user = FileData()
-	# Add other attributes here when needed.
-	user.count = entry.get_count()
-	user.watchtime = entry.get_watchtime()
-	user.length = entry.get_length()
-	user.sha1 = entry.get_sha1()
-	user.name = entry.real_name # XXX
-	#user.cat = stats.get_category_name(entry)
-	if eval(test_fn):
+	for var in test_fn.co_names:
+		if var == "sha1":
+			gvars[var] = entry.get_sha1()
+		elif var == "name":
+			gvars[var] = entry.real_name # XXX
+		else:
+			val = entry.get_attr("user.%s" % var, None)
+			if val is not None:
+				gvars[var] = val
+	# Convert some values numeric by default.
+	for var in gvars.keys():
+		if var in ["count", "watchtime", "length"]:
+			gvars[var] = int(float(gvars[var]))
+	if eval(test_fn, gvars):
 		return True
 	return False
 
@@ -144,20 +146,13 @@ class FLVFuseFile():
 			return len(buf)
 		elif self.entry == dyncat:
 			# Create a new list of entries that pass the
-			# filter given by the user. We could use filter_entry, but
-			# then we couldn't filter entries by their category.
+			# filter given by the user.
 			test_fn = compile(buf.rstrip(), "name", "eval") # ?, but works.
-			user = FileData()
 			dyncat.entries = []
+			gvars = {}
 			for entry in stats._get_entries():
-				# Add other attributes here when needed.
-				user.count = entry.get_count()
-				user.watchtime = entry.get_watchtime()
-				user.length = entry.get_length()
-				user.sha1 = entry.get_sha1()
-				user.name = entry.real_name # XXX
-				user.cat = stats.get_category_name(entry)
-				if eval(test_fn):
+				gvars["cat"] = stats.get_category_name(entry)
+				if filter_entry(entry, test_fn, gvars):
 					dyncat.entries.insert(0, entry)
 			return len(buf)
 
