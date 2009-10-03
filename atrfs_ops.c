@@ -803,6 +803,74 @@ static void atrfs_bmap(fuse_req_t req, fuse_ino_t ino, size_t blocksize, uint64_
 	fuse_reply_err(req, ENOSYS);
 }
 
+/*
+ * ioctl
+ *
+ * Note: For unrestricted ioctls (not allowed for FUSE
+ * servers), data in and out areas can be discovered by giving
+ * iovs and setting FUSE_IOCTL_RETRY in @flags.  For
+ * restricted ioctls, kernel prepares in/out data area
+ * according to the information encoded in cmd.
+ *
+ * Introduced in version 2.8
+ *
+ * Valid replies:
+ *   fuse_reply_ioctl_retry
+ *   fuse_reply_ioctl
+ *   fuse_reply_ioctl_iov
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param cmd ioctl command
+ * @param arg ioctl argument
+ * @param fi file information
+ * @param flags for FUSE_IOCTL_* flags
+ * @param in_buf data fetched from the caller
+ * @param in_bufsz number of fetched bytes
+ * @param out_bufsz maximum size of output data
+ */
+static void atrfs_ioctl(fuse_req_t req, fuse_ino_t ino, int cmd, void *arg,
+	struct fuse_file_info *fi, unsigned flags,
+	const void *in_buf, size_t in_bufsz, size_t out_bufsz)
+{
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	fuse_reply_err(req, ENOSYS);
+}
+
+/*
+ * Poll for IO readiness
+ *
+ * Introduced in version 2.8
+ *
+ * Note: If ph is non-NULL, the client should notify
+ * when IO readiness events occur by calling
+ * fuse_lowelevel_notify_poll() with the specified ph.
+ *
+ * Regardless of the number of times poll with a non-NULL ph
+ * is received, single notification is enough to clear all.
+ * Notifying more times incurs overhead but doesn't harm
+ * correctness.
+ *
+ * The callee is responsible for destroying ph with
+ * fuse_pollhandle_destroy() when no longer in use.
+ *
+ * Valid replies:
+ *   fuse_reply_poll
+ *   fuse_reply_err
+ *
+ * @param req request handle
+ * @param ino the inode number
+ * @param fi file information
+ * @param ph poll handle to be used for notification
+ */
+static void atrfs_poll(fuse_req_t req, fuse_ino_t ino,
+	struct fuse_file_info *fi, struct fuse_pollhandle *ph)
+{
+	struct atrfs_entry *ent = ino_to_entry(ino);
+	fuse_reply_err(req, ENOSYS);
+}
+
 struct fuse_lowlevel_ops atrfs_operations =
 {
 	.init = atrfs_init,
@@ -839,4 +907,6 @@ struct fuse_lowlevel_ops atrfs_operations =
 	.getlk = atrfs_getlk,
 	.setlk = atrfs_setlk,
 	.bmap = atrfs_bmap,
+	.ioctl = atrfs_ioctl,
+	.poll = atrfs_poll,
 };
