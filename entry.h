@@ -22,6 +22,11 @@ struct atrfs_entry
 	char *name;
 	unsigned char flags;
 
+	struct
+	{
+		void (*write)(const char *buf, size_t size);
+	} ops;
+
 	union
 	{
 		struct

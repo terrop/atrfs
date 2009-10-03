@@ -103,6 +103,18 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 	free (datafile);
 }
 
+extern int stat_count;
+static void write_statcount(const char *buf, size_t size)
+{
+	stat_count = atoi(buf);
+}
+
+static void write_language(const char *buf, size_t size)
+{
+	free(language_list);
+	language_list = strndup(buf, size);
+}
+
 static void populate_stat_dir(struct atrfs_entry *statroot)
 {
 	struct atrfs_entry *ent;
@@ -111,11 +123,16 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	attach_entry (statroot, ent, "top-list");
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, "last-list");
+
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	ent->ops.write = write_statcount;
 	attach_entry (statroot, ent, "stat-count");
+
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, "recent");
+
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
+	ent->ops.write = write_language;
 	attach_entry (statroot, ent, "language");
 	update_stats();
 }
