@@ -10,7 +10,6 @@
 #include "entry.h"
 #include "util.h"
 
-extern char *language_list;
 extern char *get_srt (char *filename);
 
 /* in statistics.c */
@@ -332,8 +331,6 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	}
 }
 
-extern int stat_count;
-
 /*
  * Write data
  *
@@ -364,13 +361,9 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("write('%s', '%.*s')\n", ent->name, size, buf);
 
-	if (ent->parent == statroot && !strcmp(ent->name, "language"))
+	if (ent->ops.write)
 	{
-		free (language_list);
-		language_list = strndup(buf, size);
-		fuse_reply_write(req, size);
-	} else if (ent->parent == statroot && !strcmp(ent->name, "stat-count")) {
-		stat_count = atoi(buf);
+		ent->ops.write(buf, size);
 		fuse_reply_write(req, size);
 	} else {
 		fuse_reply_err(req, EROFS);

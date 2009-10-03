@@ -56,6 +56,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	ent->parent = NULL;
 	ent->name = NULL;
 	ent->flags = 0;
+	memset(&ent->ops, 0, sizeof(ent->ops));
 
 	switch (type)
 	{
