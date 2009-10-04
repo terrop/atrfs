@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 3.10.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 4.10.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat
 import timing
@@ -68,6 +68,12 @@ def filter_entry(entry, filt, gvars = {}):
 			gvars[var] = entry.get_sha1()
 		elif var == "name":
 			gvars[var] = entry.real_name
+		elif var == "count":
+			gvars[var] = entry.get_count()
+		elif var == "length":
+			gvars[var] = entry.get_length()
+		elif var == "watchtime":
+			gvars[var] = entry.get_watchtime()
 		elif var == "cat":
 			pass
 		elif var == "catfile":
@@ -81,10 +87,6 @@ def filter_entry(entry, filt, gvars = {}):
 			val = entry.get_attr("user.%s" % var, None)
 			if not val is None:
 				gvars[var] = val
-	# Convert some values numeric by default.
-	for var in gvars.keys():
-		if var in ["count", "watchtime", "length"]:
-			gvars[var] = int(float(gvars[var]))
 	gvars["cat"] = None
 	exec filt in gvars
 	return gvars.get("cat", None)
