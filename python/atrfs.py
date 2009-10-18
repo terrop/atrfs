@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 4.10.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 18.10.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat
 import timing
@@ -36,6 +36,7 @@ def add_asc_file(flv_entry):
 	parent, flv_name = flv_entry.get_pos()
 	length = flv_entry.get_length()
 	val = 1.0 * flv_entry.get_watchtime() / length
+	singer = flv_entry.get_attr("user.singer", None)
 	timestr = "%02d:%02d" % (length / 60, length % 60)
 	asc_name = "%s.srt" % flv_name[:-4]
 	real_flv = flv_entry.get_real_name()
@@ -52,7 +53,7 @@ def add_asc_file(flv_entry):
 		text = "".join(text)
 	else:
 		title = "%s\n%2.2f × %s" % (flv_name[:-4], val, timestr)
-		text = asc_fake_subtitles(title, length)
+		text = asc_fake_subtitles(title, length, singer)
 	asc_entry = VirtualFile(text)
 	parent.add_entry(asc_name, asc_entry)
 	return asc_entry

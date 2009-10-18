@@ -1,4 +1,4 @@
-# asc.py - 2.5.2009 - 6.5.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
+# asc.py - 2.5.2009 - 18.10.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 
 asc_text = None
 has_many_languages = False
@@ -55,8 +55,13 @@ def asc_fake_subtitle(time):
     end = "%02d:%02d" % (em, es)
     return "00:%s,000 --> 00:%s,000\n%s\n" % (begin, end, begin)
 
-def asc_fake_subtitles(name, length):
-    text = ["0\n00:00:00,000 --> 00:00:05,000\n%s\n" % name]
+def asc_fake_subtitles(name, length, singer=None):
+    if singer:
+        if not singer.endswith("\n"):
+            singer = singer + "\n"
+    else:
+        singer = ""
+    text = ["0\n00:00:00,000 --> 00:00:05,000\n%s%s\n" % (singer, name)]
     if length < 16: return text
     pos = 1
     for time in range(15, length, 15):
