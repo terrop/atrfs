@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 18.10.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 19.10.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat
 import timing
@@ -85,9 +85,10 @@ def filter_entry(entry, filt, gvars = {}):
 			else:
 				gvars[var] = None
 		else:
-			val = entry.get_attr("user.%s" % var, None)
-			if not val is None:
-				gvars[var] = val
+			# Other variables are strings.
+			val = entry.get_attr("user.%s" % var, "")
+			gvars[var] = val
+	gvars["str"] = str	# This must be available in the environment.
 	gvars["cat"] = None
 	exec filt in gvars
 	return gvars.get("cat", None)
