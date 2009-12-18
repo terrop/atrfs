@@ -99,6 +99,8 @@ class FLVFuseFile():
 		self.cmd = pid_to_command(fuse.GetContext()["pid"])
 		if isinstance(self.entry, FLVFile):
 			self.file = file(self.entry.get_real_name())
+			self.read = self.__read_flvfile
+			self.release = self.__release_flvfile
 			if self.cmd in ["mplayer"]:
 				self.asc = add_asc_file(self.entry)
 				timing.start()
@@ -114,60 +116,67 @@ class FLVFuseFile():
 			# contents.
 			self.entry.mplayer = self.cmd in ["mplayer"]
 			self.virt_data = self.entry.get_contents()
+			self.read = self.__read_virtual
 			# This causes recent-list's last item name to
 			# be truncated.
 			#del self.entry.mplayer
-		else:
-			raise IOError("Unknown file type")
+			lang = stats.get_lang_entry()
+			dyncat = stats.get_dyncat_entry()
+			if self.entry == lang:
+				self.write = self.__write_lang
+			elif self.entry == dyncat:
+				self.write = self.__write_dyncat
+
+	def __read_flvfile(self, size, offset):
+		self.file.seek(offset)
+		return self.file.read(size)
+
+	def __read_virtual(self, size, offset):
+		return self.virt_data[offset:offset + size]
 
 	def read(self, size, offset):
-		if isinstance(self.entry, FLVFile):
-			self.file.seek(offset)
-			return self.file.read(size)
-		elif isinstance(self.entry, VirtualFile):
-			return self.virt_data[offset:offset + size]
-		else:
-			raise IOError("Unknown file type")
+		raise IOError("Unknown file type")
+
+	def __release_flvfile(self, flags):
+		self.file.close()
+		if self.cmd in ["mplayer"]:
+			timing.finish()
+			# watchtime is in seconds
+			wt = (timing.milli() / 1000.0) + self.entry.get_watchtime()
+			self.entry.set_watchtime(wt)
+			self.entry.set_count(self.entry.get_count() + 1)
+			stats.categorize(self.entry)
+			stats.update_stat_lists(self.entry)
+			if self.asc:
+				del_asc_file(self.asc)
 
 	def release(self, flags):
-		if isinstance(self.entry, FLVFile):
-			self.file.close()
-			if self.cmd in ["mplayer"]:
-				timing.finish()
-				# watchtime is in seconds
-				wt = (timing.milli() / 1000.0) + self.entry.get_watchtime()
-				self.entry.set_watchtime(wt)
-				self.entry.set_count(self.entry.get_count() + 1)
-				stats.categorize(self.entry)
-				stats.update_stat_lists(self.entry)
-				if self.asc:
-					del_asc_file(self.asc)
-		else:
-			pass
+		pass
+
+	def __write_lang(self, buf, offset):
+		# Check that the string is valid: "xx,yy,zz"
+		for elt in buf.rstrip().split(","):
+			if len(elt) != 2:
+				return -errno.ERANGE
+		self.entry.set_contents(buf.rstrip())
+		return len(buf)
+
+	def __write_dyncat(self, buf, offset):
+		# Create a new list of entries that pass the
+		# filter given by the user.
+		test_fn = compile(buf, "dyncat", "single")
+		dyncat = self.entry
+		dyncat.entries = []
+		gvars = {}
+		for entry in stats._get_entries():
+			gvars["category"] = stats.get_category_name(entry)
+			if filter_entry(entry, test_fn, gvars):
+				dyncat.entries.insert(0, entry)
+		return len(buf)
 
 	def write(self, buf, offset):
-		lang = stats.get_lang_entry()
-		dyncat = stats.get_dyncat_entry()
-		if self.entry not in [lang, dyncat]:
-			return -errno.EROFS
-		if self.entry == lang:
-			# Check that the string is valid: "xx,yy,zz"
-			for elt in buf.rstrip().split(","):
-				if len(elt) != 2:
-					return -errno.ERANGE
-			lang.set_contents(buf.rstrip())
-			return len(buf)
-		elif self.entry == dyncat:
-			# Create a new list of entries that pass the
-			# filter given by the user.
-			test_fn = compile(buf, "dyncat", "single")
-			dyncat.entries = []
-			gvars = {}
-			for entry in stats._get_entries():
-				gvars["category"] = stats.get_category_name(entry)
-				if filter_entry(entry, test_fn, gvars):
-					dyncat.entries.insert(0, entry)
-			return len(buf)
+		return -errno.EROFS
+
 
 class ATRFS(fuse.Fuse):
 	def __init__(self):
