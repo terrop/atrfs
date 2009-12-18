@@ -252,12 +252,14 @@ class FLVStatistics():
 		self.entries = [elt[1] for elt in tmp]
 
 	def update_counts(self, fil):
+		def timestr(time):
+			return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
 		time = self.total_wtime
-		wtstr = "total watchtime: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		wtstr = "total watchtime: %s" % timestr(time)
 		time = time / len(self.entries)
-		astr = "average watchtime: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		astr = "average watchtime: %s" % timestr(time)
 		time = self.total_time
-		tstr = "total time: %02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		tstr = "total time: %s" % timestr(time)
 		fil.set_contents("files: %d\n%s\n%s\n%s\n" \
 					 % (len(self.entries), wtstr, tstr, astr))
 
