@@ -33,35 +33,38 @@ def pid_to_command(pid):
 	with open("/proc/%d/cmdline" % pid) as f:
 		return f.readline().split("\x00")[0].split("/")[-1]
 
-def add_asc_file(flv_entry):
-	parent, flv_name = flv_entry.get_pos()
-	length = flv_entry.get_length()
-	val = 1.0 * flv_entry.get_watchtime() / length
-	singer = flv_entry.get_attr("user.singer", None)
-	timestr = "%02d:%02d" % (length / 60, length % 60)
-	asc_name = "%s.srt" % flv_name[:-4]
-	real_flv = flv_entry.get_real_name()
-	real_asc = "%s.asc" % real_flv[:-4]
-	text = None
-	for lang in stats.lookup("language").get_contents().split(","):
-		if not text:
-			try:
-				text = asc_read_subtitles(real_asc, lang, True)
-			except IOError, e:
-				pass
-	if text:
-		text.insert(2 + text.index("0\n"), "%2.2f × %s\n" % (val, timestr))
-		text = "".join(text)
-	else:
-		title = "%s\n%2.2f × %s" % (flv_name[:-4], val, timestr)
-		text = asc_fake_subtitles(title, length, singer)
-	asc_entry = VirtualFile(text)
-	parent.add_entry(asc_name, asc_entry)
-	return asc_entry
+class SubtitleFile(VirtualFile):
+	def __init__(self, flv_entry):
+		VirtualFile.__init__(self, "")
+		(parent, flv_name) = flv_entry.get_pos()
+		length = flv_entry.get_length()
+		val = 1.0 * flv_entry.get_watchtime() / length
+		timestr = "%02d:%02d" % (length / 60, length % 60)
 
-def del_asc_file(asc_entry):
-	parent, name = asc_entry.get_pos()
-	parent.del_entry(name)
+		# Try to find real subtitles.
+		flv = flv_entry.get_real_name()
+		asc = "%s.asc" % flv[:-4] # ".flv"
+		text = None
+		for lang in stats.lookup("language").get_contents().split(","):
+			if not text:
+				try:
+					text = asc_read_subtitles(asc, lang, True) # As list.
+				except IOError, e:
+					pass
+
+		if text:
+			# Found subtitles. Insert statistics at the beginning.
+			# 0\n<timestamp>\n<stat here>\n<1. line>\n<2.line>\n...
+			text.insert(2 + text.index("0\n"), "%2.2f × %s\n" % (val, timestr))
+			text = "".join(text)
+		else:
+			# Not found. Create fake subtitles.
+			title = "%s\n%2.2f × %s" % (flv_name[:-4], val, timestr)
+			singer = flv_entry.get_attr("user.singer", None)
+			text = asc_fake_subtitles(title, length, singer)
+
+		self.set_contents(text)
+
 
 def filter_entry(entry, filt, gvars = {}):
 	"Return category if ENTRY passes FILT, else None."
@@ -105,10 +108,13 @@ class FLVFuseFile():
 			self.read = self.__read_flvfile
 			self.release = self.__release_flvfile
 			if self.cmd in ["mplayer"]:
-				self.asc = add_asc_file(self.entry)
+				(parent, name) = self.entry.get_pos()
+				srt_name = "%s.srt" % name[:-4]
+				self.srt = SubtitleFile(self.entry)
+				parent.add_entry(srt_name,self.srt)
 				timing.start()
 			else:
-				self.asc = None
+				self.srt = None
 		elif isinstance(self.entry, VirtualFile):
 			# Mplayer may use virtual files as playlists.
 			# Since file contents should not change when
@@ -148,8 +154,10 @@ class FLVFuseFile():
 			self.entry.set_count(self.entry.get_count() + 1)
 			stats.categorize(self.entry)
 			stats.update_stat_lists(self.entry)
-			if self.asc:
-				del_asc_file(self.asc)
+			if self.srt:
+				(parent, name) = self.srt.get_pos()
+				parent.del_entry(name)
+				self.srt = None
 
 	def release(self, flags):
 		pass
