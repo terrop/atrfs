@@ -43,7 +43,7 @@ def add_asc_file(flv_entry):
 	real_flv = flv_entry.get_real_name()
 	real_asc = "%s.asc" % real_flv[:-4]
 	text = None
-	for lang in stats.get_lang_entry().get_contents().split(","):
+	for lang in stats.lookup("language").get_contents().split(","):
 		if not text:
 			try:
 				text = asc_read_subtitles(real_asc, lang, True)
@@ -123,8 +123,8 @@ class FLVFuseFile():
 			# This causes recent-list's last item name to
 			# be truncated.
 			#del self.entry.mplayer
-			lang = stats.get_lang_entry()
-			dyncat = stats.get_dyncat_entry()
+			lang = stats.lookup("language")
+			dyncat = stats.lookup("dyncat")
 			if self.entry == lang:
 				self.write = self.__write_lang
 			elif self.entry == dyncat:
@@ -280,12 +280,6 @@ class FLVStatistics(FLVDirectory):
 		self._update_helper(dfile, dfile.entries, self._entry_to_timed_str)
 
 
-	def get_lang_entry(self):
-		return self.lookup("language")
-
-	def get_dyncat_entry(self):
-		return self.dyncat
-
 	def _get_entries(self):
 		return self.entries
 
@@ -378,7 +372,7 @@ def main():
 
 	stats = FLVStatistics(all_entries)
 	flv_root.add_entry("stat", stats)
-	stats.get_lang_entry().set_contents(def_lang)
+	stats.lookup("language").set_contents(def_lang)
 	all_entries = None
 
 	server = ATRFS()
