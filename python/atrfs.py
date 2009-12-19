@@ -219,21 +219,16 @@ class ATRFS(fuse.Fuse):
 	def truncate(self, path, len):
 		return 0
 
-class FLVStatistics():
+class FLVStatistics(FLVDirectory):
 	def __init__(self, entries):
-		self.root = FLVDirectory("stat")
-		self.lang = VirtualFile("fi,en,la,it")
-		self.root.add_entry("language", self.lang)
-		self.top = VirtualFile("", self._update_top_file)
-		self.root.add_entry("top-list", self.top)
-		self.last = VirtualFile("", self._update_last_file)
-		self.root.add_entry("last-list", self.last)
-		self.recent = VirtualFile("", self._update_recent_file)
-		self.root.add_entry("recent", self.recent)
-		self.counts = VirtualFile("", self.update_counts)
-		self.root.add_entry("statistics", self.counts)
+		FLVDirectory.__init__(self, "stat")
+		self.add_entry("language", VirtualFile("fi,en,la,it"))
+		self.add_entry("top-list", VirtualFile("", self._update_top_file))
+		self.add_entry("last-list", VirtualFile("", self._update_last_file))
+		self.add_entry("recent", VirtualFile("", self._update_recent_file))
+		self.add_entry("statistics", VirtualFile("", self.update_counts))
 		self.dyncat = VirtualFile("", self._update_dyncat)
-		self.root.add_entry("dyncat", self.dyncat)
+		self.add_entry("dyncat", self.dyncat)
 
 		self.total_wtime = 0
 		self.total_time = 0
@@ -286,10 +281,10 @@ class FLVStatistics():
 
 
 	def get_root(self):
-		return self.root
+		return self
 
 	def get_lang_entry(self):
-		return self.lang
+		return self.lookup("language")
 
 	def get_dyncat_entry(self):
 		return self.dyncat
