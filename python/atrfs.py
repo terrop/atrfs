@@ -123,11 +123,9 @@ class FLVFuseFile():
 			# This causes recent-list's last item name to
 			# be truncated.
 			#del self.entry.mplayer
-			lang = stats.lookup("language")
-			dyncat = stats.lookup("dyncat")
-			if self.entry == lang:
+			if self.entry == stats.lookup("language"):
 				self.write = self.__write_lang
-			elif self.entry == dyncat:
+			elif self.entry == stats.lookup("dyncat"):
 				self.write = self.__write_dyncat
 
 	def __read_flvfile(self, size, offset):
