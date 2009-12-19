@@ -15,10 +15,7 @@ static int atrfs_session_loop(struct fuse_session *se)
 {
 	int res = 0;
 	struct fuse_chan *ch = fuse_session_next_chan(se, NULL);
-	size_t bufsize = fuse_chan_bufsize(ch);
-	char *buf = malloc(bufsize);
-	if (!buf)
-		return -1;
+	char buf[fuse_chan_bufsize(ch)];
 
 	sigfillset(&sigs);
 	pfd[0].fd = fuse_chan_fd(ch);
@@ -35,7 +32,7 @@ static int atrfs_session_loop(struct fuse_session *se)
 			/* FUSE events */
 			if (pfd[0].revents)
 			{
-				res = fuse_chan_receive(ch, buf, bufsize);
+				res = fuse_chan_receive(ch, buf, sizeof(buf));
 				if (!res)
 					goto inotify;
 
@@ -105,7 +102,6 @@ inotify:
 		}
 	}
 
-	free(buf);
 	fuse_session_reset(se);
 	return res;
 }
