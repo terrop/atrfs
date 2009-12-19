@@ -217,94 +217,129 @@ class ATRFS(fuse.Fuse):
 	def truncate(self, path, len):
 		return 0
 
-class FLVStatistics(FLVDirectory):
-	def __init__(self, entries):
-		FLVDirectory.__init__(self, "stat")
-		self.add_entry("language", VirtualFile("fi,en,la,it"))
-		self.add_entry("top-list", VirtualFile("", self._update_top_file))
-		self.add_entry("last-list", VirtualFile("", self._update_last_file))
-		self.add_entry("recent", VirtualFile("", self._update_recent_file))
-		self.add_entry("statistics", VirtualFile("", self.update_counts))
-		self.dyncat = VirtualFile("", self._update_dyncat)
-		self.add_entry("dyncat", self.dyncat)
+class TopListFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.top_list = []
 
-		self.total_wtime = 0
-		self.total_time = 0
-		self.entries = entries
-		self._sort_entries()
-		for ent in self.entries:
-			self.categorize(ent)
-			self.total_wtime = self.total_wtime + ent.get_watchtime()
-			self.total_time = self.total_time + ent.get_length()
+	def update_contents(self):
+		stats.update_helper(self, self.top_list, stats.entry_to_timed_str)
 
-		self.rlist = []
-		self.toplist = self.entries[:10]
-		self.lastlist = self.entries[-10:]
-		self.dyncat.entries = []
+	def refresh_list(self, new_list):
+		self.top_list = new_list
 
-	def _sort_entries(self):
-		tmp = [(ent.get_watchtime(), ent) for ent in self.entries]
-		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
-		self.entries = [elt[1] for elt in tmp]
+class LastListFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.last_list = []
 
-	def update_counts(self, fil):
-		def timestr(time):
-			return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
-		time = self.total_wtime
-		wtstr = "total watchtime: %s" % timestr(time)
-		time = time / len(self.entries)
-		astr = "average watchtime: %s" % timestr(time)
-		time = self.total_time
-		tstr = "total time: %s" % timestr(time)
-		fil.set_contents("files: %d\n%s\n%s\n%s\n" \
-					 % (len(self.entries), wtstr, tstr, astr))
+	def update_contents(self):
+		stats.update_helper(self, self.last_list, stats.entry_to_timed_str)
 
-	# These methods update the file contents just before they are used.
-	def _update_helper(self, f, lst, mapper):
-		if hasattr(f, "mplayer") and f.mplayer == True:
-			mapper = self._entry_to_mplayer_str
-		f.set_contents("".join(map(mapper, lst)))
+	def refresh_list(self, new_list):
+		self.last_list = new_list
 
-	def _update_recent_file(self, rfile):
-		self._update_helper(rfile, self.rlist, self._entry_to_recent_str)
+class RecentListFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.__recent = []
 
-	def _update_top_file(self, tfile):
-		self._update_helper(tfile, self.toplist, self._entry_to_timed_str)
+	def update_contents(self):
+		stats.update_helper(self, self.__recent, self.__entry_to_recent_str)
 
-	def _update_last_file(self, lfile):
-		self._update_helper(lfile, self.lastlist, self._entry_to_timed_str)
-
-	def _update_dyncat(self, dfile):
-		self._update_helper(dfile, dfile.entries, self._entry_to_timed_str)
-
-
-	def _get_entries(self):
-		return self.entries
-
-	def _entry_to_recent_str(self, entry):
+	def __entry_to_recent_str(self, entry):
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "%s%c%s\n" % (pname, os.path.sep, name)
 
-	def _entry_to_timed_str(self, entry):
+	def add_recent(self, entry):
+		if not entry in self.__recent:
+			self.__recent.insert(0, entry)
+			self.__recent = self.__recent[:10] # Max 10 items.
+
+class StatisticsFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.__total_time = 0
+		self.__watch_time = 0
+
+	def update_contents(self):
+		def timestr(time):
+			return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+		l = len(stats.get_entries())
+		time = self.__watch_time
+		wtstr = "total watchtime: %s" % timestr(time)
+		time = time / l
+		astr = "average watchtime: %s" % timestr(time)
+		time = self.__total_time
+		tstr = "total time: %s" % timestr(time)
+		self.set_contents("files: %d\n%s\n%s\n%s\n" % (l, wtstr, tstr, astr))
+
+	def update_music_times(self, total_secs, watch_secs):
+		self.__total_time = self.__total_time + total_secs
+		self.__watch_time = self.__watch_time + watch_secs
+
+class DyncatFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.entries = []
+
+	def update_contents(self):
+		stats.update_helper(self, self.entries, stats.entry_to_timed_str)
+	
+
+class FLVStatistics(FLVDirectory):
+	def __init__(self, entries):
+		FLVDirectory.__init__(self, "stat")
+		self.add_entry("language", VirtualFile("fi,en,la,it"))
+		self.add_entry("top-list", TopListFile())
+		self.add_entry("last-list", LastListFile())
+		self.add_entry("recent", RecentListFile())
+		self.add_entry("statistics", StatisticsFile())
+		self.add_entry("dyncat", DyncatFile())
+
+		self.__entries = entries
+		self.__sort_entries()
+
+		stat = self.lookup("statistics")
+		for ent in self.get_entries():
+			self.categorize(ent)
+			stat.update_music_times(ent.get_length(), ent.get_watchtime())
+
+		self.lookup("top-list").refresh_list(self.get_entries()[:10])
+		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
+
+	def __sort_entries(self):
+		tmp = [(ent.get_watchtime(), ent) for ent in self.get_entries()]
+		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
+		self.__entries = [elt[1] for elt in tmp]
+
+	def get_entries(self):
+		return self.__entries
+
+	# A helper method.
+	def update_helper(self, f, lst, mapper):
+		if hasattr(f, "mplayer") and f.mplayer == True:
+			mapper = self.__entry_to_mplayer_str
+		f.set_contents("".join(map(mapper, lst)))
+
+	def entry_to_timed_str(self, entry):
 		time = entry.get_watchtime()
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "%02d:%02d\t%s%c%s\n" % (time / 60, time % 60, pname, os.path.sep, name)
 
-	def _entry_to_mplayer_str(self, entry):
+	def __entry_to_mplayer_str(self, entry):
 		(parent, name) = entry.get_pos()
 		(_, pname) = parent.get_pos()
 		return "..%c%s%c%s\n" % (os.path.sep, pname, os.path.sep, name)
 
 	# This method updates the lists that are used to create stat-files' contents.
 	def update_stat_lists(self, entry):
-		if not entry in self.rlist[:1]:
-			self.rlist.insert(0, entry)
-			self.rlist = self.rlist[:10] # max 10 items
-		self._sort_entries()
-		self.toplist = self.entries[:10]
-		self.lastlist = self.entries[-10:]
+		self.__sort_entries()
+		self.lookup("recent").add_recent(entry)
+		self.lookup("top-list").refresh_list(self.get_entries()[:10])
+		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
 
 	def get_category_name(self, entry):
 		global filters

@@ -15,21 +15,23 @@ class BaseFile():
 		return self.entry_pos
 
 class VirtualFile(BaseFile):
-	def __init__(self, contents="", update_fun = None):
+	def __init__(self, contents=""):
 		BaseFile.__init__(self)
-		self.data = contents
-		self.updater = update_fun
+		self.set_contents(contents)
 
 	def __repr__(self):
-		return "<VirtualFile (%d bytes)>" % len(self.data)
+		return "<VirtualFile (%d bytes)>" % len(self.__data)
+
+	# This method is overridden by subclasses.
+	def update_contents(self):
+		pass
 
 	def get_contents(self):
-		if self.updater:
-			self.updater(self)
-		return self.data
+		self.update_contents()
+		return self.__data
 
 	def set_contents(self, contents):
-		self.data = contents
+		self.__data = contents
 
 class FLVDatabase():
 	def __init__(self, filename):
