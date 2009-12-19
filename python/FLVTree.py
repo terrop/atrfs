@@ -57,17 +57,15 @@ class FLVFile(BaseFile):
 	flv_dirs = []
 	db = None
 
-	def __init__(self, directory, file_name):
+	def __init__(self, name):
 		BaseFile.__init__(self)
-		if directory not in self.flv_dirs: self.flv_dirs.append(directory)
-		self.real_dir_idx = self.flv_dirs.index(directory)
-		self.real_name = file_name
+		self.name = name
 
 	def __repr__(self):
-		return "<FLVFile '%s'>" % self.real_name
+		return "<FLVFile '%s'>" % self.name
 
 	def get_real_name(self):
-		return os.path.join(self.flv_dirs[self.real_dir_idx], self.real_name)
+		return FLVFile.files.real_name(self.name)
 
 	def get_attr(self, attr, default=None):
 		return FLVFile.db.get_attr(self.get_sha1(), attr, default)
@@ -119,16 +117,9 @@ class FLVDirectory(BaseFile):
 	def __repr__(self):
 		return "<FLVDir %s (%d entries)> " % (self.name, len(self.contents))
 
-	def add_entry(self, name, entry, uniquify = False):
-		tmp = name
-		count = 0
-		while tmp in self.contents and uniquify:
-			count = count + 1
-			tmp = "%s_%d.flv" % (name[:-4], count)
-		if tmp in self.contents:
-			raise IOError("Name already in use: %s" % tmp)
-		self.contents[tmp] = entry
-		entry.set_pos(self, tmp)
+	def add_entry(self, name, entry):
+		self.contents[name] = entry
+		entry.set_pos(self, name)
 
 	def del_entry(self, name):
 		entry = self.contents[name]

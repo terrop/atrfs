@@ -7,6 +7,7 @@ import timing
 
 from FLVTree import VirtualFile, FLVFile, FLVDirectory, FLVDatabase
 from asc import *
+from files import Files
 
 def flv_resolve_path(path):
 	parts = filter(lambda (str): not str == "", path.split(os.path.sep))
@@ -68,7 +69,7 @@ def filter_entry(entry, filt, gvars = {}):
 		if var == "sha1":
 			gvars[var] = entry.get_sha1()
 		elif var == "name":
-			gvars[var] = entry.real_name
+			gvars[var] = entry.name
 		elif var == "count":
 			gvars[var] = entry.get_count()
 		elif var == "length":
@@ -78,7 +79,9 @@ def filter_entry(entry, filt, gvars = {}):
 		elif var == "cat":
 			pass
 		elif var == "catfile":
-			catfile = "%s%c%s" % (entry.flv_dirs[entry.real_dir_idx], os.sep, "cat.txt")
+			fname = entry.get_real_name()
+			idx = fname.rindex(os.sep)
+			catfile = "%s%s" % (fname[:idx + 1], "cat.txt")
 			if os.access(catfile, os.R_OK):
 				with file(catfile) as f:
 					gvars[var] = f.readline().split("\n")[0]
@@ -341,7 +344,7 @@ class FLVStatistics():
 
 
 def flv_parse_config_file(filename):
-	global def_lang, all_entries, filters
+	global def_lang, filters, files
 	cfg = file(filename)
 	lines = cfg.readlines()
 	cfg.close()
@@ -354,11 +357,7 @@ def flv_parse_config_file(filename):
 		elif line[:7] == "filter=":
 			filters.append(compile(line[7:], filename, "single"))
 		else:		# add files in directory (line ends with '\n')
-			for d, sd, fnames in os.walk(line[:-1]):
-				for name in filter(lambda (n): n[-4:] == ".flv", fnames):
-					ent = FLVFile(d, name)
-					flv_root.add_entry(name, ent, True)
-					all_entries.insert(0, ent)
+			files.process(line[:-1], ".flv")
 
 fuse.fuse_python_api = (0,2)
 flv_root = None
@@ -366,14 +365,24 @@ stats = None
 def_lang = None
 all_entries = None
 filters = None
+files = None
 
 def main():
-	global flv_root, stats, def_lang, all_entries, filters
+	global flv_root, stats, def_lang, all_entries, filters, files
 	flv_root = FLVDirectory("/")
 	def_lang = "fi,en,la,it"
 	all_entries = []
 	filters = []
+	files = Files()
+	FLVFile.files = files	# XXX: Hack
+
 	flv_parse_config_file("atrfs.conf")
+
+	# Add files into root directory.
+	for name in files.get_names():
+		ent = FLVFile(name)
+		flv_root.add_entry(name, ent)
+		all_entries.insert(0, ent)
 
 	stats = FLVStatistics(all_entries)
 	flv_root.add_entry("stat", stats.get_root())
