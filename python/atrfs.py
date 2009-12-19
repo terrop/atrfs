@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 18.12.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 19.12.2009 Ari & Tero Roponen
 
 import errno, fuse, os, stat
 import timing
