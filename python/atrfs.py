@@ -8,6 +8,7 @@ import timing
 from FLVTree import VirtualFile, FLVFile, FLVDirectory, FLVDatabase
 from asc import *
 from files import Files
+from random import shuffle, randint
 
 def flv_resolve_path(path):
 	parts = filter(lambda (str): not str == "", path.split(os.path.sep))
@@ -295,6 +296,25 @@ class DyncatFile(VirtualFile):
 	def update_contents(self):
 		stats.update_helper(self, self.entries, stats.entry_to_timed_str)
 	
+class PlaylistFile(VirtualFile):
+	def __init__(self):
+		VirtualFile.__init__(self, "")
+		self.playlist = []
+
+	def update_contents(self):
+		stats.update_helper(self, self.playlist, stats.entry_to_timed_str)
+
+	def refresh_list(self, new_list):
+		playlist = []
+		playlist.extend(new_list[10: 10 + 40]) # 40 good files
+		shuffle(playlist)
+		playlist = playlist[:20] # 20 good files
+		other = new_list[50:]
+		l = len(other)
+		for c in range(0, 10): # 10 random files.
+			playlist.append(other[randint(0, l)])
+		shuffle(playlist)
+		self.playlist = playlist
 
 class FLVStatistics(FLVDirectory):
 	def __init__(self, entries):
@@ -305,6 +325,7 @@ class FLVStatistics(FLVDirectory):
 		self.add_entry("recent", RecentListFile())
 		self.add_entry("statistics", StatisticsFile())
 		self.add_entry("dyncat", DyncatFile())
+		self.add_entry("playlist", PlaylistFile())
 
 		self.__entries = entries
 		self.__sort_entries()
@@ -316,6 +337,7 @@ class FLVStatistics(FLVDirectory):
 
 		self.lookup("top-list").refresh_list(self.get_entries()[:10])
 		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
+		self.lookup("playlist").refresh_list(self.get_entries())
 
 	def __sort_entries(self):
 		tmp = [(ent.get_watchtime(), ent) for ent in self.get_entries()]
@@ -348,6 +370,7 @@ class FLVStatistics(FLVDirectory):
 		self.lookup("recent").add_recent(entry)
 		self.lookup("top-list").refresh_list(self.get_entries()[:10])
 		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
+		self.lookup("playlist").refresh_list(self.get_entries())
 
 	def get_category_name(self, entry):
 		global filters
