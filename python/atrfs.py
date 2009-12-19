@@ -280,9 +280,6 @@ class FLVStatistics(FLVDirectory):
 		self._update_helper(dfile, dfile.entries, self._entry_to_timed_str)
 
 
-	def get_root(self):
-		return self
-
 	def get_lang_entry(self):
 		return self.lookup("language")
 
@@ -380,7 +377,7 @@ def main():
 		all_entries.insert(0, ent)
 
 	stats = FLVStatistics(all_entries)
-	flv_root.add_entry("stat", stats.get_root())
+	flv_root.add_entry("stat", stats)
 	stats.get_lang_entry().set_contents(def_lang)
 	all_entries = None
 
