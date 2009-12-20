@@ -130,11 +130,6 @@ int main(int argc, char *argv[])
 			{
 				if (fuse_set_signal_handlers(fs) != -1)
 				{
-					int watch;
-					pfd[1].fd = inotify_init1(IN_NONBLOCK);
-					pfd[1].events = POLLIN;
-					inotify_add_watch(pfd[1].fd, "/home/terrop/Videos/", IN_ALL_EVENTS);
-
 					fuse_session_add_chan(fs, fc);
 					fuse_daemonize(foreground);
 
