@@ -178,7 +178,7 @@ class FLVFuseFile():
 		dyncat = self.entry
 		dyncat.entries = []
 		gvars = {}
-		for entry in stats._get_entries():
+		for entry in get_all_entries():
 			gvars["category"] = stats.get_category_name(entry)
 			if filter_entry(entry, test_fn, gvars):
 				dyncat.entries.insert(0, entry)
@@ -275,7 +275,7 @@ class StatisticsFile(VirtualFile):
 	def update_contents(self):
 		def timestr(time):
 			return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
-		l = len(stats.get_entries())
+		l = len(get_all_entries())
 		time = self.__watch_time
 		wtstr = "total watchtime: %s" % timestr(time)
 		time = time / l
@@ -327,25 +327,21 @@ class FLVStatistics(FLVDirectory):
 		self.add_entry("dyncat", DyncatFile())
 		self.add_entry("playlist", PlaylistFile())
 
-		self.__entries = get_all_entries()
-		self.__sort_entries()
+		entries = self.__sort_entries(get_all_entries())
 
 		stat = self.lookup("statistics")
-		for ent in self.get_entries():
+		for ent in entries:
 			self.categorize(ent)
 			stat.update_music_times(ent.get_length(), ent.get_watchtime())
 
-		self.lookup("top-list").refresh_list(self.get_entries()[:10])
-		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
-		self.lookup("playlist").refresh_list(self.get_entries())
+		self.lookup("top-list").refresh_list(entries[:10])
+		self.lookup("last-list").refresh_list(entries[-10:])
+		self.lookup("playlist").refresh_list(entries)
 
-	def __sort_entries(self):
-		tmp = [(ent.get_watchtime(), ent) for ent in self.get_entries()]
+	def __sort_entries(self, entries):
+		tmp = [(ent.get_watchtime(), ent) for ent in entries]
 		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
-		self.__entries = [elt[1] for elt in tmp]
-
-	def get_entries(self):
-		return self.__entries
+		return [elt[1] for elt in tmp]
 
 	# A helper method.
 	def update_helper(self, f, lst, mapper):
@@ -366,11 +362,11 @@ class FLVStatistics(FLVDirectory):
 
 	# This method updates the lists that are used to create stat-files' contents.
 	def update_stat_lists(self, entry):
-		self.__sort_entries()
+		entries = self.__sort_entries(get_all_entries())
 		self.lookup("recent").add_recent(entry)
-		self.lookup("top-list").refresh_list(self.get_entries()[:10])
-		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
-		self.lookup("playlist").refresh_list(self.get_entries())
+		self.lookup("top-list").refresh_list(entries[:10])
+		self.lookup("last-list").refresh_list(entries[-10:])
+		self.lookup("playlist").refresh_list(entries)
 
 	def get_category_name(self, entry):
 		global filters
