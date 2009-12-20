@@ -121,10 +121,15 @@ class FLVDirectory(BaseFile):
 
 	def add_entry(self, name, entry):
 		self.contents[name] = entry
-		entry.set_pos(self, name)
+		if isinstance(entry, str):
+			# FLVFile is stored as a string in order to save memory.
+			self.contents[name] = name
+		else:
+			self.contents[name] = entry
+			entry.set_pos(self, name)
 
 	def del_entry(self, name):
-		entry = self.contents[name]
+		entry = self.lookup(name)
 		entry.set_pos(None, None)
 		del(self.contents[name])
 		if (len(self.contents) == 0):
@@ -133,7 +138,11 @@ class FLVDirectory(BaseFile):
 				parent.del_entry(name)
 
 	def lookup(self, name):
-		return self.contents.get(name,  None)
+		entry = self.contents.get(name, None)
+		if isinstance(entry, str):
+			entry = FLVFile(name)
+			entry.set_pos(self, name)
+		return entry
 
 	def get_names(self):
 		return self.contents.keys()

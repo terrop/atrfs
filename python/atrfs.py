@@ -440,8 +440,8 @@ def main():
 
 	# Add files into root directory.
 	for name in files.get_names():
-		ent = FLVFile(name)
-		flv_root.add_entry(name, ent)
+		# FLVFiles can be stored as (unique) names.
+		flv_root.add_entry(name, name)
 
 	stats = FLVStatistics()
 	flv_root.add_entry("stat", stats)
