@@ -317,7 +317,7 @@ class PlaylistFile(VirtualFile):
 		self.playlist = playlist
 
 class FLVStatistics(FLVDirectory):
-	def __init__(self, entries):
+	def __init__(self):
 		FLVDirectory.__init__(self, "stat")
 		self.add_entry("language", VirtualFile("fi,en,la,it"))
 		self.add_entry("top-list", TopListFile())
@@ -327,7 +327,7 @@ class FLVStatistics(FLVDirectory):
 		self.add_entry("dyncat", DyncatFile())
 		self.add_entry("playlist", PlaylistFile())
 
-		self.__entries = entries
+		self.__entries = get_all_entries()
 		self.__sort_entries()
 
 		stat = self.lookup("statistics")
@@ -413,15 +413,25 @@ fuse.fuse_python_api = (0,2)
 flv_root = None
 stats = None
 def_lang = None
-all_entries = None
 filters = None
 files = None
 
+def get_all_entries():
+	def get_entries(directory):
+		entries = []
+		for name in directory.get_names():
+			entry = directory.lookup(name)
+			if isinstance(entry, FLVFile):
+				entries.insert(0, entry)
+			elif isinstance(entry, FLVDirectory):
+				entries.extend(get_entries(entry))
+		return entries
+	return get_entries(flv_root)
+
 def main():
-	global flv_root, stats, def_lang, all_entries, filters, files
+	global flv_root, stats, def_lang, filters, files
 	flv_root = FLVDirectory("/")
 	def_lang = "fi,en,la,it"
-	all_entries = []
 	filters = []
 	files = Files()
 	FLVFile.files = files	# XXX: Hack
@@ -432,12 +442,10 @@ def main():
 	for name in files.get_names():
 		ent = FLVFile(name)
 		flv_root.add_entry(name, ent)
-		all_entries.insert(0, ent)
 
-	stats = FLVStatistics(all_entries)
+	stats = FLVStatistics()
 	flv_root.add_entry("stat", stats)
 	stats.lookup("language").set_contents(def_lang)
-	all_entries = None
 
 	server = ATRFS()
 	server.parse()
