@@ -35,7 +35,7 @@ class Files():
 
 	def del_name(self, name):
 		if self.__entries.get(name):
-			del(self.__entries[name])
+			self.__entries[name] = (-1, "")
 
 	def real_name(self, name):
 		data = self.__entries.get(name)
