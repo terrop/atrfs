@@ -1,7 +1,9 @@
+#include <sys/inotify.h>
 #include <errno.h>
 #include <ftw.h>
 #include <fuse.h>
 #include <fuse/fuse_lowlevel.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,12 +57,20 @@ static void add_file_when_flv(const char *filename)
 
 extern char *language_list;
 
+extern struct pollfd pfd[2];
+
 static void for_each_file (char *dir_or_file, void (*file_handler)(const char *filename))
 {
 	int handler (const char *fpath, const struct stat *sb, int type)
 	{
 		if (type == FTW_F)
 			file_handler (fpath);
+		else if (type == FTW_D)
+			inotify_add_watch(pfd[1].fd, fpath,
+				IN_CREATE |
+				IN_DELETE |
+				IN_MOVED_FROM |
+				IN_MOVED_TO);
 		return 0;
 	}
 	ftw (dir_or_file, handler, 10);
