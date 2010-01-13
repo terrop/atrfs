@@ -178,7 +178,7 @@ class FLVFuseFile():
 		dyncat = self.entry
 		dyncat.entries = []
 		gvars = {}
-		for entry in stats._get_entries():
+		for entry in stats.get_entries():
 			gvars["category"] = stats.get_category_name(entry)
 			if filter_entry(entry, test_fn, gvars):
 				dyncat.entries.insert(0, entry)
