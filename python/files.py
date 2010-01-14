@@ -7,11 +7,18 @@ class Files():
 		self.__entries = {}
 		self.__dirs = []
 
-	def add_real_file(self, real_file, ext = ".flv"):
+	def __ext(self, name):
+		if "." in name:
+			i = name.rindex(".")
+			return name[i:]
+		return ""
+
+	def add_real_file(self, real_file):
 		sep = real_file.rindex(os.sep)
 		directory = real_file[:sep]
 		fname = real_file[sep + 1:]
 		count = 0
+		ext = self.__ext(fname)
 		l = len(ext)
 		name = fname
 		while self.__entries.get(name, None):
@@ -21,14 +28,14 @@ class Files():
 			self.__dirs.append(directory)
 		self.__entries[name] = (self.__dirs.index(directory), fname)
 
-	def del_real_file(self, real_file, ext=".flv"):
-		name = self.get_name (real_file, ext)
+	def del_real_file(self, real_file):
+		name = self.get_name (real_file)
 		if name:
 			del(self.__entries[name])
 
 	def del_name(self, name):
 		if self.__entries.get(name):
-			del(self.__entries[name])
+			self.__entries[name] = (-1, "")
 
 	def real_name(self, name):
 		data = self.__entries.get(name)
@@ -37,12 +44,13 @@ class Files():
 			return "%s%c%s" % (self.__dirs[idx], os.sep, fname)
 		return None
 
-	def get_name(self, real_file, ext=".flv"):
+	def get_name(self, real_file):
 		sep = real_file.rindex(os.sep)
 		fname = real_file[sep + 1:]
 		directory = real_file[:sep]
 		idx = self.__dirs.index(directory)
 		count = 0
+		ext = self.__ext(fname)
 		l = len(ext)
 		name = fname
 		while self.__entries.get(name, None):
@@ -61,4 +69,4 @@ class Files():
 		l = len(ext)
 		for d, sd, fnames in os.walk(name):
 			for n in filter(lambda (n): n[-l:] == ext, fnames):
-				self.add_real_file("%s%c%s" % (d, os.sep, n), ext)
+				self.add_real_file("%s%c%s" % (d, os.sep, n))

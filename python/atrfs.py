@@ -178,7 +178,7 @@ class FLVFuseFile():
 		dyncat = self.entry
 		dyncat.entries = []
 		gvars = {}
-		for entry in stats.get_entries():
+		for entry in get_all_entries():
 			gvars["category"] = stats.get_category_name(entry)
 			if filter_entry(entry, test_fn, gvars):
 				dyncat.entries.insert(0, entry)
@@ -275,7 +275,7 @@ class StatisticsFile(VirtualFile):
 	def update_contents(self):
 		def timestr(time):
 			return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
-		l = len(stats.get_entries())
+		l = len(get_all_entries())
 		time = self.__watch_time
 		wtstr = "total watchtime: %s" % timestr(time)
 		time = time / l
@@ -317,7 +317,7 @@ class PlaylistFile(VirtualFile):
 		self.playlist = playlist
 
 class FLVStatistics(FLVDirectory):
-	def __init__(self, entries):
+	def __init__(self):
 		FLVDirectory.__init__(self, "stat")
 		self.add_entry("language", VirtualFile("fi,en,la,it"))
 		self.add_entry("top-list", TopListFile())
@@ -327,25 +327,21 @@ class FLVStatistics(FLVDirectory):
 		self.add_entry("dyncat", DyncatFile())
 		self.add_entry("playlist", PlaylistFile())
 
-		self.__entries = entries
-		self.__sort_entries()
+		entries = self.__sort_entries(get_all_entries())
 
 		stat = self.lookup("statistics")
-		for ent in self.get_entries():
+		for ent in entries:
 			self.categorize(ent)
 			stat.update_music_times(ent.get_length(), ent.get_watchtime())
 
-		self.lookup("top-list").refresh_list(self.get_entries()[:10])
-		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
-		self.lookup("playlist").refresh_list(self.get_entries())
+		self.lookup("top-list").refresh_list(entries[:10])
+		self.lookup("last-list").refresh_list(entries[-10:])
+		self.lookup("playlist").refresh_list(entries)
 
-	def __sort_entries(self):
-		tmp = [(ent.get_watchtime(), ent) for ent in self.get_entries()]
+	def __sort_entries(self, entries):
+		tmp = [(ent.get_watchtime(), ent) for ent in entries]
 		tmp = sorted(tmp, lambda a,b: b[0]-a[0])
-		self.__entries = [elt[1] for elt in tmp]
-
-	def get_entries(self):
-		return self.__entries
+		return [elt[1] for elt in tmp]
 
 	# A helper method.
 	def update_helper(self, f, lst, mapper):
@@ -366,11 +362,11 @@ class FLVStatistics(FLVDirectory):
 
 	# This method updates the lists that are used to create stat-files' contents.
 	def update_stat_lists(self, entry):
-		self.__sort_entries()
+		entries = self.__sort_entries(get_all_entries())
 		self.lookup("recent").add_recent(entry)
-		self.lookup("top-list").refresh_list(self.get_entries()[:10])
-		self.lookup("last-list").refresh_list(self.get_entries()[-10:])
-		self.lookup("playlist").refresh_list(self.get_entries())
+		self.lookup("top-list").refresh_list(entries[:10])
+		self.lookup("last-list").refresh_list(entries[-10:])
+		self.lookup("playlist").refresh_list(entries)
 
 	def get_category_name(self, entry):
 		global filters
@@ -413,15 +409,25 @@ fuse.fuse_python_api = (0,2)
 flv_root = None
 stats = None
 def_lang = None
-all_entries = None
 filters = None
 files = None
 
+def get_all_entries():
+	def get_entries(directory):
+		entries = []
+		for name in directory.get_names():
+			entry = directory.lookup(name)
+			if isinstance(entry, FLVFile):
+				entries.insert(0, entry)
+			elif isinstance(entry, FLVDirectory):
+				entries.extend(get_entries(entry))
+		return entries
+	return get_entries(flv_root)
+
 def main():
-	global flv_root, stats, def_lang, all_entries, filters, files
+	global flv_root, stats, def_lang, filters, files
 	flv_root = FLVDirectory("/")
 	def_lang = "fi,en,la,it"
-	all_entries = []
 	filters = []
 	files = Files()
 	FLVFile.files = files	# XXX: Hack
@@ -430,14 +436,12 @@ def main():
 
 	# Add files into root directory.
 	for name in files.get_names():
-		ent = FLVFile(name)
-		flv_root.add_entry(name, ent)
-		all_entries.insert(0, ent)
+		# FLVFiles can be stored as (unique) names.
+		flv_root.add_entry(name, name)
 
-	stats = FLVStatistics(all_entries)
+	stats = FLVStatistics()
 	flv_root.add_entry("stat", stats)
 	stats.lookup("language").set_contents(def_lang)
-	all_entries = None
 
 	server = ATRFS()
 	server.parse()
