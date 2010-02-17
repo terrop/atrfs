@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# atrfs.py - 1.5.2009 - 19.12.2009 Ari & Tero Roponen
+# atrfs.py - 1.5.2009 - 17.2.2010 Ari & Tero Roponen
 
 import errno, fuse, os, stat
 import timing
@@ -80,6 +80,10 @@ def filter_entry(entry, filt, gvars = {}):
 			gvars[var] = entry.get_length()
 		elif var == "watchtime":
 			gvars[var] = entry.get_watchtime()
+		elif var == "mult":
+			wt = entry.get_watchtime()
+			l = entry.get_length()
+			gvars[var] = (1.0 * wt) / l
 		elif var == "cat":
 			pass
 		elif var == "catfile":
