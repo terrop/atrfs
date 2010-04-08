@@ -33,6 +33,20 @@ class VirtualFile(BaseFile):
 	def set_contents(self, contents):
 		self.__data = contents
 
+class DirStatFile(VirtualFile):
+	def timestr(self, time):
+		return "%02d:%02d:%02d" % (time / 3600, (time % 3600) / 60, time % 60)
+
+	def update_contents(self):
+		(parent, _) = self.get_pos()
+		time = 0
+		for name in parent.get_names():
+			if name[-4:] != ".flv":
+				continue
+			ent = parent.lookup(name)
+			time = time + ent.get_length()
+		self.set_contents("Total time: %s\n" % self.timestr(time))
+
 class FLVDatabase():
 	def __init__(self, filename):
 		self.db = anydbm.open(filename, "c")
@@ -115,6 +129,7 @@ class FLVDirectory(BaseFile):
 		BaseFile.__init__(self)
 		self.name = name
 		self.contents = {}
+		self.add_entry("stat.txt", DirStatFile())
 
 	def __repr__(self):
 		return "<FLVDir %s (%d entries)> " % (self.name, len(self.contents))
