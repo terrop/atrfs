@@ -30,7 +30,7 @@ static void add_file_when_flv(const char *filename)
 		attach_entry (root, ent, uniq_name);
 	}
 
-	ent->file.real_path = strdup(filename);
+	FILE_ENTRY(ent)->real_path = strdup(filename);
 	free(uniq_name);
 }
 

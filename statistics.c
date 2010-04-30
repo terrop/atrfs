@@ -141,7 +141,7 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 
 	/* Handle file-specific configuration. */
 	struct atrfs_entry *conf = NULL;
-	int size = getxattr(ent->file.real_path, "user.mpconf", NULL, 0);
+	int size = getxattr(FILE_ENTRY(ent)->real_path, "user.mpconf", NULL, 0);
 	if (size > 0)
 	{
 //		tmplog ("File-specific config for %s:%d\n", ent->file.real_path, size);
@@ -154,7 +154,7 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 			size_t sz;
 			conf = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 			data = malloc (size);
-			sz = getxattr(ent->file.real_path, "user.mpconf", data, size);
+			sz = getxattr(FILE_ENTRY(ent)->real_path, "user.mpconf", data, size);
 			tmplog("Data: '%s'\n", data);
 			VIRTUAL_ENTRY(conf)->set_contents(conf, data, sz);
 			attach_entry (ent->parent, conf, cfgname);

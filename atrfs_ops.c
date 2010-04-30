@@ -177,14 +177,14 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 
 static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 {
-	char *filename = ent->file.real_path;
+	char *filename = FILE_ENTRY(ent)->real_path;
 
 	/*
 	 * Increase watch-count every time the 'mplayer' opens
 	 * the file and its timer is not already running.
 	 */
 	if ((!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem")) &&
-		isless(ent->file.start_time, 0.0))
+	    isless(FILE_ENTRY(ent)->start_time, 0.0))
 	{
 		int count = get_ivalue (filename, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
@@ -195,7 +195,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		{
 			if (! lookup_entry_by_name (ent->parent, srtname))
 			{
-				char *data = get_srt(ent->file.real_path);
+				char *data = get_srt(FILE_ENTRY(ent)->real_path);
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 				VIRTUAL_ENTRY(srt)->set_contents(srt, data, strlen (data));
 				attach_entry (ent->parent, srt, srtname);
@@ -204,7 +204,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 			free (srtname);
 		}
 
-		ent->file.start_time = doubletime ();
+		FILE_ENTRY(ent)->start_time = doubletime ();
 	}
 
 	int fd = open(filename, flags);
@@ -480,7 +480,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 	/* If this was a flv-file, then srt_name != NULL */
 	if (srt_name && isgreater (playtime, 0.0))
 	{
-		char *filename = ent->file.real_path;
+		char *filename = FILE_ENTRY(ent)->real_path;
 
 		/* * Update the total watch-time. */
 		double watchtime = get_dvalue (filename, "user.watchtime", 0.0);
@@ -536,9 +536,9 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	if (ent->e_type == ATRFS_FILE_ENTRY)
 	{
 		double playtime = 0.0;
-		if (isgreaterequal(ent->file.start_time, 0.0))
-			playtime = doubletime () - ent->file.start_time;
-		ent->file.start_time = -1.0;
+		if (isgreaterequal(FILE_ENTRY(ent)->start_time, 0.0))
+			playtime = doubletime () - FILE_ENTRY(ent)->start_time;
+		FILE_ENTRY(ent)->start_time = -1.0;
 
 		release_file (ent, playtime);
 		if (fi->fh >= 0)

@@ -28,21 +28,21 @@ bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);
 int get_total_watchcount(struct atrfs_entry *ent)
 {
 	int value;
-	get_value_internal(ent->file.real_path, "user.count", 1, "%d", &value);
+	get_value_internal(FILE_ENTRY(ent)->real_path, "user.count", 1, "%d", &value);
 	return value;
 }
 
 double get_total_watchtime(struct atrfs_entry *ent)
 {
 	double value;
-	get_value_internal(ent->file.real_path, "user.watchtime", 1, "%lf", &value);
+	get_value_internal(FILE_ENTRY(ent)->real_path, "user.watchtime", 1, "%lf", &value);
 	return value;
 }
 
 double get_total_length(struct atrfs_entry *ent)
 {
 	double value;
-	get_value_internal(ent->file.real_path, "user.length", 1, "%lf", &value);
+	get_value_internal(FILE_ENTRY(ent)->real_path, "user.length", 1, "%lf", &value);
 	return value;
 }
 
@@ -68,10 +68,18 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	switch (type)
 	{
 	default:
-		ent = malloc (sizeof (*ent));
-		if (! ent)
-			abort ();
+		abort ();
 		break;
+	case ATRFS_FILE_ENTRY:
+	{
+		struct atrfs_file_entry *fent = malloc (sizeof (*fent));
+		if (! fent)
+			abort ();
+		fent->real_path = NULL;
+		fent->start_time = -1.0;
+		ent = &fent->entry;
+		break;
+	}
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 	{
 		struct atrfs_virtual_entry *vent = malloc (sizeof (*vent));
@@ -101,14 +109,6 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 
 	switch (type)
 	{
-	default:
-		abort ();
-	case ATRFS_DIRECTORY_ENTRY:
-		break;
-	case ATRFS_FILE_ENTRY:
-		ent->file.real_path = NULL;
-		ent->file.start_time = -1.0;
-		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		ent->ops.read = virtual_read;
 		break;
@@ -228,7 +228,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 
 	case ATRFS_FILE_ENTRY:
 	{
-		char *filename = ent->file.real_path;
+		char *filename = FILE_ENTRY(ent)->real_path;
 		if (stat (filename, st) < 0)
 			return errno;
 

@@ -10,23 +10,23 @@
 
 static char *get_realname(struct atrfs_entry *ent)
 {
-	return ent->file.real_path;
+	return FILE_ENTRY(ent)->real_path;
 };
 
 static char *get_length(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(ent->file.real_path, "user.length", 0.0));
+	return secs_to_time(get_dvalue(FILE_ENTRY(ent)->real_path, "user.length", 0.0));
 }
 
 static char *get_watchtime(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(ent->file.real_path, "user.watchtime", 0.0));
+	return secs_to_time(get_dvalue(FILE_ENTRY(ent)->real_path, "user.watchtime", 0.0));
 }
 
 static char *get_count(struct atrfs_entry *ent)
 {
 	static char buf[10]; //XXX
-	sprintf(buf, "%d", get_ivalue(ent->file.real_path, "user.count", 0));
+	sprintf(buf, "%d", get_ivalue(FILE_ENTRY(ent)->real_path, "user.count", 0));
 	return buf;
 }
 
