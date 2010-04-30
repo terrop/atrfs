@@ -49,9 +49,8 @@ void update_recent_file (struct atrfs_entry *ent)
 			recent_files[i]->name);
 	}
 	fclose (fp);
-	free (recent->virtual.data);
-	recent->virtual.data = buf;
-	recent->virtual.size = size;
+	free (VIRTUAL_ENTRY(recent)->m_data);
+	VIRTUAL_ENTRY(recent)->set_contents(recent, buf, size);
 }
 
 int get_total_watchcount(struct atrfs_entry *ent);
@@ -60,8 +59,6 @@ double get_total_length(struct atrfs_entry *ent);
 
 void update_stats (void)
 {
-	struct atrfs_entry *statcount_ent;
-	struct atrfs_entry *language_ent;
 	struct atrfs_entry *st_ents[2];
 	st_ents[0] = lookup_entry_by_name(statroot, "top-list");
 	st_ents[1] = lookup_entry_by_name(statroot, "last-list");
@@ -106,27 +103,24 @@ void update_stats (void)
 		}
 
 		fclose (stfp);
-		free (st_ents[j]->virtual.data);
-		st_ents[j]->virtual.data = stbuf;
-		st_ents[j]->virtual.size = stsize;
+		free (VIRTUAL_ENTRY(st_ents[j])->m_data);
+		VIRTUAL_ENTRY(st_ents[j])->set_contents(st_ents[j], stbuf, stsize);
 	}
-		
+
 	free (entries);
 
-	language_ent = lookup_entry_by_name(statroot, "language");
-	if (language_ent)
-	{
-		language_ent->virtual.data = language_list;
-		language_ent->virtual.size = strlen(language_list);
-	}
+	struct atrfs_entry *lang;
+	lang = lookup_entry_by_name(statroot, "language");
+	if (lang)
+		VIRTUAL_ENTRY(lang)->set_contents(lang, language_list, strlen(language_list));
 
-	statcount_ent = lookup_entry_by_name(statroot, "stat-count");
-	if (statcount_ent)
+	struct atrfs_entry *statcount;
+	statcount = lookup_entry_by_name(statroot, "stat-count");
+	if (statcount)
 	{
 		static char buf[10];
 		sprintf(buf, "%d\n", stat_count);
-		statcount_ent->virtual.data = buf;
-		statcount_ent->virtual.size = strlen(buf);
+		VIRTUAL_ENTRY(statcount)->set_contents(statcount, buf, strlen(buf));
 	}
 }
 
@@ -156,11 +150,13 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 		conf = lookup_entry_by_name (ent->parent, cfgname);
 		if (! conf)
 		{
+			char *data;
+			size_t sz;
 			conf = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-			conf->virtual.data = malloc (size);
-			conf->virtual.size = getxattr(ent->file.real_path,
-				"user.mpconf", conf->virtual.data, size);
-			tmplog("Data: '%s'\n", conf->virtual.data);
+			data = malloc (size);
+			sz = getxattr(ent->file.real_path, "user.mpconf", data, size);
+			tmplog("Data: '%s'\n", data);
+			VIRTUAL_ENTRY(conf)->set_contents(conf, data, sz);
 			attach_entry (ent->parent, conf, cfgname);
 		}
 	}

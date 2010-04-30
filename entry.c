@@ -46,11 +46,43 @@ double get_total_length(struct atrfs_entry *ent)
 	return value;
 }
 
+static void set_virtual_contents(struct atrfs_entry *ent, char *str, size_t sz)
+{
+	VIRTUAL_ENTRY(ent)->m_data = str;
+	VIRTUAL_ENTRY(ent)->m_size = sz;
+}
+
+static ssize_t virtual_read (struct atrfs_entry *ent, char *buf, size_t size, off_t offset)
+{
+	ssize_t count = VIRTUAL_ENTRY(ent)->m_size;
+	if (offset + size > count)
+		size = count - offset;
+	memcpy (buf, VIRTUAL_ENTRY(ent)->m_data + offset, size);
+	return size;
+}
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
-	struct atrfs_entry *ent = malloc (sizeof (*ent));
-	if (! ent)
-		abort ();
+	struct atrfs_entry *ent;
+
+	switch (type)
+	{
+	default:
+		ent = malloc (sizeof (*ent));
+		if (! ent)
+			abort ();
+		break;
+	case ATRFS_VIRTUAL_FILE_ENTRY:
+	{
+		struct atrfs_virtual_entry *vent = malloc (sizeof (*vent));
+		if (! vent)
+			abort ();
+		vent->set_contents = set_virtual_contents;
+		ent = &vent->entry;
+		VIRTUAL_ENTRY(ent)->set_contents(ent, NULL, 0);
+		break;
+	}
+	}
 
 	ent->e_type = type;
 	ent->parent = NULL;
@@ -70,8 +102,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		ent->file.start_time = -1.0;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
-		ent->virtual.data = NULL;
-		ent->virtual.size = 0;
+		ent->ops.read = virtual_read;
 		break;
 	}
 	return ent;
@@ -178,7 +209,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		st->st_ino = (ino_t)(unsigned long)ent;
 		st->st_nlink = 1;
-		st->st_size = ent->virtual.size;
+		st->st_size = VIRTUAL_ENTRY(ent)->m_size;
 		st->st_mode = S_IFREG | S_IRUSR;
 		st->st_uid = getuid();
 		st->st_gid = getgid();

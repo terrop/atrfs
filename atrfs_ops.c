@@ -197,8 +197,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 			{
 				char *data = get_srt(ent->file.real_path);
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-				srt->virtual.data = data;
-				srt->virtual.size = strlen (data);
+				VIRTUAL_ENTRY(srt)->set_contents(srt, data, strlen (data));
 				attach_entry (ent->parent, srt, srtname);
 			}
 
@@ -322,10 +321,12 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 	{
-		size_t count = ent->virtual.size;
-		if (size + off > count)
-			size = count - off;
-		fuse_reply_buf (req, ent->virtual.data + off, size);
+		char buf[size];
+		int ret = ent->ops.read(ent, buf, size, off);
+		if (ret < 0)
+			fuse_reply_err (req, errno);
+		else
+			fuse_reply_buf (req, buf, ret);
 		break;
 	}
 	}
@@ -471,7 +472,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		if (srt)
 		{
 			detach_entry (srt);
-			free (srt->virtual.data);
+			free (VIRTUAL_ENTRY(srt)->m_data);
 			destroy_entry (srt);
 		}
 	}

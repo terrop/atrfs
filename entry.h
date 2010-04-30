@@ -7,6 +7,7 @@
 #include <time.h>
 
 #define CHECK_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
+#define VIRTUAL_ENTRY(ent) ((struct atrfs_virtual_entry*)(ent))
 
 enum atrfs_entry_type
 {
@@ -24,6 +25,7 @@ struct atrfs_entry
 
 	struct
 	{
+		ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
 		void (*write)(const char *buf, size_t size);
 	} ops;
 
@@ -39,14 +41,17 @@ struct atrfs_entry
 		{
 			GHashTable *e_contents;
 		} directory;
-
-		struct
-		{
-			char *data;
-			size_t size;
-		} virtual;
 	};
 };
+
+struct atrfs_virtual_entry
+{
+	struct atrfs_entry entry;
+	char * m_data;
+	size_t m_size;
+	void (*set_contents)(struct atrfs_entry *vent, char *str, size_t sz);
+};
+
 
 enum
 {
