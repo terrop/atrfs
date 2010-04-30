@@ -61,6 +61,12 @@ static ssize_t virtual_read (struct atrfs_entry *ent, char *buf, size_t size, of
 	return size;
 }
 
+static ssize_t file_read (struct atrfs_entry *ent, char *buf, size_t size, off_t offset)
+{
+	int ret = pread (FILE_ENTRY(ent)->fd, buf, size, offset);
+	return ret;
+}
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent;
@@ -75,6 +81,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		struct atrfs_file_entry *fent = malloc (sizeof (*fent));
 		if (! fent)
 			abort ();
+		fent->fd = -1;
 		fent->real_path = NULL;
 		fent->start_time = -1.0;
 		ent = &fent->entry;
@@ -109,6 +116,9 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 
 	switch (type)
 	{
+	case ATRFS_FILE_ENTRY:
+		ent->ops.read = file_read;
+		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		ent->ops.read = virtual_read;
 		break;

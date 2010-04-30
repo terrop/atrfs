@@ -91,7 +91,7 @@ void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 	tmplog("readdir(ino=%lu, size=%lu, off=%lu)\n", ino, size, off);
 
 	struct atrfs_entry *parent = ino_to_entry(ino);
-	struct directory_data *data = (struct directory_data *)(unsigned long)fi->fh;
+	struct directory_data *data = get_data(fi);
 	int err = 0;
 
 	char *buf = malloc(size);

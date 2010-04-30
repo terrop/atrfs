@@ -35,6 +35,7 @@ struct atrfs_entry
 struct atrfs_file_entry
 {
 	struct atrfs_entry entry;
+	int fd;
 	char *real_path;
 	double start_time;
 };

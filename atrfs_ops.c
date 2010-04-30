@@ -207,9 +207,15 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		FILE_ENTRY(ent)->start_time = doubletime ();
 	}
 
-	int fd = open(filename, flags);
+	int fd = FILE_ENTRY(ent)->fd;
 	if (fd < 0)
-		fd = -errno;
+	{
+		fd = open(filename, flags);
+		if (fd < 0)
+			fd = -errno;
+		else
+			FILE_ENTRY(ent)->fd = fd;
+	}
 	return fd;
 }
 
@@ -259,12 +265,14 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		fuse_reply_open(req, fi);
 		break;
 	case ATRFS_FILE_ENTRY:
-		fi->fh = open_file (cmd, ent, fi->flags);
-		if (fi->fh < 0)
-			fuse_reply_err (req, -fi->fh);
+	{
+		int fd = open_file (cmd, ent, fi->flags);
+		if (fd < 0)
+			fuse_reply_err (req, -fd);
 		else
 			fuse_reply_open (req, fi);
 		break;
+	}
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		fi->fh = -1;
 		fuse_reply_open(req, fi);
@@ -309,16 +317,6 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 		break;
 
 	case ATRFS_FILE_ENTRY:
-	{
-		char buf[size];
-		int ret = pread (fi->fh, buf, size, off);
-		if (ret < 0)
-			fuse_reply_err (req, errno);
-		else
-			fuse_reply_buf (req, buf, ret);
-		break;
-	}
-
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 	{
 		char buf[size];
@@ -541,8 +539,11 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 		FILE_ENTRY(ent)->start_time = -1.0;
 
 		release_file (ent, playtime);
-		if (fi->fh >= 0)
-			close (fi->fh);
+		if (FILE_ENTRY(ent)->fd >= 0)
+		{
+			close (FILE_ENTRY(ent)->fd);
+			FILE_ENTRY(ent)->fd = -1;
+		}
 	}
 	fuse_reply_err(req, 0);
 }
