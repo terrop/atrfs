@@ -320,7 +320,7 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 	{
 		char buf[size];
-		int ret = ent->ops.read(ent, buf, size, off);
+		int ret = ent->ops->read(ent, buf, size, off);
 		if (ret < 0)
 			fuse_reply_err (req, errno);
 		else
@@ -360,9 +360,9 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("write('%s', '%.*s')\n", ent->name, size, buf);
 
-	if (ent->ops.write)
+	if (ent->ops && ent->ops->write)
 	{
-		ent->ops.write(buf, size);
+		ent->ops->write(buf, size);
 		fuse_reply_write(req, size);
 	} else {
 		fuse_reply_err(req, EROFS);

@@ -67,6 +67,16 @@ static ssize_t file_read (struct atrfs_entry *ent, char *buf, size_t size, off_t
 	return ret;
 }
 
+static struct atrfs_entry_ops virtual_ops =
+{
+	.read = virtual_read,
+};
+
+static struct atrfs_entry_ops file_ops =
+{
+	.read = file_read,
+};
+
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent;
@@ -112,15 +122,15 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	ent->parent = NULL;
 	ent->name = NULL;
 	ent->flags = 0;
-	memset(&ent->ops, 0, sizeof(ent->ops));
+	ent->ops = NULL;
 
 	switch (type)
 	{
 	case ATRFS_FILE_ENTRY:
-		ent->ops.read = file_read;
+		ent->ops = &file_ops;
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
-		ent->ops.read = virtual_read;
+		ent->ops = &virtual_ops;
 		break;
 	}
 	return ent;

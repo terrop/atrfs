@@ -18,6 +18,13 @@ enum atrfs_entry_type
 	ATRFS_VIRTUAL_FILE_ENTRY,
 };
 
+struct atrfs_entry;
+struct atrfs_entry_ops
+{
+	ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
+	void (*write)(const char *buf, size_t size);
+};
+
 struct atrfs_entry
 {
 	enum atrfs_entry_type e_type;
@@ -25,11 +32,7 @@ struct atrfs_entry
 	char *name;
 	unsigned char flags;
 
-	struct
-	{
-		ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
-		void (*write)(const char *buf, size_t size);
-	} ops;
+	struct atrfs_entry_ops *ops;
 };
 
 struct atrfs_file_entry

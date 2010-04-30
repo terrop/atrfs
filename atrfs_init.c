@@ -102,6 +102,9 @@ static void write_language(const char *buf, size_t size)
 	language_list = strndup(buf, size);
 }
 
+static struct atrfs_entry_ops statcount_ops;
+static struct atrfs_entry_ops language_ops;
+
 static void populate_stat_dir(struct atrfs_entry *statroot)
 {
 	struct atrfs_entry *ent;
@@ -112,15 +115,20 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	attach_entry (statroot, ent, "last-list");
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	ent->ops.write = write_statcount;
+	statcount_ops = *ent->ops;
+	statcount_ops.write = write_statcount;
+	ent->ops = &statcount_ops;
 	attach_entry (statroot, ent, "stat-count");
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 	attach_entry (statroot, ent, "recent");
 
 	ent = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-	ent->ops.write = write_language;
+	language_ops = *ent->ops;
+	language_ops.write = write_language;
+	ent->ops = &language_ops;
 	attach_entry (statroot, ent, "language");
+
 	update_stats();
 }
 
