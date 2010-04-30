@@ -82,6 +82,15 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		VIRTUAL_ENTRY(ent)->set_contents(ent, NULL, 0);
 		break;
 	}
+	case ATRFS_DIRECTORY_ENTRY:
+	{
+		struct atrfs_directory_entry *dent = malloc (sizeof (*dent));
+		if (! dent)
+			abort ();
+		ent = &dent->entry;
+		DIR_ENTRY(ent)->contents = g_hash_table_new (g_str_hash, g_str_equal);
+		break;
+	}
 	}
 
 	ent->e_type = type;
@@ -95,7 +104,6 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 	default:
 		abort ();
 	case ATRFS_DIRECTORY_ENTRY:
-		ent->directory.e_contents = g_hash_table_new (g_str_hash, g_str_equal);
 		break;
 	case ATRFS_FILE_ENTRY:
 		ent->file.real_path = NULL;
@@ -117,9 +125,9 @@ void destroy_entry (struct atrfs_entry *ent)
 	default:
 		abort ();
 	case ATRFS_DIRECTORY_ENTRY:
-		if (g_hash_table_size (ent->directory.e_contents) > 0)
+		if (g_hash_table_size (DIR_ENTRY(ent)->contents) > 0)
 			abort ();
-		g_hash_table_destroy (ent->directory.e_contents);
+		g_hash_table_destroy (DIR_ENTRY(ent)->contents);
 		break;
 	case ATRFS_FILE_ENTRY:
 	case ATRFS_VIRTUAL_FILE_ENTRY:
@@ -133,7 +141,7 @@ void destroy_entry (struct atrfs_entry *ent)
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
 {
 	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
-	return g_hash_table_lookup (dir->directory.e_contents, name);
+	return g_hash_table_lookup (DIR_ENTRY(dir)->contents, name);
 }
 
 /*
@@ -144,7 +152,7 @@ void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name)
 {
 	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	ent->name = strdup (name);
-	g_hash_table_replace (dir->directory.e_contents, ent->name, ent);
+	g_hash_table_replace (DIR_ENTRY(dir)->contents, ent->name, ent);
 	ent->parent = dir;
 }
 
@@ -157,7 +165,7 @@ void detach_entry (struct atrfs_entry *ent)
 	CHECK_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
 	char *name = ent->name;
 	if (name)
-		g_hash_table_remove (ent->parent->directory.e_contents, name);
+		g_hash_table_remove (DIR_ENTRY(ent->parent)->contents, name);
 	ent->parent = NULL;
 
 	free (ent->name);
@@ -174,7 +182,7 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	free (name);
 
 	/* Remove empty directories. */
-	while (parent != root && g_hash_table_size (parent->directory.e_contents) == 0)
+	while (parent != root && g_hash_table_size (DIR_ENTRY(parent)->contents) == 0)
 	{
 		struct atrfs_entry *tmp = parent->parent;
 		detach_entry (parent);
@@ -200,7 +208,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_nlink = 1;
 		st->st_uid = getuid();
 		st->st_gid = getgid();
-		st->st_size = g_hash_table_size(ent->directory.e_contents);
+		st->st_size = g_hash_table_size(DIR_ENTRY(ent)->contents);
 		st->st_atime =
 		st->st_mtime =
 		st->st_ctime = time (NULL);
@@ -241,7 +249,7 @@ int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *e
 {
 	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 	int ret = 0;
-	GList *p, *entries = g_hash_table_get_values (root->directory.e_contents);
+	GList *p, *entries = g_hash_table_get_values (DIR_ENTRY(root)->contents);
 	struct atrfs_entry *ent;
 
 	for (p = entries; p; p = p->next)

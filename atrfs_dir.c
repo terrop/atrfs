@@ -56,7 +56,7 @@ void atrfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	struct directory_data *data = malloc(sizeof(*data));
 	if (data)
 	{
-		data->files = g_hash_table_get_keys(ino_to_entry(ino)->directory.e_contents);
+		data->files = g_hash_table_get_keys(DIR_ENTRY(ino_to_entry(ino))->contents);
 		data->cur = data->files;
 		set_data(fi, data);
 		fuse_reply_open(req, fi);

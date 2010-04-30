@@ -8,6 +8,7 @@
 
 #define CHECK_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
 #define VIRTUAL_ENTRY(ent) ((struct atrfs_virtual_entry*)(ent))
+#define DIR_ENTRY(ent) ((struct atrfs_directory_entry *)(ent))
 
 enum atrfs_entry_type
 {
@@ -29,19 +30,11 @@ struct atrfs_entry
 		void (*write)(const char *buf, size_t size);
 	} ops;
 
-	union
+	struct
 	{
-		struct
-		{
-			char *real_path;
-			double start_time;
-		} file;
-
-		struct
-		{
-			GHashTable *e_contents;
-		} directory;
-	};
+		char *real_path;
+		double start_time;
+	} file;
 };
 
 struct atrfs_virtual_entry
@@ -52,6 +45,11 @@ struct atrfs_virtual_entry
 	void (*set_contents)(struct atrfs_entry *vent, char *str, size_t sz);
 };
 
+struct atrfs_directory_entry
+{
+	struct atrfs_entry entry;
+	GHashTable *contents;
+};
 
 enum
 {
