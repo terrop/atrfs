@@ -164,7 +164,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		abort ();
 
 	case ATRFS_DIRECTORY_ENTRY:
-		st->st_ino = (ino_t)ent;
+		st->st_ino = (ino_t)(unsigned long)ent;
 		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
 		st->st_nlink = 1;
 		st->st_uid = getuid();
@@ -176,7 +176,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		break;
 
 	case ATRFS_VIRTUAL_FILE_ENTRY:
-		st->st_ino = (ino_t)ent;
+		st->st_ino = (ino_t)(unsigned long)ent;
 		st->st_nlink = 1;
 		st->st_size = ent->virtual.size;
 		st->st_mode = S_IFREG | S_IRUSR;
@@ -196,7 +196,7 @@ int stat_entry (struct atrfs_entry *ent, struct stat *st)
 		st->st_nlink = get_ivalue (filename, "user.count", 0);
 		/* start at 1.1.2000 */
 		st->st_mtime = (time_t)(get_dvalue (filename, "user.watchtime", 0.0) + 946677600.0);
-		st->st_ino = (ino_t)(unsigned long) ent;
+		st->st_ino = (ino_t)(unsigned long)ent;
 		break;
 	}
 	}
