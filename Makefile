@@ -2,7 +2,7 @@
 
 CFLAGS=-D_GNU_SOURCE -DFUSE_USE_VERSION=28 \
 	$(shell pkg-config --cflags fuse glib-2.0) -g
-LIBS=$(shell pkg-config --libs fuse glib-2.0) -lm -ldb
+LIBS=$(shell pkg-config --libs fuse glib-2.0) -lm
 
 oma: entry.o asc-srt.o util.o main.o \
 	atrfs_attr.o atrfs_link.o atrfs_ops.o atrfs_dir.o \
@@ -11,8 +11,10 @@ oma: entry.o asc-srt.o util.o main.o \
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 database: database.c database.h
-	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -DDATABASE_TEST
+
+sha1: sha1.c
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -lcrypto
 
 .PHONY: clean
 clean:
-	rm -f oma *.o
+	rm -f oma database sha1 *.o
