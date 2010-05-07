@@ -29,7 +29,7 @@ char *get_sha1(char *filename)
 
 out:
 	for (i = 0; i < SHA_DIGEST_LENGTH; i++)
-		sprintf(&ret[2*i], "%2.2X", buf[i]);
+		sprintf(&ret[2*i], "%2.2x", buf[i]);
 	ret[2*SHA_DIGEST_LENGTH] = '\0';
 	return ret;
 }
