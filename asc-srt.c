@@ -90,7 +90,7 @@ static char *asc_read_subtitles (char *ascfile, char *lang)
 	return text;
 }
 
-static char *get_virtual_srt(char *filename)
+char *get_virtual_srt(char *filename)
 {
 	char *base = basename (filename);
 	char *ret = NULL;
@@ -131,7 +131,7 @@ out:
 	return ret;
 }
 
-static char *get_real_srt(char *filename)
+char *get_real_srt(char *filename)
 {
 	char *ret = NULL;
 	char *lng = strdup(language_list);
@@ -151,14 +151,3 @@ static char *get_real_srt(char *filename)
 	return ret;
 }
 
-char *get_srt(char *filename)
-{
-	/*
-	 * Try to load real subtitles from asc-file. If this
-	 * fails, use virtual subtitles instead.
-	 * */
-	char *ret = get_real_srt(filename);
-	if (!ret)
-		ret = get_virtual_srt(filename);
-	return ret;
-}

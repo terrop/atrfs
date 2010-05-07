@@ -7,8 +7,6 @@
 #include <sys/time.h>
 #include "util.h"
 
-extern char *get_srt(char *filename);
-
 double doubletime(void)
 {
 	struct timeval tv;

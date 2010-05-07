@@ -10,7 +10,8 @@
 #include "entry.h"
 #include "util.h"
 
-extern char *get_srt (char *filename);
+extern char *get_real_srt(char *filename);
+extern char *get_virtual_srt(char *filename);
 
 /* in statistics.c */
 extern struct atrfs_entry *statroot;
@@ -195,7 +196,10 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		{
 			if (! lookup_entry_by_name (ent->parent, srtname))
 			{
-				char *data = get_srt(FILE_ENTRY(ent)->real_path);
+				char *data = get_real_srt(FILE_ENTRY(ent)->real_path);
+				if (!data)
+					data = get_virtual_srt(FILE_ENTRY(ent)->real_path);
+
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 				VIRTUAL_ENTRY(srt)->set_contents(srt, data, strlen (data));
 				attach_entry (ent->parent, srt, srtname);
