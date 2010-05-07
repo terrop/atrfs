@@ -2,13 +2,16 @@
 
 CFLAGS=-D_GNU_SOURCE -DFUSE_USE_VERSION=28 \
 	$(shell pkg-config --cflags fuse glib-2.0) -g
-LIBS=$(shell pkg-config --libs fuse glib-2.0) -lm
+LIBS=$(shell pkg-config --libs fuse glib-2.0) -lm -ldb
 
 oma: entry.o asc-srt.o util.o main.o \
 	atrfs_attr.o atrfs_link.o atrfs_ops.o atrfs_dir.o \
 	atrfs_lock.o notify.o \
 	statistics.o atrfs_ioctl.o atrfs_xattr.o atrfs_init.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+database: database.c database.h
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -DDATABASE_TEST
 
 .PHONY: clean
 clean:
