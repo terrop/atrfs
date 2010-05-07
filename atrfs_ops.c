@@ -258,23 +258,38 @@ void atrfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 	if (ent->parent == statroot)
 		update_stats();
 
+	/*
+	 * Don't allow multiple opens of a same file
+	 * because it would make accounting inaccurate.
+	 */
+	if (ent->flags & ENTRY_BUSY)
+	{
+		fuse_reply_err(req, EBUSY);
+		return;
+	}
+
 	switch (ent->e_type)
 	{
 	default:
 		fi->fh = -1;
+		ent->flags |= ENTRY_BUSY;
 		fuse_reply_open(req, fi);
 		break;
 	case ATRFS_FILE_ENTRY:
 	{
 		int fd = open_file (cmd, ent, fi->flags);
 		if (fd < 0)
+		{
 			fuse_reply_err (req, -fd);
-		else
+		} else {
+			ent->flags |= ENTRY_BUSY;
 			fuse_reply_open (req, fi);
+		}
 		break;
 	}
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		fi->fh = -1;
+		ent->flags |= ENTRY_BUSY;
 		fuse_reply_open(req, fi);
 		break;
 	}
@@ -420,7 +435,11 @@ void atrfs_access(fuse_req_t req, fuse_ino_t ino, int mask)
 {
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("access('%s')\n", ent->name);
-	fuse_reply_err(req, 0);
+
+	if (ent->flags & ENTRY_BUSY)
+		fuse_reply_err(req, EBUSY);
+	else
+		fuse_reply_err(req, 0);
 }
 
 /*
@@ -490,6 +509,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 
 	free (srt_name);
 	update_recent_file (ent);
+	ent->flags &= ~ENTRY_BUSY;
 }
 
 /*

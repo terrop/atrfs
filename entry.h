@@ -61,6 +61,7 @@ enum
 {
 	ENTRY_HIDDEN	= (1<<0),
 	ENTRY_DELETED	= (1<<1),
+	ENTRY_BUSY	= (1<<2),
 };
 
 extern struct atrfs_entry *root;
