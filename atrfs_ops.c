@@ -509,7 +509,6 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 
 	free (srt_name);
 	update_recent_file (ent);
-	ent->flags &= ~ENTRY_BUSY;
 }
 
 /*
@@ -565,6 +564,8 @@ void atrfs_release(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 			FILE_ENTRY(ent)->fd = -1;
 		}
 	}
+
+	ent->flags &= ~ENTRY_BUSY;
 	fuse_reply_err(req, 0);
 }
 
