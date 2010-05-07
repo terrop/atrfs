@@ -11,6 +11,7 @@ oma: entry.o asc-srt.o util.o main.o \
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 database: database.c database.h
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -ldb -DDATABASE_TEST
 
 sha1: sha1.c
 	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -lcrypto
