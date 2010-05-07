@@ -181,11 +181,10 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 	char *filename = FILE_ENTRY(ent)->real_path;
 
 	/*
-	 * Increase watch-count every time the 'mplayer' opens
-	 * the file and its timer is not already running.
+	 * Increase watch-count every time the
+	 * file is opened by a media player.
 	 */
-	if ((!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem")) &&
-	    isless(FILE_ENTRY(ent)->start_time, 0.0))
+	if (!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem"))
 	{
 		int count = get_ivalue (filename, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
