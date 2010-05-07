@@ -380,7 +380,7 @@ void atrfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
 
 	if (ent->ops && ent->ops->write)
 	{
-		ent->ops->write(buf, size);
+		ent->ops->write(ent, buf, size);
 		fuse_reply_write(req, size);
 	} else {
 		fuse_reply_err(req, EROFS);

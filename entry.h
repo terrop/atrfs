@@ -22,7 +22,7 @@ struct atrfs_entry;
 struct atrfs_entry_ops
 {
 	ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
-	void (*write)(const char *buf, size_t size);
+	void (*write)(struct atrfs_entry *ent, const char *buf, size_t size);
 };
 
 struct atrfs_entry

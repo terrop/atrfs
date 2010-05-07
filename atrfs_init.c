@@ -91,12 +91,12 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 }
 
 extern int stat_count;
-static void write_statcount(const char *buf, size_t size)
+static void write_statcount(struct atrfs_entry *ent, const char *buf, size_t size)
 {
 	stat_count = atoi(buf);
 }
 
-static void write_language(const char *buf, size_t size)
+static void write_language(struct atrfs_entry *ent, const char *buf, size_t size)
 {
 	free(language_list);
 	language_list = strndup(buf, size);
