@@ -5,7 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include "entry.h"
+#include "entrydb.h"
 #include "util.h"
+
+char *get_sha1 (char *filename);
 
 double doubletime(void)
 {
@@ -21,6 +25,21 @@ double doubletime(void)
 
 bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
 {
+	char *val = entrydb_get (ent, attr);
+	if (val)
+	{
+		tmplog ("val: %s\n", val);
+		va_list list;
+		va_start (list, fmt);
+		int ret = vsscanf (val, fmt, list);
+		va_end (list);
+		if (ret != count)
+			return false;
+		return true;
+	}
+
+	/* Old code is used as a fallback */
+
 	char *name = FILE_ENTRY(ent)->real_path;
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
@@ -34,6 +53,8 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	va_start (list, fmt);
 	int ret = vsscanf (buf, fmt, list);
 	va_end (list);
+
+	tmplog ("Fallback: %s\n", buf);
 
 	if (ret != count)
 		return false;
