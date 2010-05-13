@@ -34,14 +34,17 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 		char *sha1 = NULL;
 		if (len <= 0)
 		{
-			sha1 = get_sha1 (FILE_ENTRY(ent)->real_path);
-			setxattr (FILE_ENTRY(ent)->real_path, "user.sha1",
-				  sha1, strlen (sha1) + 1, 0);
+			sha1 = get_sha1 (name);
+			if (setxattr (name, "user.sha1", sha1, strlen (sha1) + 1, 0))
+				perror ("Can't set SHA1");
 		}
 
 		char buf[len];
-		getxattr (name, "user.sha1", buf, len);
-		sha1 = buf;
+		if (! sha1)
+		{
+			getxattr (name, "user.sha1", buf, len);
+			sha1 = buf;
+		}
 		val = database_get (entrydb, sha1, attr);
 	}
 	return val;
