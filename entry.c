@@ -23,26 +23,26 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 /* in atrfs_ops.c */
 extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
-bool get_value_internal (char *name, char *attr, int count, char *fmt, ...);
+bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...);
 
 int get_total_watchcount(struct atrfs_entry *ent)
 {
 	int value;
-	get_value_internal(FILE_ENTRY(ent)->real_path, "user.count", 1, "%d", &value);
+	get_value_internal(ent, "user.count", 1, "%d", &value);
 	return value;
 }
 
 double get_total_watchtime(struct atrfs_entry *ent)
 {
 	double value;
-	get_value_internal(FILE_ENTRY(ent)->real_path, "user.watchtime", 1, "%lf", &value);
+	get_value_internal(ent, "user.watchtime", 1, "%lf", &value);
 	return value;
 }
 
 double get_total_length(struct atrfs_entry *ent)
 {
 	double value;
-	get_value_internal(FILE_ENTRY(ent)->real_path, "user.length", 1, "%lf", &value);
+	get_value_internal(ent, "user.length", 1, "%lf", &value);
 	return value;
 }
 
