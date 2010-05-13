@@ -90,19 +90,15 @@ static char *asc_read_subtitles (char *ascfile, char *lang)
 	return text;
 }
 
-char *get_virtual_srt(char *filename)
+char *get_virtual_srt(char *filename, double watchtime, double length)
 {
 	char *base = basename (filename);
 	char *ret = NULL;
 	int i, linenum;
-	double watchtime, length;
 
 	char *ext = strrchr(base, '.');
 	if (!ext || strcmp(ext, ".flv"))
 		goto out;
-
-	watchtime = get_dvalue (filename, "user.watchtime", 0.0);
-	length = get_dvalue (filename, "user.length", 0.0);
 
 	asprintf (&ret,
 		  "1\n00:00:00,00 --> 00:00:05,00\n"

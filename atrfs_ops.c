@@ -11,7 +11,7 @@
 #include "util.h"
 
 extern char *get_real_srt(char *filename);
-extern char *get_virtual_srt(char *filename);
+extern char *get_virtual_srt(char *filename, double watchtime, double length);
 
 /* in statistics.c */
 extern struct atrfs_entry *statroot;
@@ -197,7 +197,12 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 			{
 				char *data = get_real_srt(FILE_ENTRY(ent)->real_path);
 				if (!data)
-					data = get_virtual_srt(FILE_ENTRY(ent)->real_path);
+				{
+					char *name = FILE_ENTRY(ent)->real_path;
+					double watchtime = get_dvalue (name, "user.watchtime", 0.0);
+					double length = get_dvalue (name, "user.length", 0.0);
+					data = get_virtual_srt(name, watchtime, length);
+				}
 
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
 				VIRTUAL_ENTRY(srt)->set_contents(srt, data, strlen (data));
