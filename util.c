@@ -53,7 +53,9 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	int ret = vsscanf (buf, fmt, list);
 	va_end (list);
 
-	tmplog ("Fallback: %s\n", buf);
+	/* Put it into real database */
+	entrydb_put (ent, attr, buf);
+	tmplog ("Put into db: %s: %s:%s\n", name, attr, buf);
 
 	if (ret != count)
 		return false;
