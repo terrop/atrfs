@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "atrfs_ops.h"
 #include "entry.h"
+#include "entrydb.h"
 #include "util.h"
 
 /* in main.c */
@@ -131,6 +132,10 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 			{
 				free(language_list);
 				language_list = strdup(buf + 9);
+			} else if (strncmp (buf, "database=", 9) == 0) {
+				close_entrydb ();
+				if (! open_entrydb (buf + 9))
+					printf ("Can't open %s\n", buf + 9);
 			}
 		}
 	}
