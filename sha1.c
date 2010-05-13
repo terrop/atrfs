@@ -42,4 +42,4 @@ int main(int argc, char *argv[])
 		printf("%s\n", get_sha1(argv[i]));
 	return 0;
 }
-#endif SHA1_TEST
+#endif /* SHA1_TEST */
