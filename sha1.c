@@ -34,6 +34,7 @@ out:
 	return ret;
 }
 
+#ifdef SHA1_TEST
 int main(int argc, char *argv[])
 {
 	int i;
@@ -41,3 +42,4 @@ int main(int argc, char *argv[])
 		printf("%s\n", get_sha1(argv[i]));
 	return 0;
 }
+#endif SHA1_TEST

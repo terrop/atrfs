@@ -14,7 +14,7 @@ database: database.c database.h
 	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -ldb -DDATABASE_TEST
 
 sha1: sha1.c
-	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -lcrypto
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -lcrypto -DSHA1_TEST
 
 .PHONY: clean
 clean:
