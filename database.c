@@ -108,6 +108,14 @@ static void database_free_elts (struct dbelt *elts)
 	}
 }
 
+static void database_dump_elts (struct dbelt *elts)
+{
+	tmplog("<dump>\n");
+	for (;elts; elts = elts->next)
+		tmplog (" %s:%s\n", elts->var, elts->val);
+	tmplog("</dump>\n");
+}
+
 char *database_get (struct database *db, char *sha, char *key)
 {
 	struct dbelt *elt, *elts = database_get_elts (db, sha);
@@ -115,7 +123,6 @@ char *database_get (struct database *db, char *sha, char *key)
 
 	for (elt = elts; elt; elt = elt->next)
 	{
-		tmplog ("%s = %s\n", elt->var, elt->val);
 		if (strcmp (elt->var, key) == 0)
 		{
 			val = strdup (elt->val);
@@ -128,24 +135,24 @@ char *database_get (struct database *db, char *sha, char *key)
 
 void database_set (struct database *db, char *sha, char *key, char *val)
 {
-	size_t size = strlen (key) + 1 + strlen (val) + 1;
+	tmplog ("set %s:%s\n", key, val);
 	struct dbelt *elt, *elts = database_get_elts (db, sha);
-	char *data;
-	int i, len;
+	char *data, *pos;
+	char buf[128];		/* XXX */
 
-	for (elt = elts; elt; elt = elt->next)
-		if (elt->val)
-			size += strlen (elt->var) + 1 + strlen (elt->val) + 1;
-	data = malloc (size);
+	data = malloc (1024);	/* XXX */
 	if (! data)
 		abort ();
+	pos = data;
 
-	i = sprintf (data, "%s:%s", key, val) + 1;
+	pos += sprintf (pos, "%s:%s", key, val);
+	pos++;
+
 	for (elt = elts; elt; elt = elt->next)
 		if (strcmp (elt->var, key) && elt->val)
 		{
-			len = sprintf (data + i, "%s:%s", elt->var, elt->val) + 1;
-			i += len;
+			pos += sprintf (pos, "%s:%s", elt->var, elt->val);
+			pos++;
 		}
 
 	DBT dkey = {
@@ -154,7 +161,7 @@ void database_set (struct database *db, char *sha, char *key, char *val)
 	};
 	DBT ddata = {
 		.data = data,
-		.size = len,
+		.size = pos - data,
 	};
 
 	if (((DB *)db->handle)->put(db->handle, NULL, &dkey, &ddata, 0))
@@ -162,6 +169,8 @@ void database_set (struct database *db, char *sha, char *key, char *val)
 		tmplog("DB problem\n");
 		abort ();
 	}
+	database_free_elts (elts);
+	free (data);
 }
 
 #ifdef DATABASE_TEST
