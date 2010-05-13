@@ -186,7 +186,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 	 */
 	if (!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem"))
 	{
-		int count = get_ivalue (filename, "user.count", 0) + 1;
+		int count = get_ivalue (ent, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
 
 		/* Add subtitles to flv-files. */
