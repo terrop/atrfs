@@ -63,10 +63,10 @@ int get_ivalue (struct atrfs_entry *ent, char *attr, int def)
 	return def;
 }
 
-double get_dvalue (char *filename, char *attr, double def)
+double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 {
 	double value;
-	if (get_value_internal (filename, attr, 1, "%lf", &value))
+	if (get_value_internal (FILE_ENTRY(ent)->real_path, attr, 1, "%lf", &value))
 		return value;
 	return def;
 }

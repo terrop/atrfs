@@ -15,12 +15,12 @@ static char *get_realname(struct atrfs_entry *ent)
 
 static char *get_length(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(FILE_ENTRY(ent)->real_path, "user.length", 0.0));
+	return secs_to_time(get_dvalue(ent, "user.length", 0.0));
 }
 
 static char *get_watchtime(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(FILE_ENTRY(ent)->real_path, "user.watchtime", 0.0));
+	return secs_to_time(get_dvalue(ent, "user.watchtime", 0.0));
 }
 
 static char *get_count(struct atrfs_entry *ent)

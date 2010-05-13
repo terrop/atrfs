@@ -198,10 +198,10 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 				char *data = get_real_srt(FILE_ENTRY(ent)->real_path);
 				if (!data)
 				{
-					char *name = FILE_ENTRY(ent)->real_path;
-					double watchtime = get_dvalue (name, "user.watchtime", 0.0);
-					double length = get_dvalue (name, "user.length", 0.0);
-					data = get_virtual_srt(name, watchtime, length);
+					double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
+					double length = get_dvalue (ent, "user.length", 0.0);
+					data = get_virtual_srt(FILE_ENTRY(ent)->real_path,
+							       watchtime, length);
 				}
 
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
@@ -508,7 +508,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		char *filename = FILE_ENTRY(ent)->real_path;
 
 		/* * Update the total watch-time. */
-		double watchtime = get_dvalue (filename, "user.watchtime", 0.0);
+		double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
 		set_dvalue (ent, "user.watchtime", watchtime + playtime);
 
 		/* * Categorize the file by moving it to a proper subdirectory. */
