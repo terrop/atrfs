@@ -61,8 +61,9 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	return true;
 }
 
-static bool set_value_internal (char *name, char *attr, char *fmt, ...)
+static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
 {
+	char *name = FILE_ENTRY(ent)->real_path;
 	char *buf = NULL;
 	va_list list;
 	va_start (list, fmt);
@@ -70,7 +71,11 @@ static bool set_value_internal (char *name, char *attr, char *fmt, ...)
 	va_end (list);
 	if (ret < 0)
 		return false;
-	ret = setxattr (name, attr, buf, strlen (buf) + 1, 0);
+
+	entrydb_put (ent, attr, buf);
+	ret = 0;
+//	ret = setxattr (name, attr, buf, strlen (buf) + 1, 0);
+
 	free (buf);
 	if (ret == 0)
 		return true;
@@ -96,13 +101,13 @@ double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	set_value_internal(FILE_ENTRY(ent)->real_path, attr, "%d", value);
+	set_value_internal(ent, attr, "%d", value);
 }
 
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
-	set_value_internal(FILE_ENTRY(ent)->real_path, attr, "%lf", value);
+	set_value_internal(ent, attr, "%lf", value);
 }
 
 char *uniquify_name (char *name, struct atrfs_entry *root)

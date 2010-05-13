@@ -7,6 +7,13 @@
 #include <sys/stat.h>
 #include "database.h"
 
+struct dbelt
+{
+	char *var;
+	char *val;
+	struct dbelt *next;
+};
+
 struct database *open_database (char *filename)
 {
 	struct database *db = NULL;
@@ -65,31 +72,96 @@ static char *database_get_raw (struct database *db, char *keystr)
 	return str;
 }
 
-char *database_get (struct database *db, char *sha, char *key)
+static struct dbelt *database_get_elts (struct database *db, char *sha1)
 {
-	int slen, keylen = strlen (key);
-	char *s, *str = database_get_raw (db, sha);
+	struct dbelt *elts = NULL;
+	char *s, *str = database_get_raw (db, sha1);
 	if (! str)
 		return NULL;
-	for (s = str; *s;)
+	for (s = str; *s; s += strlen (s) + 1)
 	{
-		slen = strlen (s);
-		if (slen >= keylen + 2
-		    && strncmp (key, s, keylen) == 0
-		    && s[keylen] == ':')
+		struct dbelt *elt = malloc (sizeof (*elt));
+		if (!elt)
+			abort ();
+		elt->var = strdup (s);
+		elt->val = strchr (elt->var, ':');
+		if (elt->val)
 		{
-			char *val = strdup (s + keylen + 1);
-			free (str);
-			return val;
-		}
-		s += slen + 1;
+			*elt->val = '\0';
+			elt->val++;
+		} else elt->val = NULL;
+		elt->next = elts;
+		elts = elt;
 	}
 	free (str);
-	return NULL;
+	return elts;
+}
+
+static void database_free_elts (struct dbelt *elts)
+{
+	while (elts)
+	{
+		struct dbelt *next = elts->next;
+		free (elts->var);
+		free (elts);
+		elts = next;
+	}
+}
+
+char *database_get (struct database *db, char *sha, char *key)
+{
+	struct dbelt *elt, *elts = database_get_elts (db, sha);
+	char *val = NULL;
+
+	for (elt = elts; elt; elt = elt->next)
+	{
+		tmplog ("%s = %s\n", elt->var, elt->val);
+		if (strcmp (elt->var, key) == 0)
+		{
+			val = strdup (elt->val);
+			break;
+		}
+	}
+	database_free_elts (elts);
+	return val;
 }
 
 void database_set (struct database *db, char *sha, char *key, char *val)
 {
+	size_t size = strlen (key) + 1 + strlen (val) + 1;
+	struct dbelt *elt, *elts = database_get_elts (db, sha);
+	char *data;
+	int i, len;
+
+	for (elt = elts; elt; elt = elt->next)
+		if (elt->val)
+			size += strlen (elt->var) + 1 + strlen (elt->val) + 1;
+	data = malloc (size);
+	if (! data)
+		abort ();
+
+	i = sprintf (data, "%s:%s", key, val) + 1;
+	for (elt = elts; elt; elt = elt->next)
+		if (strcmp (elt->var, key) && elt->val)
+		{
+			len = sprintf (data + i, "%s:%s", elt->var, elt->val) + 1;
+			i += len;
+		}
+
+	DBT dkey = {
+		.data = sha,
+		.size = strlen (sha),
+	};
+	DBT ddata = {
+		.data = data,
+		.size = len,
+	};
+
+	if (((DB *)db->handle)->put(db->handle, NULL, &dkey, &ddata, 0))
+	{
+		tmplog("DB problem\n");
+		abort ();
+	}
 }
 
 #ifdef DATABASE_TEST

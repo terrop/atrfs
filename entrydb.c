@@ -47,6 +47,7 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 		}
 		val = database_get (entrydb, sha1, attr);
 	}
+
 	return val;
 }
 
