@@ -135,7 +135,6 @@ char *database_get (struct database *db, char *sha, char *key)
 
 void database_set (struct database *db, char *sha, char *key, char *val)
 {
-	tmplog ("set %s:%s\n", key, val);
 	struct dbelt *elt, *elts = database_get_elts (db, sha);
 	char *data, *pos;
 	char buf[128];		/* XXX */

@@ -28,7 +28,6 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	char *val = entrydb_get (ent, attr);
 	if (val)
 	{
-		tmplog ("val: %s\n", val);
 		va_list list;
 		va_start (list, fmt);
 		int ret = vsscanf (val, fmt, list);
