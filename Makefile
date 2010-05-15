@@ -8,7 +8,7 @@ oma: entry.o asc-srt.o util.o main.o \
 	atrfs_attr.o atrfs_link.o atrfs_ops.o atrfs_dir.o \
 	atrfs_lock.o notify.o \
 	statistics.o atrfs_ioctl.o atrfs_xattr.o atrfs_init.o \
-	database.o entrydb.o sha1.o
+	database.o entrydb.o sha1.o subtitles.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 database: database.c database.h

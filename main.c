@@ -13,11 +13,10 @@
 #include "entry.h"
 #include "entrydb.h"
 #include "util.h"
+#include "subtitles.h"
 
 /* in main.c */
 extern struct atrfs_entry *statroot;
-
-extern char *language_list;
 
 struct pollfd pfd[2];
 static sigset_t sigs;
