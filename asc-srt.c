@@ -104,7 +104,7 @@ char *get_virtual_srt(char *filename, double watchtime, double length)
 		  "1\n00:00:00,00 --> 00:00:05,00\n"
 		  "%.*s\n%.2lf × %s\n\n",
 		  ext - base, base,
-		  length >= 1.0 ? watchtime / length : 0,
+		  length >= 1.0 ? 1.0 * watchtime / length : 0,
 		  secs_to_time (length));
 
 	linenum = 2;
@@ -127,7 +127,7 @@ out:
 	return ret;
 }
 
-char *get_real_srt(char *filename)
+char *get_real_srt(char *filename, double watchtime, double length)
 {
 	char *ret = NULL;
 	char *lng = strdup(language_list);
@@ -146,4 +146,3 @@ char *get_real_srt(char *filename)
 	free(lng);
 	return ret;
 }
-
