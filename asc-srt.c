@@ -5,8 +5,8 @@
 #include <string.h>
 #include "entry.h"
 #include "util.h"
+#include "subtitles.h"
 
-char *language_list;
 static bool has_many_languages = false;
 static bool found_language = false;
 
