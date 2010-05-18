@@ -18,12 +18,13 @@ void attach_subtitles (struct atrfs_entry *ent)
 	double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
 	double length = get_dvalue (ent, "user.length", 0.0);
 	char *srtname, *data;
+	int num = 1;
+	char buf[40];
 
 	/* Attach real subtitles, */
 	for (s = strtok_r (lng, ", \n", &saved); s; s = strtok_r (NULL, ", \n", &saved))
 	{
-		char buf[10];
-		sprintf (buf, "_%s.srt", s);
+		snprintf(buf, sizeof(buf), "_%d.%s.srt", num, s);
 
 		char *srtname = get_related_name (ent->name, ".flv", buf);
 		if (srtname && ! lookup_entry_by_name (ent->parent, srtname))
@@ -38,13 +39,15 @@ void attach_subtitles (struct atrfs_entry *ent)
 				FILE_ENTRY(ent)->subtitles = srt;
 
 				attach_entry (ent->parent, srt, srtname);
+				num++;
 			}
 		}
 		free (srtname);
 	}
 
 	/* Attach virtual subtitles */
-	srtname = get_related_name (ent->name, ".flv", "_xx.srt");
+	snprintf(buf, sizeof(buf), "_%d.virt.srt", num);
+	srtname = get_related_name (ent->name, ".flv", buf);
 	if (srtname)
 	{
 		data = get_virtual_srt(FILE_ENTRY(ent)->real_path, watchtime, length, NULL);
@@ -74,4 +77,6 @@ void detach_subtitles (struct atrfs_entry *ent)
 		destroy_entry (srt);
 		srt = tmp;
 	}
+
+	FILE_ENTRY(ent)->subtitles = NULL;
 }

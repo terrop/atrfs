@@ -465,10 +465,12 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 static void release_file(struct atrfs_entry *ent, double playtime)
 {
-	detach_subtitles (ent);
 
 	/* We suppose all file_entries are flv-files */
 	int flv = (ent->e_type == ATRFS_FILE_ENTRY);
+
+	if (flv)
+		detach_subtitles (ent);
 
 	if (flv && isgreater (playtime, 0.0))
 	{
