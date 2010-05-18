@@ -90,7 +90,7 @@ static char *asc_read_subtitles (char *ascfile, char *lang)
 	return text;
 }
 
-char *get_virtual_srt(char *filename, double watchtime, double length)
+char *get_virtual_srt(char *filename, double watchtime, double length, char *lang)
 {
 	char *base = basename (filename);
 	char *ret = NULL;
@@ -127,22 +127,13 @@ out:
 	return ret;
 }
 
-char *get_real_srt(char *filename, double watchtime, double length)
+char *get_real_srt(char *filename, double watchtime, double length, char *lang)
 {
 	char *ret = NULL;
-	char *lng = strdup(language_list);
-	char *s, *saved;
 	char *ascname = get_related_name (filename, ".flv", ".asc");
 
-	/* Try different languages in requested order */
-	for (s = strtok_r(lng, ", \n", &saved); s; s = strtok_r(NULL, ", \n", &saved))
-	{
-		ret = asc_read_subtitles(ascname, s);
-		if (ret)
-			break;
-	}
+	ret = asc_read_subtitles(ascname, lang);
 
 	free (ascname);
-	free(lng);
 	return ret;
 }

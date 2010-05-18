@@ -94,6 +94,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		fent->fd = -1;
 		fent->real_path = NULL;
 		fent->start_time = -1.0;
+		fent->subtitles = NULL;
 		ent = &fent->entry;
 		break;
 	}
@@ -103,6 +104,7 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		if (! vent)
 			abort ();
 		vent->set_contents = set_virtual_contents;
+		vent->next = NULL;
 		ent = &vent->entry;
 		VIRTUAL_ENTRY(ent)->set_contents(ent, NULL, 0);
 		break;

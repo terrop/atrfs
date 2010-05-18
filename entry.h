@@ -41,6 +41,7 @@ struct atrfs_file_entry
 	int fd;
 	char *real_path;
 	double start_time;
+	struct atrfs_entry *subtitles;
 };
 
 struct atrfs_virtual_entry
@@ -48,6 +49,7 @@ struct atrfs_virtual_entry
 	struct atrfs_entry entry;
 	char * m_data;
 	size_t m_size;
+	struct atrfs_entry *next;
 	void (*set_contents)(struct atrfs_entry *vent, char *str, size_t sz);
 };
 
