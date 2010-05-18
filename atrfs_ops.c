@@ -8,10 +8,8 @@
 #include <unistd.h>
 #include "atrfs_ops.h"
 #include "entry.h"
+#include "subtitles.h"
 #include "util.h"
-
-extern char *get_real_srt(char *filename, double watchtime, double length);
-extern char *get_virtual_srt(char *filename, double watchtime, double length);
 
 /* in statistics.c */
 extern struct atrfs_entry *statroot;
@@ -189,27 +187,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 		int count = get_ivalue (ent, "user.count", 0) + 1;
 		set_ivalue (ent, "user.count", count);
 
-		/* Add subtitles to flv-files. */
-		char *srtname = get_related_name (ent->name, ".flv", ".srt");
-		if (srtname)
-		{
-			if (! lookup_entry_by_name (ent->parent, srtname))
-			{
-				double watchtime = get_dvalue (ent, "user.watchtime", 0.0);
-				double length = get_dvalue (ent, "user.length", 0.0);
-				char *data = get_real_srt(FILE_ENTRY(ent)->real_path,
-							  watchtime, length);
-				if (!data)
-					data = get_virtual_srt(FILE_ENTRY(ent)->real_path,
-							       watchtime, length);
-
-				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
-				VIRTUAL_ENTRY(srt)->set_contents(srt, data, strlen (data));
-				attach_entry (ent->parent, srt, srtname);
-			}
-
-			free (srtname);
-		}
+		attach_subtitles (ent);
 
 		FILE_ENTRY(ent)->start_time = doubletime ();
 	}
@@ -487,22 +465,12 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 static void release_file(struct atrfs_entry *ent, double playtime)
 {
-	/* Remove subtitle file. */
-	char *srt_name = get_related_name (ent->name, ".flv", ".srt");
+	detach_subtitles (ent);
 
-	if (srt_name)
-	{
-		struct atrfs_entry *srt = lookup_entry_by_name (ent->parent, srt_name);
-		if (srt)
-		{
-			detach_entry (srt);
-			free (VIRTUAL_ENTRY(srt)->m_data);
-			destroy_entry (srt);
-		}
-	}
+	/* We suppose all file_entries are flv-files */
+	int flv = (ent->e_type == ATRFS_FILE_ENTRY);
 
-	/* If this was a flv-file, then srt_name != NULL */
-	if (srt_name && isgreater (playtime, 0.0))
+	if (flv && isgreater (playtime, 0.0))
 	{
 		char *filename = FILE_ENTRY(ent)->real_path;
 
@@ -514,7 +482,6 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		categorize_flv_entry (ent);
 	}
 
-	free (srt_name);
 	update_recent_file (ent);
 }
 
