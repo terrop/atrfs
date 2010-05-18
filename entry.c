@@ -1,5 +1,6 @@
 /* entry.c - 24.7.2008 - 1.11.2008 Ari & Tero Roponen */
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -24,6 +25,7 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
 bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...);
+bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...);
 
 int get_total_watchcount(struct atrfs_entry *ent)
 {
@@ -41,8 +43,30 @@ double get_total_watchtime(struct atrfs_entry *ent)
 
 double get_total_length(struct atrfs_entry *ent)
 {
-	double value;
-	get_value_internal(ent, "user.length", 1, "%lf", &value);
+	double value = 0.0;
+	if (!get_value_internal(ent, "user.length", 1, "%lf", &value))
+	{
+		char buf[256];
+		FILE *in;
+
+		snprintf(buf, sizeof(buf),
+			"mplayer -identify -frames 0 -ao null -vo null "
+			"2>/dev/null -- \"%s\"", FILE_ENTRY(ent)->real_path);
+
+		in = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), in))
+		{
+			if (strncmp(buf, "ID_LENGTH=", 10) == 0)
+			{
+				value = atof(buf + 10);
+				break;
+			}
+		}
+		pclose(in);
+
+		set_value_internal(ent, "user.length", "%lf", value);
+	}
+
 	return value;
 }
 

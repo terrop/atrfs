@@ -62,7 +62,7 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	return true;
 }
 
-static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
+bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
 {
 	char *name = FILE_ENTRY(ent)->real_path;
 	char *buf = NULL;
