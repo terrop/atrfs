@@ -18,12 +18,13 @@ extern char *filter_result;
 %type <str> string strexp
 
 %debug
+%expect 4
 
 %%
 
 filter: IF expr ':' CAT '=' string { if ($2) filter_result = strdup ($6); return 0; } ;
 
-expr: cmp | catfile | num | NAME { $$ = 1 }
+expr: cmp | catfile | num | NAME { $$ = 1; }
 
 cmp: num '=' '=' num { $$ = ($1 == $4); }
 |    num '<' num { $$ = ($1 < $3); }
