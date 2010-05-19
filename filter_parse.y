@@ -20,8 +20,7 @@ filter=if name: cat = str((100 * watchtime / count) / length)
 
 %token CAT EQ GE GT IF LE LT NE STR
 %token <str> CATFILE NAME STRING
-%token <num> COUNT NUM
-%token <num> LENGTH WATCHTIME
+%token <num> COUNT NUM LENGTH WATCHTIME
 
 %type <num> expr cmp num catfile
 %type <str> string
@@ -31,9 +30,14 @@ filter=if name: cat = str((100 * watchtime / count) / length)
 
 %%
 
-filter: IF expr ':' CAT '=' string { if ($2) filter_result = strdup ($6); return 0; } ;
+filter: IF expr ':' CAT '=' string { if ($2) filter_result = strdup ($6); return 0; }
+;
 
-expr: cmp | catfile | num | NAME { $$ = 1; }
+expr: cmp
+|     catfile
+|     num
+|     NAME { $$ = 1; }
+;
 
 cmp: num EQ num { $$ = ($1 == $3); }
 |    num LT num { $$ = ($1 < $3); }
@@ -43,10 +47,13 @@ cmp: num EQ num { $$ = ($1 == $3); }
 |    num NE num { $$ = ($1 != $3); }
 ;
 
-num: NUM | COUNT | LENGTH | WATCHTIME
-| '(' num ')' {$$ = $2;}
-| num '*' num { $$ = $1 * $3; }
-| num '/' num { $$ = $1 / $3; }
+num: NUM
+|    COUNT
+|    LENGTH
+|    WATCHTIME
+|    '(' num ')' {$$ = $2;}
+|    num '*' num { $$ = $1 * $3; }
+|    num '/' num { $$ = $1 / $3; }
 ;
 
 catfile: CATFILE { $$ = $1 != NULL; }
