@@ -54,6 +54,7 @@ int yyerror (char *msg)
 }
 
 #ifdef FILTER_TEST
+extern double count, length, watchtime;
 
 int main (void)
 {
