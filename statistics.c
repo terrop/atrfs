@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include "atrfs_ops.h"
 #include "entry.h"
+#include "entry_filter.h"
 #include "util.h"
 
 extern char *language_list;
@@ -161,15 +162,9 @@ void categorize_flv_entry (struct atrfs_entry *ent)
 		}
 	}
 
-	int count = get_total_watchcount(ent);
-	double total = get_total_watchtime(ent);
-	double filelen = get_total_length(ent);
-
-	if (count && total > 0.0 && filelen > 0.0)
-	{
-		char *dir = get_pdir(filelen, count, total);
-		move_to_named_subdir (ent, dir);
-		if (conf)
-			move_to_named_subdir (conf, dir);
-	}
+	char *dir = get_category (ent);
+	move_to_named_subdir (ent, dir);
+	if (conf)
+		move_to_named_subdir (conf, dir);
+	free (dir);
 }

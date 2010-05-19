@@ -12,6 +12,7 @@
 #include "atrfs_ops.h"
 #include "entry.h"
 #include "entrydb.h"
+#include "entry_filter.h"
 #include "util.h"
 #include "subtitles.h"
 
@@ -135,6 +136,8 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 				close_entrydb ();
 				if (! open_entrydb (buf + 9))
 					printf ("Can't open %s\n", buf + 9);
+			} else if (strncmp (buf, "filter=", 7) == 0) {
+				add_filter (buf + 7);
 			}
 		}
 	}
