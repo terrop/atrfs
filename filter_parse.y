@@ -24,7 +24,7 @@ filter=if name: cat = str((100 * watchtime / count) / length)
 %token <num> LENGTH WATCHTIME
 
 %type <num> expr cmp num catfile
-%type <str> string strexp
+%type <str> string
 
 %debug
 %expect 4
@@ -51,10 +51,10 @@ num: NUM | COUNT | LENGTH | WATCHTIME
 
 catfile: CATFILE { $$ = $1 != NULL; }
 
-string: STRING | CATFILE | strexp
+string: STRING
+|       CATFILE
+|       STR '(' num ')' { char buf[20]; sprintf (buf, "%0.0lf", $3); $$ = strdup (buf); }
 ;
-
-strexp: STR '(' num ')' {char buf[20]; sprintf (buf, "%0.0lf", $3); $$ = strdup (buf); } ;
 
 %%
 
