@@ -55,13 +55,11 @@ int yyerror (char *msg)
 }
 
 #ifdef FILTER_TEST
-extern double count, length, watchtime;
-
 int main (void)
 {
 	extern FILE *yyin;
 	yyin = stdin;
-	count = 1.0, length = 120.0, watchtime = 60.0;
+	filter_init (NULL);
 
 //	yydebug = 1;
 	filter_result = NULL;

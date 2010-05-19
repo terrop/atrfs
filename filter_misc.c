@@ -4,8 +4,9 @@
 
 #include "entry.h"
 
-double count = -1, length = -1, watchtime = -1;
-char *filter_result = NULL, *name = NULL, *catfile = NULL;;
+char *filter_result;
+static double count, length, watchtime;
+static char *name, *catfile;
 
 static char *get_catfile (struct atrfs_entry *ent)
 {
@@ -48,11 +49,13 @@ void filter_init (struct atrfs_entry *ent)
 	watchtime = get_total_watchtime (ent);
 	catfile = get_catfile (ent);
 	name = ent->name;
+	filter_result = NULL;
 #else
 	count = 1;
 	length = 120.0;
 	watchtime = 60.0;
 	catfile = strdup ("Natale 2009");
 	name = "Test.flv";
+	filter_result = NULL;
 #endif
 }
