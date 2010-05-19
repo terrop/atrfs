@@ -204,14 +204,6 @@ void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 	*count = nitems;
 }
 
-char *get_pdir(double filelen, int watchcount, double watchtime)
-{
-	static char buf[10]; /* XXX */
-	double ret = (watchtime * 100 / watchcount) / filelen;
-	sprintf (buf, "%d", (unsigned int)round(ret));
-	return buf;
-}
-
 char *secs_to_time (double secs)
 {
 	static int count;
