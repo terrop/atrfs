@@ -19,9 +19,9 @@ sha1: sha1.c
 	$(CC) -o $@ $< $(CFLAGS) $(LIBS) -lcrypto -DSHA1_TEST
 
 filtertest: filter_lex.c filter_parse.c
-	$(CC) -o  $@ $^ -DFILTER_TEST
+	$(CC) $(CFLAGS) -o  $@ $^ -DFILTER_TEST
 
-filter_lex.c: filter_lex.l
+filter_lex.c: filter_lex.l filter_misc.c
 	flex -o$@ $<
 
 filter_parse.c filter_parse.h: filter_parse.y

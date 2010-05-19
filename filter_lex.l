@@ -1,8 +1,6 @@
 %{
 #include "filter_parse.h"
-
-double count, length, watchtime;
-char *filter_result, *name, *catfile;
+#include "filter_misc.c"
 
 /*
 filter=if catfile: cat = catfile
