@@ -53,9 +53,6 @@ int yyerror (char *msg)
 	fprintf (stderr, "%s\n", msg);
 }
 
-double count, length, watchtime;
-char *filter_result, *name, *catfile;
-
 #ifdef FILTER_TEST
 
 int main (void)
