@@ -12,6 +12,12 @@ string \"[^\"]+\"
 
 {int}	  { yylval.num = atof (yytext); return NUM; }
 {string}  { yylval.str = strndup (yytext + 1, strlen (yytext + 1) -1); return STRING; }
+"=="      { return EQ; }
+"!="      { return NE; }
+"<"       { return LT; }
+"<="      { return LE; }
+">"       { return GT; }
+">="      { return GE; }
 "if"	  { return IF; }
 "catfile" { yylval.str = catfile; return CATFILE; }
 "count"   { yylval.num = count; return COUNT; }
