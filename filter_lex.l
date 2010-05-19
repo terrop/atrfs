@@ -1,15 +1,6 @@
 %{
 #include "filter_parse.h"
 #include "filter_misc.c"
-
-/*
-filter=if catfile: cat = catfile
-filter=if count == 0: cat = "uudet"
-filter=if length < 60: cat = "lyhyet"
-filter=if length > 300: cat = "pitkät"
-filter=if name: cat = str((100 * watchtime / count) / length)
-*/
-
 %}
 
 %option noyywrap
