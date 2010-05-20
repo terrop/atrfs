@@ -102,7 +102,7 @@ void atrfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 		struct stat st;
 		struct atrfs_entry *ent = lookup_entry_by_name(parent, data->cur->data);
 
-		err = stat_entry (ent, &st);
+		err = ent->ops->stat (ent, &st);
 		if (err)
 			goto out_err;
 

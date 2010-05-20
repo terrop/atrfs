@@ -9,6 +9,8 @@
 
 struct atrfs_entry *root = NULL;
 
+static struct atrfs_entry_ops virtual_ops, file_ops, directory_ops;
+
 struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 {
 	struct atrfs_entry *ent = (struct atrfs_entry *)ino;
@@ -91,16 +93,6 @@ static ssize_t file_read (struct atrfs_entry *ent, char *buf, size_t size, off_t
 	return ret;
 }
 
-static struct atrfs_entry_ops virtual_ops =
-{
-	.read = virtual_read,
-};
-
-static struct atrfs_entry_ops file_ops =
-{
-	.read = file_read,
-};
-
 struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 {
 	struct atrfs_entry *ent;
@@ -157,6 +149,9 @@ struct atrfs_entry *create_entry (enum atrfs_entry_type type)
 		break;
 	case ATRFS_VIRTUAL_FILE_ENTRY:
 		ent->ops = &virtual_ops;
+		break;
+	case ATRFS_DIRECTORY_ENTRY:
+		ent->ops = &directory_ops;
 		break;
 	}
 	return ent;
@@ -238,54 +233,44 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 	}
 }
 
-int stat_entry (struct atrfs_entry *ent, struct stat *st)
+static int directory_stat (struct atrfs_entry *ent, struct stat *st)
 {
-	if (! ent)
-		abort ();
+	st->st_ino = (ino_t)(unsigned long)ent;
+	st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
+	st->st_nlink = 1;
+	st->st_uid = getuid();
+	st->st_gid = getgid();
+	st->st_size = g_hash_table_size(DIR_ENTRY(ent)->contents);
+	st->st_atime =
+	st->st_mtime =
+	st->st_ctime = time (NULL);
+	return 0;
+}
 
-	switch (ent->e_type)
-	{
-	default:
-		abort ();
+static int virtual_stat (struct atrfs_entry *ent, struct stat *st)
+{
+	st->st_ino = (ino_t)(unsigned long)ent;
+	st->st_nlink = 1;
+	st->st_size = VIRTUAL_ENTRY(ent)->m_size;
+	st->st_mode = S_IFREG | S_IRUSR;
+	st->st_uid = getuid();
+	st->st_gid = getgid();
+	st->st_atime =
+	st->st_mtime =
+	st->st_ctime = time (NULL);
+	return 0;
+}
 
-	case ATRFS_DIRECTORY_ENTRY:
-		st->st_ino = (ino_t)(unsigned long)ent;
-		st->st_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IXUSR;
-		st->st_nlink = 1;
-		st->st_uid = getuid();
-		st->st_gid = getgid();
-		st->st_size = g_hash_table_size(DIR_ENTRY(ent)->contents);
-		st->st_atime =
-		st->st_mtime =
-		st->st_ctime = time (NULL);
-		break;
+static int file_stat (struct atrfs_entry *ent, struct stat *st)
+{
+	char *filename = FILE_ENTRY(ent)->real_path;
+	if (stat (filename, st) < 0)
+		return errno;
 
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-		st->st_ino = (ino_t)(unsigned long)ent;
-		st->st_nlink = 1;
-		st->st_size = VIRTUAL_ENTRY(ent)->m_size;
-		st->st_mode = S_IFREG | S_IRUSR;
-		st->st_uid = getuid();
-		st->st_gid = getgid();
-		st->st_atime =
-		st->st_mtime =
-		st->st_ctime = time (NULL);
-		break;
-
-	case ATRFS_FILE_ENTRY:
-	{
-		char *filename = FILE_ENTRY(ent)->real_path;
-		if (stat (filename, st) < 0)
-			return errno;
-
-		st->st_nlink = get_ivalue (ent, "user.count", 0);
-		/* start at 1.1.2000 */
-		st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
-		st->st_ino = (ino_t)(unsigned long)ent;
-		break;
-	}
-	}
-
+	st->st_nlink = get_ivalue (ent, "user.count", 0);
+	/* start at 1.1.2000 */
+	st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
+	st->st_ino = (ino_t)(unsigned long)ent;
 	return 0;
 }
 
@@ -325,3 +310,21 @@ out:
 	g_list_free (entries);
 	return ret;
 }
+
+
+static struct atrfs_entry_ops virtual_ops =
+{
+	.read = virtual_read,
+	.stat = virtual_stat,
+};
+
+static struct atrfs_entry_ops file_ops =
+{
+	.read = file_read,
+	.stat = file_stat,
+};
+
+static struct atrfs_entry_ops directory_ops =
+{
+	.stat = directory_stat,
+};

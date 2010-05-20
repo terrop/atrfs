@@ -21,7 +21,7 @@ void atrfs_getattr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 	tmplog("getattr('%s')\n", ent->name);
 
-	int err = stat_entry (ent, &st);
+	int err = ent->ops->stat (ent, &st);
 	if (err)
 		fuse_reply_err (req, err);
 	else
@@ -61,6 +61,6 @@ void atrfs_setattr(fuse_req_t req, fuse_ino_t ino,
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("setattr('%s')\n", ent->name);
 	struct stat st;
-	stat_entry(ent, &st);
+	ent->ops->stat (ent, &st);
 	fuse_reply_attr(req, &st, 0.0);
 }

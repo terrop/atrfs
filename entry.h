@@ -23,6 +23,7 @@ struct atrfs_entry_ops
 {
 	ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
 	void (*write)(struct atrfs_entry *ent, const char *buf, size_t size);
+	int (*stat)(struct atrfs_entry *ent, struct stat *st);
 };
 
 struct atrfs_entry
@@ -79,8 +80,6 @@ int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *e
 void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name);
 void detach_entry (struct atrfs_entry *ent);
 void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to);
-
-int stat_entry (struct atrfs_entry *ent, struct stat *st);
 
 char *get_real_file_name(struct atrfs_entry *ent);
 

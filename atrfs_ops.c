@@ -44,7 +44,7 @@ void atrfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 		return;
 	}
 
-	stat_entry (ent, &st);
+	ent->ops->stat (ent, &st);
 
 	ep.ino = (fuse_ino_t)ent;
 	ep.generation = 1;
