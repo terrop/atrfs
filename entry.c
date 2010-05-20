@@ -260,9 +260,9 @@ static int file_stat (struct atrfs_entry *ent, struct stat *st)
 	if (stat (filename, st) < 0)
 		return errno;
 
-	st->st_nlink = get_ivalue (ent, "user.count", 0);
+	st->st_nlink = get_total_watchcount (ent);
 	/* start at 1.1.2000 */
-	st->st_mtime = (time_t)(get_dvalue (ent, "user.watchtime", 0.0) + 946677600.0);
+	st->st_mtime = (time_t)(get_total_watchtime (ent) + 946677600.0);
 	st->st_ino = (ino_t)(unsigned long)ent;
 	return 0;
 }
