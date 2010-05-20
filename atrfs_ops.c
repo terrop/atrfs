@@ -310,23 +310,16 @@ void atrfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 	struct atrfs_entry *ent = ino_to_entry(ino);
 	tmplog("read('%s', size=%lu, off=%lu)\n", ent->name, size, off);
 
-	switch (ent->e_type)
+	if (! ent->ops->read)
 	{
-	default:
-		fuse_reply_err(req, ENOSYS);
-		break;
-
-	case ATRFS_FILE_ENTRY:
-	case ATRFS_VIRTUAL_FILE_ENTRY:
-	{
+		fuse_reply_err (req, ENOSYS);
+	} else 	{
 		char buf[size];
 		int ret = ent->ops->read(ent, buf, size, off);
 		if (ret < 0)
 			fuse_reply_err (req, errno);
 		else
 			fuse_reply_buf (req, buf, ret);
-		break;
-	}
 	}
 }
 
