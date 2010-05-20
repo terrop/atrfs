@@ -15,18 +15,18 @@ static char *get_realname(struct atrfs_entry *ent)
 
 static char *get_length(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(ent, "user.length", 0.0));
+	return secs_to_time (get_total_length (ent));
 }
 
 static char *get_watchtime(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_dvalue(ent, "user.watchtime", 0.0));
+	return secs_to_time(get_total_watchtime (ent));
 }
 
 static char *get_count(struct atrfs_entry *ent)
 {
 	static char buf[10]; //XXX
-	sprintf(buf, "%d", get_ivalue(ent, "user.count", 0));
+	sprintf(buf, "%d", get_total_watchcount (ent));
 	return buf;
 }
 
