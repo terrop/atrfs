@@ -43,7 +43,7 @@ char *get_category (struct atrfs_entry *ent)
 	struct filter *filt;
 	char *cat = NULL;
 
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
 
 	filter_init (ent);
 

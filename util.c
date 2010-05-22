@@ -101,13 +101,13 @@ double get_dvalue (struct atrfs_entry *ent, char *attr, double def)
 
 void set_ivalue (struct atrfs_entry *ent, char *attr, int value)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
 	set_value_internal(ent, attr, "%d", value);
 }
 
 void set_dvalue (struct atrfs_entry *ent, char *attr, double value)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
 	set_value_internal(ent, attr, "%lf", value);
 }
 
@@ -233,7 +233,7 @@ char *pid_to_cmdline(pid_t pid)
 
 bool check_file_type (struct atrfs_entry *ent, char *ext)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
 	if (! ext)
 		abort ();
 	char *s = strrchr (REAL_NAME(ent), '.');

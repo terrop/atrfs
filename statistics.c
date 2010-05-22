@@ -27,7 +27,7 @@ void update_recent_file (struct atrfs_entry *ent)
 	struct atrfs_entry *recent = lookup_entry_by_name (statroot, "recent");
 	if (! recent)
 		return;
-	CHECK_TYPE (recent, ATRFS_VIRTUAL_FILE_ENTRY);
+	ASSERT_TYPE (recent, ATRFS_VIRTUAL_FILE_ENTRY);
 
 	if (! ent)
 		abort ();
@@ -138,7 +138,7 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 
 void categorize_file_entry (struct atrfs_entry *ent)
 {
-	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
+	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
 
 	/* Handle file-specific configuration. */
 	struct atrfs_entry *conf = NULL;

@@ -174,7 +174,7 @@ void destroy_entry (struct atrfs_entry *ent)
 
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
 {
-	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	return g_hash_table_lookup (DIR_ENTRY(dir)->contents, name);
 }
 
@@ -184,7 +184,7 @@ struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *n
  */
 void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name)
 {
-	CHECK_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
 	ent->name = strdup (name);
 	g_hash_table_replace (DIR_ENTRY(dir)->contents, ent->name, ent);
 	ent->parent = dir;
@@ -196,7 +196,7 @@ void attach_entry (struct atrfs_entry *dir, struct atrfs_entry *ent, char *name)
  */
 void detach_entry (struct atrfs_entry *ent)
 {
-	CHECK_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (ent->parent, ATRFS_DIRECTORY_ENTRY);
 	char *name = ent->name;
 	if (name)
 		g_hash_table_remove (DIR_ENTRY(ent->parent)->contents, name);
@@ -208,7 +208,7 @@ void detach_entry (struct atrfs_entry *ent)
 
 void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to)
 {
-	CHECK_TYPE (to, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (to, ATRFS_DIRECTORY_ENTRY);
 	struct atrfs_entry *parent = ent->parent;
 	char *name = strdup (ent->name);
 	detach_entry (ent);
@@ -271,7 +271,7 @@ static int file_stat (struct atrfs_entry *ent, struct stat *st)
    Return the first return value != 0 or 0 when all entries are handled. */
 int map_leaf_entries (struct atrfs_entry *root, int (*fn) (struct atrfs_entry *ent))
 {
-	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 	int ret = 0;
 	GList *p, *entries = g_hash_table_get_values (DIR_ENTRY(root)->contents);
 	struct atrfs_entry *ent;

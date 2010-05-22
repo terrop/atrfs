@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#define CHECK_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
+#define ASSERT_TYPE(ent,type) do { if (!(ent) || (ent)->e_type != (type)) abort ();} while(0)
 #define VIRTUAL_ENTRY(ent) ((struct atrfs_virtual_entry*)(ent))
 #define DIR_ENTRY(ent) ((struct atrfs_directory_entry *)(ent))
 #define FILE_ENTRY(ent) ((struct atrfs_file_entry *)(ent))

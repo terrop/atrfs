@@ -110,7 +110,7 @@ static void for_each_file (char *dir_or_file, void (*file_handler)(const char *f
 static void parse_config_file (char *datafile, struct atrfs_entry *root)
 {
 	/* Root-entry must be initialized. */
-	CHECK_TYPE (root, ATRFS_DIRECTORY_ENTRY);
+	ASSERT_TYPE (root, ATRFS_DIRECTORY_ENTRY);
 
 	/* Parse config file. */
 	FILE *fp = fopen(datafile, "r");
