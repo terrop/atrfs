@@ -6,7 +6,7 @@
 #include "util.h"
 
 extern char *get_real_srt(char *filename, double watchtime, double length, char *lang);
-extern char *get_virtual_srt(char *filename, double watchtime, double length, char *lang);
+extern char *get_virtual_srt(char *title, double watchtime, double length, char *lang);
 
 char *language_list;
 
@@ -50,7 +50,12 @@ void attach_subtitles (struct atrfs_entry *ent)
 	srtname = get_related_name (ent->name, ".flv", buf);
 	if (srtname)
 	{
-		data = get_virtual_srt(REAL_NAME(ent), watchtime, length, NULL);
+		char *base = basename (REAL_NAME(ent));
+		char *ext = strrchr (base, '.');
+		char *title = strndup (base, ext ? ext - base : strlen (base));
+		data = get_virtual_srt(title, watchtime, length, NULL);
+		free (title);
+
 		if (data)
 		{
 			struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
