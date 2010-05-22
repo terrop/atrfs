@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <attr/xattr.h>
 #include "entry.h"
 #include "entrydb.h"
 #include "util.h"
@@ -64,7 +66,6 @@ static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, 
 
 static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
 {
-	char *name = REAL_NAME(ent);
 	char *buf = NULL;
 	va_list list;
 	va_start (list, fmt);
@@ -75,7 +76,6 @@ static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, 
 
 	entrydb_put (ent, attr, buf);
 	ret = 0;
-//	ret = setxattr (name, attr, buf, strlen (buf) + 1, 0);
 
 	free (buf);
 	if (ret == 0)
