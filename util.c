@@ -231,12 +231,3 @@ char *pid_to_cmdline(pid_t pid)
 	return ret;
 }
 
-bool check_file_type (struct atrfs_entry *ent, char *ext)
-{
-	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
-	if (! ext)
-		abort ();
-	char *s = strrchr (REAL_NAME(ent), '.');
-	return (s && !strcmp (s, ext));
-}
-

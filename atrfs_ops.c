@@ -16,7 +16,6 @@ extern struct atrfs_entry *statroot;
 extern void update_stats (void);
 extern void update_recent_file (struct atrfs_entry *ent);
 extern void categorize_file_entry (struct atrfs_entry *ent);
-extern bool check_file_type (struct atrfs_entry *ent, char *ext);
 
 /*
  * Look up a directory entry by name and get its attributes.
