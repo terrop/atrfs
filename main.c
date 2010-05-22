@@ -64,16 +64,21 @@ static int atrfs_session_loop(struct fuse_session *se)
 	return res;
 }
 
-static void add_file_when_flv(const char *filename)
+static void add_file_when_supported(const char *filename)
 {
+	struct atrfs_entry *ent;
 	char *uniq_name;
 	char *ext = strrchr (filename, '.');
-	if (!ext || strcmp (ext, ".flv")) /* Add only flv-files. */
+	if (!ext)
+		return;
+
+	/* Currently we support only flv-files. */
+	if (strcmp (ext, ".flv"))
 		return;
 
 	uniq_name = uniquify_name(basename(filename), root);
 
-	struct atrfs_entry *ent = lookup_entry_by_name (root, uniq_name);
+	ent = lookup_entry_by_name (root, uniq_name);
 
 	if (!ent)
 	{
@@ -124,7 +129,7 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 				case '#': /* Comment */
 					continue;
 				case '/': /* Path to search files */
-					for_each_file (buf, add_file_when_flv);
+					for_each_file (buf, add_file_when_supported);
 					continue;
 			}
 
