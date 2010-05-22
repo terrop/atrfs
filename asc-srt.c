@@ -99,7 +99,7 @@ char *get_virtual_srt(char *title, double watchtime, double length, char *lang)
 		  "1\n00:00:00,00 --> 00:00:05,00\n"
 		  "%s\n%.2lf × %s\n\n",
 		  title, length >= 1.0 ? 1.0 * watchtime / length : 0,
-		  secs_to_time (length));
+		  secs_to_timestr (length));
 
 	linenum = 2;
 	for (i = 15; i < (int)length; i += 15)
@@ -109,9 +109,9 @@ char *get_virtual_srt(char *title, double watchtime, double length, char *lang)
 		asprintf (&line,
 			"%d\n00:%s.00 --> 00:%s,00\n%s\n\n",
 			linenum++,
-			secs_to_time(i),
-			secs_to_time(i+1),
-			secs_to_time(i));
+			secs_to_timestr (i),
+			secs_to_timestr (i+1),
+			secs_to_timestr (i));
 
 		asprintf (&tmp, "%s%s", ret, line);
 		free (ret);

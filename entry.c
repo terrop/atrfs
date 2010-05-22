@@ -26,17 +26,17 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 /* in atrfs_ops.c */
 extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
 
-int get_total_watchcount(struct atrfs_entry *ent)
+int get_watchcount(struct atrfs_entry *ent)
 {
 	return get_ivalue (ent, "user.count", 0);
 }
 
-double get_total_watchtime(struct atrfs_entry *ent)
+double get_watchtime(struct atrfs_entry *ent)
 {
 	return get_dvalue (ent, "user.watchtime", 0.0);
 }
 
-double get_total_length(struct atrfs_entry *ent)
+double get_length(struct atrfs_entry *ent)
 {
 	double value = get_dvalue (ent, "user.length", -1.0);
 	if (value < 0.0)
@@ -260,9 +260,9 @@ static int file_stat (struct atrfs_entry *ent, struct stat *st)
 	if (stat (filename, st) < 0)
 		return errno;
 
-	st->st_nlink = get_total_watchcount (ent);
+	st->st_nlink = get_watchcount (ent);
 	/* start at 1.1.2000 */
-	st->st_mtime = (time_t)(get_total_watchtime (ent) + 946677600.0);
+	st->st_mtime = (time_t)(get_watchtime (ent) + 946677600.0);
 	st->st_ino = (ino_t)(unsigned long)ent;
 	return 0;
 }

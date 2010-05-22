@@ -85,8 +85,8 @@ void move_entry (struct atrfs_entry *ent, struct atrfs_entry *to);
 
 char *get_real_file_name(struct atrfs_entry *ent);
 
-int get_total_watchcount(struct atrfs_entry *ent);
-double get_total_watchtime(struct atrfs_entry *ent);
-double get_total_length(struct atrfs_entry *ent);
+int get_watchcount(struct atrfs_entry *ent);
+double get_watchtime(struct atrfs_entry *ent);
+double get_length(struct atrfs_entry *ent);
 
 #endif

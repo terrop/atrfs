@@ -13,20 +13,20 @@ static char *get_realname(struct atrfs_entry *ent)
 	return REAL_NAME(ent);
 };
 
-static char *get_length(struct atrfs_entry *ent)
+static char *get_lengthstr(struct atrfs_entry *ent)
 {
-	return secs_to_time (get_total_length (ent));
+	return secs_to_timestr (get_length (ent));
 }
 
-static char *get_watchtime(struct atrfs_entry *ent)
+static char *get_watchtimestr(struct atrfs_entry *ent)
 {
-	return secs_to_time(get_total_watchtime (ent));
+	return secs_to_timestr (get_watchtime (ent));
 }
 
-static char *get_count(struct atrfs_entry *ent)
+static char *get_countstr(struct atrfs_entry *ent)
 {
 	static char buf[10]; //XXX
-	sprintf(buf, "%d", get_total_watchcount (ent));
+	sprintf(buf, "%d", get_watchcount (ent));
 	return buf;
 }
 
@@ -36,9 +36,9 @@ static struct virtual_xattr
 	char *(*fn)(struct atrfs_entry *ent);
 } atrfs_attributes[] = {
 	{"user.realname", get_realname},
-	{"user.length", get_length},
-	{"user.watchtime", get_watchtime},
-	{"user.count", get_count},
+	{"user.length", get_lengthstr},
+	{"user.watchtime", get_watchtimestr},
+	{"user.count", get_countstr},
 	{NULL, NULL}
 };
 

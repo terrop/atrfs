@@ -14,7 +14,7 @@ char *uniquify_name (char *name, struct atrfs_entry *root);
 
 void tmplog(char *fmt, ...);
 void get_all_file_entries (struct atrfs_entry ***entries, size_t *count);
-char *secs_to_time (double secs);
+char *secs_to_timestr (double secs);
 char *pid_to_cmdline(pid_t pid);
 double doubletime(void);
 

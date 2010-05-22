@@ -204,7 +204,7 @@ void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 	*count = nitems;
 }
 
-char *secs_to_time (double secs)
+char *secs_to_timestr (double secs)
 {
 	static int count;
 	static char buf[2][10];	/* XXX */

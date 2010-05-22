@@ -44,9 +44,9 @@ static char *get_catfile (struct atrfs_entry *ent)
 void filter_init (struct atrfs_entry *ent)
 {
 #ifndef FILTER_TEST
-	count = get_total_watchcount (ent);
-	length = get_total_length (ent);
-	watchtime = get_total_watchtime (ent);
+	count = get_watchcount (ent);
+	length = get_length (ent);
+	watchtime = get_watchtime (ent);
 	catfile = get_catfile (ent);
 	name = ent->name;
 	filter_result = NULL;

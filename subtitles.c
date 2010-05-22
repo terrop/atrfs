@@ -15,8 +15,8 @@ void attach_subtitles (struct atrfs_entry *ent)
 	char *lng = strdup (language_list);
 	char *ext, *s, *saved;
 
-	double watchtime = get_total_watchtime (ent);
-	double length = get_total_length (ent);
+	double watchtime = get_watchtime (ent);
+	double length = get_length (ent);
 	char *srtname, *data;
 	int num = 1;
 	char buf[40];

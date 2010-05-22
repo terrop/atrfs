@@ -183,7 +183,7 @@ static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 	 */
 	if (!strcmp(cmd, "mplayer") || !strcmp(cmd, "totem"))
 	{
-		int count = get_total_watchcount(ent) + 1;
+		int count = get_watchcount(ent) + 1;
 		set_ivalue (ent, "user.count", count);
 
 		attach_subtitles (ent);
@@ -469,7 +469,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		char *filename = REAL_NAME(ent);
 
 		/* * Update the total watch-time. */
-		double watchtime = get_total_watchtime (ent) + playtime;
+		double watchtime = get_watchtime (ent) + playtime;
 		set_dvalue (ent, "user.watchtime", watchtime);
 
 		/* * Categorize the file by moving it to a proper subdirectory. */
