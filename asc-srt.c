@@ -124,10 +124,14 @@ char *get_virtual_srt(char *title, double watchtime, double length, char *lang)
 char *get_real_srt(char *filename, double watchtime, double length, char *lang)
 {
 	char *ret = NULL;
-	char *ascname = get_related_name (filename, ".flv", ".asc");
+	char *ext = strrchr (filename, '.');
 
-	ret = asc_read_subtitles(ascname, lang);
+	if (ext)
+	{
+		char *ascname = get_related_name (filename, ext, ".asc");
+		ret = asc_read_subtitles(ascname, lang);
+		free (ascname);
+	}
 
-	free (ascname);
 	return ret;
 }
