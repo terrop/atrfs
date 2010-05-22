@@ -78,13 +78,8 @@ static void add_file_when_supported(const char *filename)
 
 	uniq_name = uniquify_name(basename(filename), root);
 
-	ent = lookup_entry_by_name (root, uniq_name);
-
-	if (!ent)
-	{
-		ent = create_entry (ATRFS_FILE_ENTRY);
-		attach_entry (root, ent, uniq_name);
-	}
+	ent = create_entry (ATRFS_FILE_ENTRY);
+	attach_entry (root, ent, uniq_name);
 
 	REAL_NAME(ent) = strdup(filename);
 	free(uniq_name);
