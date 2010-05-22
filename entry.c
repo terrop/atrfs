@@ -23,9 +23,6 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 	return ent;
 }
 
-/* in atrfs_ops.c */
-extern void release_file(fuse_req_t req, struct atrfs_entry *ent, int fd, struct fuse_file_info *fi);
-
 int get_watchcount(struct atrfs_entry *ent)
 {
 	return get_ivalue (ent, "user.count", 0);
