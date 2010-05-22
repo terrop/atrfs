@@ -13,7 +13,7 @@ char *language_list;
 void attach_subtitles (struct atrfs_entry *ent)
 {
 	char *lng = strdup (language_list);
-	char *s, *saved;
+	char *ext, *s, *saved;
 
 	double watchtime = get_total_watchtime (ent);
 	double length = get_total_length (ent);
@@ -21,12 +21,16 @@ void attach_subtitles (struct atrfs_entry *ent)
 	int num = 1;
 	char buf[40];
 
+	ext = strrchr (ent->name, '.');
+	if (! ext)
+		return;
+
 	/* Attach real subtitles, */
 	for (s = strtok_r (lng, ", \n", &saved); s; s = strtok_r (NULL, ", \n", &saved))
 	{
 		snprintf(buf, sizeof(buf), "_%d.%s.srt", num, s);
 
-		char *srtname = get_related_name (ent->name, ".flv", buf);
+		char *srtname = get_related_name (ent->name, ext, buf);
 		if (srtname && ! lookup_entry_by_name (ent->parent, srtname))
 		{
 			data = get_real_srt(REAL_NAME(ent), watchtime, length, s);
@@ -47,7 +51,7 @@ void attach_subtitles (struct atrfs_entry *ent)
 
 	/* Attach virtual subtitles */
 	snprintf(buf, sizeof(buf), "_%d.virt.srt", num);
-	srtname = get_related_name (ent->name, ".flv", buf);
+	srtname = get_related_name (ent->name, ext, buf);
 	if (srtname)
 	{
 		char *base = basename (REAL_NAME(ent));
