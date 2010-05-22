@@ -29,7 +29,7 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 	char *val = NULL;
 	if (entrydb)
 	{
-		char *name = FILE_ENTRY(ent)->real_path;
+		char *name = REAL_NAME(ent);
 		int len = getxattr (name, "user.sha1", NULL, 0);
 		char *sha1 = NULL;
 		if (len <= 0)
@@ -55,7 +55,7 @@ void entrydb_put (struct atrfs_entry *ent, char *attr, char *val)
 {
 	if (entrydb)
 	{
-		char *sha = get_sha1 (FILE_ENTRY(ent)->real_path);
+		char *sha = get_sha1 (REAL_NAME(ent));
 		database_set (entrydb, sha, attr, val);
 	}
 }

@@ -11,6 +11,8 @@
 #define DIR_ENTRY(ent) ((struct atrfs_directory_entry *)(ent))
 #define FILE_ENTRY(ent) ((struct atrfs_file_entry *)(ent))
 
+#define REAL_NAME(ent) (FILE_ENTRY(ent)->real_path)
+
 enum atrfs_entry_type
 {
 	ATRFS_FILE_ENTRY,

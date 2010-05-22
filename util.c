@@ -39,7 +39,7 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 
 	/* Old code is used as a fallback */
 
-	char *name = FILE_ENTRY(ent)->real_path;
+	char *name = REAL_NAME(ent);
 	int len = getxattr (name, attr, NULL, 0);
 	if (len <= 0)
 		return false;
@@ -64,7 +64,7 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 
 bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
 {
-	char *name = FILE_ENTRY(ent)->real_path;
+	char *name = REAL_NAME(ent);
 	char *buf = NULL;
 	va_list list;
 	va_start (list, fmt);
@@ -236,7 +236,7 @@ bool check_file_type (struct atrfs_entry *ent, char *ext)
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 	if (! ext)
 		abort ();
-	char *s = strrchr (FILE_ENTRY(ent)->real_path, '.');
+	char *s = strrchr (REAL_NAME(ent), '.');
 	return (s && !strcmp (s, ext));
 }
 

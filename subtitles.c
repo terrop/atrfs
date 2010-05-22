@@ -29,7 +29,7 @@ void attach_subtitles (struct atrfs_entry *ent)
 		char *srtname = get_related_name (ent->name, ".flv", buf);
 		if (srtname && ! lookup_entry_by_name (ent->parent, srtname))
 		{
-			data = get_real_srt(FILE_ENTRY(ent)->real_path, watchtime, length, s);
+			data = get_real_srt(REAL_NAME(ent), watchtime, length, s);
 			if (data)
 			{
 				struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);
@@ -50,7 +50,7 @@ void attach_subtitles (struct atrfs_entry *ent)
 	srtname = get_related_name (ent->name, ".flv", buf);
 	if (srtname)
 	{
-		data = get_virtual_srt(FILE_ENTRY(ent)->real_path, watchtime, length, NULL);
+		data = get_virtual_srt(REAL_NAME(ent), watchtime, length, NULL);
 		if (data)
 		{
 			struct atrfs_entry *srt = create_entry (ATRFS_VIRTUAL_FILE_ENTRY);

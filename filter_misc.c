@@ -19,7 +19,7 @@ static char *get_catfile (struct atrfs_entry *ent)
 
 	char buf[256];
 	char *s;
-	strcpy (buf, FILE_ENTRY(ent)->real_path);
+	strcpy (buf, REAL_NAME(ent));
 	s = strrchr (buf, '/');
 	if (s)
 	{

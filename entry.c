@@ -46,7 +46,7 @@ double get_total_length(struct atrfs_entry *ent)
 
 		snprintf(buf, sizeof(buf),
 			"mplayer -identify -frames 0 -ao null -vo null "
-			"2>/dev/null -- \"%s\"", FILE_ENTRY(ent)->real_path);
+			"2>/dev/null -- \"%s\"", REAL_NAME(ent));
 
 		in = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), in))
@@ -256,7 +256,7 @@ static int virtual_stat (struct atrfs_entry *ent, struct stat *st)
 
 static int file_stat (struct atrfs_entry *ent, struct stat *st)
 {
-	char *filename = FILE_ENTRY(ent)->real_path;
+	char *filename = REAL_NAME(ent);
 	if (stat (filename, st) < 0)
 		return errno;
 

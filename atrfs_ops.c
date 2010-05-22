@@ -176,7 +176,7 @@ void atrfs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
 
 static int open_file(char *cmd, struct atrfs_entry *ent, int flags)
 {
-	char *filename = FILE_ENTRY(ent)->real_path;
+	char *filename = REAL_NAME(ent);
 
 	/*
 	 * Increase watch-count every time the
@@ -467,7 +467,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 
 	if (flv && isgreater (playtime, 0.0))
 	{
-		char *filename = FILE_ENTRY(ent)->real_path;
+		char *filename = REAL_NAME(ent);
 
 		/* * Update the total watch-time. */
 		double watchtime = get_total_watchtime (ent) + playtime;
