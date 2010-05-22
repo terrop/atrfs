@@ -16,7 +16,7 @@
 #include "util.h"
 #include "subtitles.h"
 
-/* in main.c */
+/* In statistics.c. */
 extern struct atrfs_entry *statroot;
 
 struct pollfd pfd[2];
