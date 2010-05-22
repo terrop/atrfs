@@ -23,7 +23,7 @@ double doubletime(void)
 	return ret;
 }
 
-bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
+static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *fmt, ...)
 {
 	char *val = entrydb_get (ent, attr);
 	if (val)
@@ -62,7 +62,7 @@ bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, char *f
 	return true;
 }
 
-bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
+static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
 {
 	char *name = REAL_NAME(ent);
 	char *buf = NULL;
