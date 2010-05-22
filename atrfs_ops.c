@@ -15,7 +15,7 @@
 extern struct atrfs_entry *statroot;
 extern void update_stats (void);
 extern void update_recent_file (struct atrfs_entry *ent);
-extern void categorize_flv_entry (struct atrfs_entry *ent);
+extern void categorize_file_entry (struct atrfs_entry *ent);
 extern bool check_file_type (struct atrfs_entry *ent, char *ext);
 
 /*
@@ -459,13 +459,13 @@ void atrfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 static void release_file(struct atrfs_entry *ent, double playtime)
 {
 
-	/* We suppose all file_entries are flv-files */
-	int flv = (ent->e_type == ATRFS_FILE_ENTRY);
+	/* We suppose all file_entries are playable files. */
+	int playable = (ent->e_type == ATRFS_FILE_ENTRY);
 
-	if (flv)
+	if (playable)
 		detach_subtitles (ent);
 
-	if (flv && isgreater (playtime, 0.0))
+	if (playable && isgreater (playtime, 0.0))
 	{
 		char *filename = REAL_NAME(ent);
 
@@ -474,7 +474,7 @@ static void release_file(struct atrfs_entry *ent, double playtime)
 		set_dvalue (ent, "user.watchtime", watchtime);
 
 		/* * Categorize the file by moving it to a proper subdirectory. */
-		categorize_flv_entry (ent);
+		categorize_file_entry (ent);
 	}
 
 	update_recent_file (ent);

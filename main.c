@@ -201,10 +201,10 @@ int main(int argc, char *argv[])
 	int foreground;
 	int err = -1;
 
-	int categorize_flv_helper (struct atrfs_entry *ent)
+	int categorize_file_helper (struct atrfs_entry *ent)
 	{
 		if (ent->e_type == ATRFS_FILE_ENTRY)
-			categorize_flv_entry (ent);
+			categorize_file_entry (ent);
 		return 0;
 	}
 
@@ -222,9 +222,8 @@ int main(int argc, char *argv[])
 	parse_config_file (canonicalize_file_name("atrfs.conf"), root);
 	populate_stat_dir (statroot);
 
-	/* Put file into right category directory. We assume that
-	 * there are only flv-files. */
-	map_leaf_entries (root, categorize_flv_helper);
+	/* Put file into right category directory. */
+	map_leaf_entries (root, categorize_file_helper);
 
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{

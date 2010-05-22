@@ -136,7 +136,7 @@ static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
 	move_entry (ent, dir);
 }
 
-void categorize_flv_entry (struct atrfs_entry *ent)
+void categorize_file_entry (struct atrfs_entry *ent)
 {
 	CHECK_TYPE (ent, ATRFS_FILE_ENTRY);
 
