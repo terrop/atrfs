@@ -173,7 +173,7 @@ void destroy_entry (struct atrfs_entry *ent)
 struct atrfs_entry *lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
 {
 	ASSERT_TYPE (dir, ATRFS_DIRECTORY_ENTRY);
-	return g_hash_table_lookup (DIR_ENTRY(dir)->contents, name);
+	return dir->ops->lookup_entry_by_name (dir, name);
 }
 
 /*
@@ -236,6 +236,11 @@ static int directory_stat (struct atrfs_entry *ent, struct stat *st)
 	st->st_mtime =
 	st->st_ctime = time (NULL);
 	return 0;
+}
+
+static struct atrfs_entry *directory_lookup_entry_by_name (struct atrfs_entry *dir, const char *name)
+{
+	return g_hash_table_lookup (DIR_ENTRY(dir)->contents, name);
 }
 
 static int virtual_stat (struct atrfs_entry *ent, struct stat *st)
@@ -318,4 +323,5 @@ static struct atrfs_entry_ops file_ops =
 static struct atrfs_entry_ops directory_ops =
 {
 	.stat = directory_stat,
+	.lookup_entry_by_name = directory_lookup_entry_by_name,
 };

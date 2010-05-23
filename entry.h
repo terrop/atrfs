@@ -26,6 +26,7 @@ struct atrfs_entry_ops
 	ssize_t (*read)(struct atrfs_entry *ent, char *buf, size_t size, off_t offset);
 	void (*write)(struct atrfs_entry *ent, const char *buf, size_t size);
 	int (*stat)(struct atrfs_entry *ent, struct stat *st);
+	struct atrfs_entry *(*lookup_entry_by_name)(struct atrfs_entry *dir, const char *name);
 };
 
 struct atrfs_entry
