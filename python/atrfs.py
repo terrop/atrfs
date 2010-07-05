@@ -127,7 +127,7 @@ class FLVFuseFile():
 	def attach_subtitles(self):
 		(parent, name) = self.entry.get_pos()
 		real_flv = self.entry.get_real_name()
-		asc = "%s.asc" % real_flv[:-4] # ".flv"
+		asc = "%s.asc" % real_flv[:real_flv.rindex(".")] # ".flv" or ".webm"
 
 		length = self.entry.get_length()
 		val = 1.0 * self.entry.get_watchtime() / length
@@ -411,6 +411,7 @@ def flv_parse_config_file(filename):
 			filters.append(compile(line[7:], filename, "single"))
 		else:		# add files in directory (line ends with '\n')
 			files.process(line[:-1], ".flv")
+			files.process(line[:-1], ".webm")
 
 fuse.fuse_python_api = (0,2)
 flv_root = None

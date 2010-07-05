@@ -41,7 +41,8 @@ class DirStatFile(VirtualFile):
 		(parent, _) = self.get_pos()
 		time = 0
 		for name in parent.get_names():
-			if name[-4:] != ".flv":
+			ind = name.rfind(".")
+			if ind < 0 or name[ind:] not in [".flv", ".webm"]:
 				continue
 			ent = parent.lookup(name)
 			time = time + ent.get_length()
