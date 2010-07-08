@@ -38,30 +38,7 @@ static bool get_value_internal (struct atrfs_entry *ent, char *attr, int count, 
 			return false;
 		return true;
 	}
-
-	/* Old code is used as a fallback */
-
-	char *name = REAL_NAME(ent);
-	int len = getxattr (name, attr, NULL, 0);
-	if (len <= 0)
-		return false;
-
-	char buf[len];
-	if (getxattr (name, attr, buf, len) <= 0)
-		return false;
-
-	va_list list;
-	va_start (list, fmt);
-	int ret = vsscanf (buf, fmt, list);
-	va_end (list);
-
-	/* Put it into real database */
-	entrydb_put (ent, attr, buf);
-	tmplog ("Put into db: %s: %s:%s\n", name, attr, buf);
-
-	if (ret != count)
-		return false;
-	return true;
+	return false;
 }
 
 static bool set_value_internal (struct atrfs_entry *ent, char *attr, char *fmt, ...)
