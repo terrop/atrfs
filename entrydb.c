@@ -89,20 +89,22 @@ void database_set (sqlite3 *db, char *sha, char *key, char *val)
 	}
 }
 
-void database_insert_file (sqlite3 *db, char *filename, char *sha)
+static void entrydb_ensure_exists (char *sha1)
 {
-	char *err;
-	char *cmd;
-
-	asprintf (&cmd, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha);
-
-	sqlite3_exec (db, cmd, NULL, NULL, &err);
-	free (cmd);
-	if (err)
+	char *val = database_get (entrydb, sha1, "sha1");
+	if (! val)
 	{
-		tmplog ("database_insert_file: %s\n", err);
-		sqlite3_free (err);
+		char *err, *cmd = NULL;
+		asprintf (&cmd, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha1);
+		sqlite3_exec (entrydb, cmd, NULL, NULL, &err);
+		free (cmd);
+		if (err)
+		{
+			tmplog ("entrydb_ensure_exists: %s\n", err);
+			sqlite3_free (err);
+		}
 	}
+	free (val);
 }
 
 char *entrydb_get (struct atrfs_entry *ent, char *attr)
@@ -127,15 +129,11 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 			sha1 = buf;
 		}
 
-		val = database_get (entrydb, sha1, "sha1");
-		if (val)
-			free (val);
-		else
-			database_insert_file (entrydb, name, sha1);
+		entrydb_ensure_exists (sha1);
 		val = database_get (entrydb, sha1, attr);
 
 		/* Debugging... */
-		tmplog ("%s, value: %s\n", attr, val);
+		tmplog ("%s: %s\n", attr, val);
 	}
 
 	return val;
@@ -145,7 +143,9 @@ void entrydb_put (struct atrfs_entry *ent, char *attr, char *val)
 {
 	if (entrydb)
 	{
-		char *sha = get_sha1 (REAL_NAME(ent));
-		database_set (entrydb, sha, attr, val);
+		char *sha1 = get_sha1 (REAL_NAME(ent));
+
+		entrydb_ensure_exists (sha1);
+		database_set (entrydb, sha1, attr, val);
 	}
 }
