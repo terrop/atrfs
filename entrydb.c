@@ -1,31 +1,113 @@
 /* entrydb.c - 10.5.2010 - 10.5.2010 Ari & Tero Roponen */
+#include <sqlite3.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include "database.h"
 #include "entrydb.h"
+
+struct database
+{
+	void *handle;
+};
 
 /* In sha1.c */
 char *get_sha1 (char *filename);
 
-/* In database.c */
-void database_insert_file (struct database *db, char *filename, char *sha);
-
-static struct database *entrydb;
+static sqlite3 *entrydb;
 
 bool open_entrydb (char *filename)
 {
-	entrydb = open_database (filename);
-	if (entrydb)
-		return true;
-	return false;
+	sqlite3 *handle = NULL;
+	char *err;
+	bool must_create = false;
+
+	if (access (filename, F_OK) != 0)
+		must_create = true;
+
+	sqlite3_open (filename, &handle);
+	if (must_create)
+	{
+		sqlite3_exec (handle,
+			      "CREATE TABLE Files (sha1 TEXT, count INT DEFAULT 0);"
+			      "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
+			      "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
+//			      "INSERT INTO Files (File) VALUES (\"oma.flv\");"
+			      , NULL, NULL, &err);
+		if (err)
+		{
+			tmplog ("Error: %s\n", err);
+			sqlite3_free (err);
+			return false;
+		}
+		tmplog ("Created database: %s\n", filename);
+	}
+
+	entrydb = handle;
+	return true;
 }
 
 void close_entrydb (void)
 {
-	if (entrydb)
-		close_database (entrydb);
+	sqlite3_close (entrydb);
 	entrydb = NULL;
+}
+
+static char *database_get (sqlite3 *db, char *sha, char *key)
+{
+	char *err, *val = NULL;
+	char *cmd;
+
+	int get_callback (void *data, int ncols, char **values, char **names)
+	{
+		if (ncols >= 1 && !val)	/* Exactly 1! */
+			val = strdup (values[0]);
+		return 0;
+	}
+
+	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\" limit 1;", key, sha);
+
+	sqlite3_exec (db, cmd, get_callback, NULL, &err);
+	free (cmd);
+
+	if (err)
+	{
+		tmplog ("database_get: %s\n", err);
+		sqlite3_free (err);
+	}
+
+	return val;
+}
+
+void database_set (sqlite3 *db, char *sha, char *key, char *val)
+{
+	char *err;
+	char *cmd;
+
+	asprintf (&cmd, "UPDATE Files SET %s = '%s' WHERE sha1=\"%s\";", key, val, sha);
+
+	sqlite3_exec (db, cmd, NULL, NULL, &err);
+	free (cmd);
+	if (err)
+	{
+		tmplog ("database_set: %s\n", err);
+		sqlite3_free (err);
+	}
+}
+
+void database_insert_file (sqlite3 *db, char *filename, char *sha)
+{
+	char *err;
+	char *cmd;
+
+	asprintf (&cmd, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha);
+
+	sqlite3_exec (db, cmd, NULL, NULL, &err);
+	free (cmd);
+	if (err)
+	{
+		tmplog ("database_insert_file: %s\n", err);
+		sqlite3_free (err);
+	}
 }
 
 char *entrydb_get (struct atrfs_entry *ent, char *attr)
