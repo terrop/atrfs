@@ -1,5 +1,6 @@
 /* entrydb.c - 10.5.2010 - 10.5.2010 Ari & Tero Roponen */
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include "database.h"
 #include "entrydb.h"
@@ -55,6 +56,9 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 		else
 			database_insert_file (entrydb, name, sha1);
 		val = database_get (entrydb, sha1, attr);
+
+		/* Debugging... */
+		tmplog ("%s, value: %s\n", attr, val);
 	}
 
 	return val;

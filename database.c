@@ -23,7 +23,7 @@ struct database *open_database (char *filename)
 	if (must_create)
 	{
 		sqlite3_exec (handle,
-			      "CREATE TABLE Files (file FILE, sha1 TEXT);"
+			      "CREATE TABLE Files (sha1 TEXT);"
 			      "ALTER TABLE Files ADD count INT DEFAULT 0;"
 			      "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
 			      "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
@@ -64,11 +64,7 @@ char *database_get (struct database *db, char *sha, char *key)
 
 	int get_callback (void *data, int ncols, char **values, char **names)
 	{
-		int i;
-		for (i = 0; i < ncols; i++)
-			tmplog ("Name: %s, value: %s\n", names[i], values[i]);
-
-		if (ncols >= 1)	/* Exactly 1! */
+		if (ncols >= 1 && !val)	/* Exactly 1! */
 			val = strdup (values[0]);
 		return 0;
 	}
@@ -76,6 +72,8 @@ char *database_get (struct database *db, char *sha, char *key)
 	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\";", key, sha);
 
 	sqlite3_exec (db->handle, cmd, get_callback, NULL, &err);
+	free (cmd);
+
 	if (err)
 	{
 		tmplog ("database_get: %s\n", err);
@@ -93,6 +91,7 @@ void database_set (struct database *db, char *sha, char *key, char *val)
 	asprintf (&cmd, "UPDATE Files SET %s = '%s' WHERE sha1=\"%s\";", key, val, sha);
 
 	sqlite3_exec (db->handle, cmd, NULL, NULL, &err);
+	free (cmd);
 	if (err)
 	{
 		tmplog ("database_set: %s\n", err);
@@ -105,9 +104,10 @@ void database_insert_file (struct database *db, char *filename, char *sha)
 	char *err;
 	char *cmd;
 
-	asprintf (&cmd, "INSERT INTO Files (file, sha1) VALUES (\"%s\", \"%s\");", filename, sha);
+	asprintf (&cmd, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha);
 
 	sqlite3_exec (db->handle, cmd, NULL, NULL, &err);
+	free (cmd);
 	if (err)
 	{
 		tmplog ("database_insert_file: %s\n", err);
