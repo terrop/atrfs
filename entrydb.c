@@ -5,11 +5,6 @@
 #include <string.h>
 #include "entrydb.h"
 
-struct database
-{
-	void *handle;
-};
-
 /* In sha1.c */
 char *get_sha1 (char *filename);
 
