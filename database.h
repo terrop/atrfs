@@ -14,4 +14,6 @@ void close_database (struct database *db);
 char *database_get (struct database *db, char *sha, char *key);
 void database_set (struct database *db, char *sha, char *key, char *val);
 
+void database_insert_file (struct database *db, char *filename, char *sha);
+
 #endif /* ! DATABASE_H */

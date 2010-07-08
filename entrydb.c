@@ -7,6 +7,9 @@
 /* In sha1.c */
 char *get_sha1 (char *filename);
 
+/* In database.c */
+void database_insert_file (struct database *db, char *filename, char *sha);
+
 static struct database *entrydb;
 
 bool open_entrydb (char *filename)
@@ -45,6 +48,12 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 			getxattr (name, "user.sha1", buf, len);
 			sha1 = buf;
 		}
+
+		val = database_get (entrydb, sha1, "sha1");
+		if (val)
+			free (val);
+		else
+			database_insert_file (entrydb, name, sha1);
 		val = database_get (entrydb, sha1, attr);
 	}
 

@@ -26,17 +26,17 @@ struct atrfs_entry *ino_to_entry(fuse_ino_t ino)
 
 int get_watchcount(struct atrfs_entry *ent)
 {
-	return get_ivalue (ent, "user.count", 0);
+	return get_ivalue (ent, "count", 0);
 }
 
 double get_watchtime(struct atrfs_entry *ent)
 {
-	return get_dvalue (ent, "user.watchtime", 0.0);
+	return get_dvalue (ent, "watchtime", 0.0);
 }
 
 double get_length(struct atrfs_entry *ent)
 {
-	double value = get_dvalue (ent, "user.length", -1.0);
+	double value = get_dvalue (ent, "length", -1.0);
 	if (value < 0.0)
 	{
 		char buf[256];
@@ -57,7 +57,7 @@ double get_length(struct atrfs_entry *ent)
 		}
 		pclose(in);
 
-		set_dvalue (ent, "user.length", value);
+		set_dvalue (ent, "length", value);
 	}
 
 	return value;

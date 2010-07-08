@@ -1,45 +1,47 @@
-/* database.c - 7.5.2010 - 7.5.2010 Ari & Tero Roponen */
-
-#include <db.h>
+/* database.c - 7.5.2010 - 8.7.2010 Ari & Tero Roponen */
+#include <stdbool.h>
+#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "database.h"
-
-struct dbelt
-{
-	char *var;
-	char *val;
-	struct dbelt *next;
-};
+#include "util.h"
 
 struct database *open_database (char *filename)
 {
 	struct database *db = NULL;
-	DB *handle;
-	int ret;
 
-	if (db_create (&handle, NULL, 0))
-		return NULL;
+	sqlite3 *handle;
+	char *err;
+	bool must_create = false;
 
-	/* Create file if it doesn't exist. */
 	if (access (filename, F_OK) != 0)
-		ret = handle->open(handle, NULL, filename, NULL, DB_HASH, DB_CREATE, 0);
-	else
-		ret = handle->open(handle, NULL, filename, NULL, DB_UNKNOWN, 0, 0);
+		must_create = true;
 
-	if (ret)
+	sqlite3_open (filename, &handle);
+	if (must_create)
 	{
-		printf ("Error: %d\n", ret);
-		handle->close(handle, 0);
-		return NULL;
+		sqlite3_exec (handle,
+			      "CREATE TABLE Files (file FILE, sha1 TEXT);"
+			      "ALTER TABLE Files ADD count INT DEFAULT 0;"
+			      "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
+			      "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
+//			      "INSERT INTO Files (File) VALUES (\"oma.flv\");"
+			      , NULL, NULL, &err);
+		if (err)
+		{
+			tmplog ("Error: %s\n", err);
+			sqlite3_free (err);
+			return NULL;
+		}
+		tmplog ("Created database: %s\n", filename);
 	}
 
 	db = malloc (sizeof (*db));
 	if (!db)
 	{
-		handle->close(handle, 0);
+		sqlite3_close (handle);
 		return NULL;
 	}
 
@@ -49,127 +51,68 @@ struct database *open_database (char *filename)
 
 void close_database (struct database *db)
 {
-	DB *handle = db->handle;
-	handle->close(handle, 0);
+	sqlite3 *handle = db->handle;
+	sqlite3_close (handle);
 	db->handle = NULL;
 	free (db);
 }
 
-static char *database_get_raw (struct database *db, char *keystr)
-{
-	DBT key = {
-		.data = keystr,
-		.size = strlen (keystr),
-	};
-	DBT data = {0};
-
-	if (((DB *)db->handle)->get(db->handle, NULL, &key, &data, 0))
-		return NULL;
-	char *str = malloc (data.size);
-	if (!str)
-		return NULL;
-	memcpy (str, data.data, data.size);
-	return str;
-}
-
-static struct dbelt *database_get_elts (struct database *db, char *sha1)
-{
-	struct dbelt *elts = NULL;
-	char *s, *str = database_get_raw (db, sha1);
-	if (! str)
-		return NULL;
-	for (s = str; *s; s += strlen (s) + 1)
-	{
-		struct dbelt *elt = malloc (sizeof (*elt));
-		if (!elt)
-			abort ();
-		elt->var = strdup (s);
-		elt->val = strchr (elt->var, ':');
-		if (elt->val)
-		{
-			*elt->val = '\0';
-			elt->val++;
-		} else elt->val = NULL;
-		elt->next = elts;
-		elts = elt;
-	}
-	free (str);
-	return elts;
-}
-
-static void database_free_elts (struct dbelt *elts)
-{
-	while (elts)
-	{
-		struct dbelt *next = elts->next;
-		free (elts->var);
-		free (elts);
-		elts = next;
-	}
-}
-
-static void database_dump_elts (struct dbelt *elts)
-{
-	tmplog("<dump>\n");
-	for (;elts; elts = elts->next)
-		tmplog (" %s:%s\n", elts->var, elts->val);
-	tmplog("</dump>\n");
-}
-
 char *database_get (struct database *db, char *sha, char *key)
 {
-	struct dbelt *elt, *elts = database_get_elts (db, sha);
-	char *val = NULL;
+	char *err, *val = NULL;
+	char *cmd;
 
-	for (elt = elts; elt; elt = elt->next)
+	int get_callback (void *data, int ncols, char **values, char **names)
 	{
-		if (strcmp (elt->var, key) == 0)
-		{
-			val = strdup (elt->val);
-			break;
-		}
+		int i;
+		for (i = 0; i < ncols; i++)
+			tmplog ("Name: %s, value: %s\n", names[i], values[i]);
+
+		if (ncols >= 1)	/* Exactly 1! */
+			val = strdup (values[0]);
+		return 0;
 	}
-	database_free_elts (elts);
+
+	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\";", key, sha);
+
+	sqlite3_exec (db->handle, cmd, get_callback, NULL, &err);
+	if (err)
+	{
+		tmplog ("database_get: %s\n", err);
+		sqlite3_free (err);
+	}
+
 	return val;
 }
 
 void database_set (struct database *db, char *sha, char *key, char *val)
 {
-	struct dbelt *elt, *elts = database_get_elts (db, sha);
-	char *data, *pos;
-	char buf[128];		/* XXX */
+	char *err;
+	char *cmd;
 
-	data = malloc (1024);	/* XXX */
-	if (! data)
-		abort ();
-	pos = data;
+	asprintf (&cmd, "UPDATE Files SET %s = '%s' WHERE sha1=\"%s\";", key, val, sha);
 
-	pos += sprintf (pos, "%s:%s", key, val);
-	pos++;
-
-	for (elt = elts; elt; elt = elt->next)
-		if (strcmp (elt->var, key) && elt->val)
-		{
-			pos += sprintf (pos, "%s:%s", elt->var, elt->val);
-			pos++;
-		}
-
-	DBT dkey = {
-		.data = sha,
-		.size = strlen (sha),
-	};
-	DBT ddata = {
-		.data = data,
-		.size = pos - data,
-	};
-
-	if (((DB *)db->handle)->put(db->handle, NULL, &dkey, &ddata, 0))
+	sqlite3_exec (db->handle, cmd, NULL, NULL, &err);
+	if (err)
 	{
-		tmplog("DB problem\n");
-		abort ();
+		tmplog ("database_set: %s\n", err);
+		sqlite3_free (err);
 	}
-	database_free_elts (elts);
-	free (data);
+}
+
+void database_insert_file (struct database *db, char *filename, char *sha)
+{
+	char *err;
+	char *cmd;
+
+	asprintf (&cmd, "INSERT INTO Files (file, sha1) VALUES (\"%s\", \"%s\");", filename, sha);
+
+	sqlite3_exec (db->handle, cmd, NULL, NULL, &err);
+	if (err)
+	{
+		tmplog ("database_insert_file: %s\n", err);
+		sqlite3_free (err);
+	}
 }
 
 #ifdef DATABASE_TEST

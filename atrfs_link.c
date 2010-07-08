@@ -85,8 +85,8 @@ void atrfs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
 		} else if (entry->parent == root) {
 			if (entry->e_type == ATRFS_FILE_ENTRY)
 			{
-				set_ivalue (entry, "user.count", 0);
-				set_dvalue (entry, "user.watchtime", 0.0);
+				set_ivalue (entry, "count", 0);
+				set_dvalue (entry, "watchtime", 0.0);
 			}
 			err = 0;
 		} else {	/* subdir */
