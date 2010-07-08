@@ -50,7 +50,7 @@ void close_entrydb (void)
 static char *database_get (sqlite3 *db, char *sha, char *key)
 {
 	char *err, *val = NULL;
-	char *cmd;
+	char *cmd = NULL;
 
 	int get_callback (void *data, int ncols, char **values, char **names)
 	{
@@ -76,7 +76,7 @@ static char *database_get (sqlite3 *db, char *sha, char *key)
 void database_set (sqlite3 *db, char *sha, char *key, char *val)
 {
 	char *err;
-	char *cmd;
+	char *cmd = NULL;
 
 	asprintf (&cmd, "UPDATE Files SET %s = '%s' WHERE sha1=\"%s\";", key, val, sha);
 
@@ -133,7 +133,7 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 		val = database_get (entrydb, sha1, attr);
 
 		/* Debugging... */
-		tmplog ("%s: %s\n", attr, val);
+		tmplog ("entrydb_get: %s: %s\n", attr, val);
 	}
 
 	return val;
