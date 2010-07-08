@@ -135,7 +135,7 @@ char *uniquify_name (char *name, struct atrfs_entry *root)
 			return uniq;
 		} else {
 			char buf[len + 10];
-			sprintf (buf, "%.*s %d%s", ext - name, name, i, ext);
+			sprintf (buf, "%.*s %d%s", (int)(ext - name), name, i, ext);
 			free (uniq);
 			uniq = strdup (buf);
 		}
@@ -147,7 +147,7 @@ char *get_related_name (char *filename, char *old_ext, char *new_ext)
 	char *srtname = NULL;
 	char *ext = strrchr (filename, '.');
 	if (ext && !strcmp (ext, old_ext))
-		asprintf (&srtname, "%.*s%s", ext - filename, filename, new_ext);
+		asprintf (&srtname, "%.*s%s", (int)(ext - filename), filename, new_ext);
 	return srtname;
 }
 
