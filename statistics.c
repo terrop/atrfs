@@ -76,8 +76,10 @@ void update_stats (void)
 
 	get_all_file_entries (&entries, &count);
 
+	tmplog ("sort begins\n");
 	qsort (entries, count, sizeof (struct atrfs_entry *),
 	       (comparison_fn_t) compare_times);
+	tmplog ("sort ends\n");
 
 	for (j = 0; j < 2; j++)
 	{
