@@ -188,6 +188,11 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
+GHashTable *sha1_to_entry_map;
+
+extern char *get_sha1 (char *filename);
+extern char *get_sha1_fast (char *filename);
+
 int main(int argc, char *argv[])
 {
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
@@ -196,10 +201,16 @@ int main(int argc, char *argv[])
 	int foreground;
 	int err = -1;
 
+	sha1_to_entry_map = g_hash_table_new (g_str_hash, g_str_equal);
+
 	int categorize_file_helper (struct atrfs_entry *ent)
 	{
 		if (ent->e_type == ATRFS_FILE_ENTRY)
+		{
 			categorize_file_entry (ent);
+			char *sha1 = get_sha1_fast (REAL_NAME(ent));
+			g_hash_table_replace (sha1_to_entry_map, strdup(sha1), ent);
+		}
 		return 0;
 	}
 
@@ -215,10 +226,12 @@ int main(int argc, char *argv[])
 	attach_entry (root, statroot, "stats");
 
 	parse_config_file (canonicalize_file_name("atrfs.conf"), root);
-	populate_stat_dir (statroot);
 
 	/* Put file into right category directory. */
 	map_leaf_entries (root, categorize_file_helper);
+	tmplog("Hash size: %d\n", g_hash_table_size (sha1_to_entry_map));
+
+	populate_stat_dir (statroot);
 
 	if (fuse_parse_cmdline(&args, &mountpoint, NULL, &foreground) != -1)
 	{

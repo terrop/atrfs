@@ -146,35 +146,30 @@ void tmplog(char *fmt, ...)
 	va_end(list);
 }
 
+extern bool entrydb_exec (int (*callback)(void *data, int ncols, char **values, char **names)
+			  , char *cmdfmt, ...);
+
+extern GHashTable *sha1_to_entry_map;
+
 void get_all_file_entries (struct atrfs_entry ***entries, size_t *count)
 {
 	if (! entries || ! count)
 		abort ();
 
-	size_t nitems;
 	struct atrfs_entry **ptr;
+	size_t nitems = g_hash_table_size (sha1_to_entry_map);
 
-	int counter (struct atrfs_entry *ent)
+	int inserter (void *unused, int ncols, char **values, char **names)
 	{
-		if (ent->e_type == ATRFS_FILE_ENTRY)
-			nitems++;
-		return 0;
-	}
-	int inserter (struct atrfs_entry *ent)
-	{
-		if (ent->e_type == ATRFS_FILE_ENTRY)
+		struct atrfs_entry *ent = g_hash_table_lookup (sha1_to_entry_map, values[0]);
+		if (ent)
 			*ptr++ = ent;
 		return 0;
 	}
 
-	nitems = 0;
-	map_leaf_entries (root, counter);
-
-//	tmplog("get_all_file_entries: %d entries\n", count);
-
 	struct atrfs_entry **ents = malloc ((nitems + 1) * sizeof (struct atrfs_entry *));
 	ptr = ents;
-	map_leaf_entries (root, inserter);
+	entrydb_exec (inserter, "SELECT sha1 FROM Files ORDER BY watchtime DESC");
 	*ptr = NULL;
 
 	*entries = ents;

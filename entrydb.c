@@ -10,6 +10,49 @@ char *get_sha1 (char *filename);
 
 static sqlite3 *entrydb;
 
+char *get_sha1_fast (char *filename)
+{
+	int len = getxattr (filename, "user.sha1", NULL, 0);
+	static char *sha1;
+	static char buf[32];
+
+	sha1 = NULL;
+	if (len <= 0)
+	{
+		sha1 = get_sha1 (filename);
+		if (setxattr (filename, "user.sha1", sha1, strlen (sha1) + 1, 0))
+			perror ("Can't set SHA1");
+	}
+
+	if (! sha1)
+	{
+		getxattr (filename, "user.sha1", buf, len);
+		sha1 = buf;
+	}
+	return sha1;
+}
+
+bool entrydb_exec (int (*callback)(void *data, int ncols, char **values, char **names), char *cmdfmt, ...)
+{
+	char *cmd = NULL, *err = NULL;
+	bool ret = true;
+	va_list list;
+	va_start (list, cmdfmt);
+
+	vasprintf (&cmd, cmdfmt, list);
+	sqlite3_exec (entrydb, cmd, callback, NULL, &err);
+	va_end (list);
+
+	if (err)
+	{
+		tmplog ("%s while executing: \"%s\"\n", err, cmd);
+		sqlite3_free (err);
+		ret = false;
+	}
+	free (cmd);
+	return ret;
+}
+
 bool open_entrydb (char *filename)
 {
 	sqlite3 *handle = NULL;
@@ -22,18 +65,19 @@ bool open_entrydb (char *filename)
 	sqlite3_open (filename, &handle);
 	if (must_create)
 	{
-		sqlite3_exec (handle,
-			      "CREATE TABLE Files (sha1 TEXT, count INT DEFAULT 0);"
-			      "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
-			      "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
-//			      "INSERT INTO Files (File) VALUES (\"oma.flv\");"
-			      , NULL, NULL, &err);
-		if (err)
+		entrydb = handle; /* Hack! */
+		if (! entrydb_exec (NULL,
+				    "CREATE TABLE Files (sha1 TEXT, count INT DEFAULT 0);"
+				    "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
+				    "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
+				    //"INSERT INTO Files (File) VALUES (\"oma.flv\");"
+			    ))
 		{
-			tmplog ("Error: %s\n", err);
-			sqlite3_free (err);
+			sqlite3_close (handle);
+			entrydb = NULL;
 			return false;
 		}
+
 		tmplog ("Created database: %s\n", filename);
 	}
 
@@ -49,8 +93,7 @@ void close_entrydb (void)
 
 static char *database_get (sqlite3 *db, char *sha, char *key)
 {
-	char *err, *val = NULL;
-	char *cmd = NULL;
+	char *val = NULL;
 
 	int get_callback (void *data, int ncols, char **values, char **names)
 	{
@@ -59,17 +102,8 @@ static char *database_get (sqlite3 *db, char *sha, char *key)
 		return 0;
 	}
 
-	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\" limit 1;", key, sha);
-
-	sqlite3_exec (db, cmd, get_callback, NULL, &err);
-	free (cmd);
-
-	if (err)
-	{
-		tmplog ("database_get: %s\n", err);
-		sqlite3_free (err);
-	}
-
+	if (! entrydb_exec (get_callback, "SELECT %s FROM Files WHERE sha1=\"%s\" limit 1;", key, sha))
+		return NULL;
 	return val;
 }
 
@@ -78,15 +112,7 @@ static void entrydb_ensure_exists (char *sha1)
 	char *val = database_get (entrydb, sha1, "sha1");
 	if (! val)
 	{
-		char *err, *cmd = NULL;
-		asprintf (&cmd, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha1);
-		sqlite3_exec (entrydb, cmd, NULL, NULL, &err);
-		free (cmd);
-		if (err)
-		{
-			tmplog ("entrydb_ensure_exists: %s\n", err);
-			sqlite3_free (err);
-		}
+		entrydb_exec (NULL, "INSERT INTO Files (sha1) VALUES (\"%s\");", sha1);
 	}
 	free (val);
 }
@@ -96,22 +122,9 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 	char *val = NULL;
 	if (entrydb)
 	{
-		char *name = REAL_NAME(ent);
-		int len = getxattr (name, "user.sha1", NULL, 0);
-		char *sha1 = NULL;
-		if (len <= 0)
-		{
-			sha1 = get_sha1 (name);
-			if (setxattr (name, "user.sha1", sha1, strlen (sha1) + 1, 0))
-				perror ("Can't set SHA1");
-		}
-
-		char buf[len];
+		char *sha1 = get_sha1_fast (REAL_NAME (ent));
 		if (! sha1)
-		{
-			getxattr (name, "user.sha1", buf, len);
-			sha1 = buf;
-		}
+			abort ();
 
 		entrydb_ensure_exists (sha1);
 		val = database_get (entrydb, sha1, attr);
@@ -125,17 +138,8 @@ void entrydb_put (struct atrfs_entry *ent, char *attr, char *val)
 	if (entrydb)
 	{
 		char *sha1 = get_sha1 (REAL_NAME(ent));
-		char *err, *cmd = NULL;
 
 		entrydb_ensure_exists (sha1);
-
-		asprintf (&cmd, "UPDATE Files SET %s = \"%s\" WHERE sha1=\"%s\";", attr, val, sha1);
-		sqlite3_exec (entrydb, cmd, NULL, NULL, &err);
-		free (cmd);
-		if (err)
-		{
-			tmplog ("entrydb_put: %s\n", err);
-			sqlite3_free (err);
-		}
+		entrydb_exec (NULL, "UPDATE Files SET %s = \"%s\" WHERE sha1=\"%s\";", attr, val, sha1);
 	}
 }

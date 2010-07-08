@@ -64,22 +64,8 @@ void update_stats (void)
 	size_t count;
 	int i, j;
 
-	int compare_times (void *a, void *b)
-	{
-		struct atrfs_entry *e1, *e2;
-		e1 = *(struct atrfs_entry **)a;
-		e2 = *(struct atrfs_entry **)b;
-		if (get_watchtime(e1) > get_watchtime(e2))
-			return -1;
-		return 1;
-	}
-
+	/* This gives a list of sorted entries. */
 	get_all_file_entries (&entries, &count);
-
-	tmplog ("sort begins\n");
-	qsort (entries, count, sizeof (struct atrfs_entry *),
-	       (comparison_fn_t) compare_times);
-	tmplog ("sort ends\n");
 
 	for (j = 0; j < 2; j++)
 	{
