@@ -73,7 +73,7 @@ static char *database_get (sqlite3 *db, char *sha, char *key)
 	return val;
 }
 
-void database_set (sqlite3 *db, char *sha, char *key, char *val)
+static void database_set (sqlite3 *db, char *sha, char *key, char *val)
 {
 	char *err;
 	char *cmd = NULL;
