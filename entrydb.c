@@ -73,22 +73,6 @@ static char *database_get (sqlite3 *db, char *sha, char *key)
 	return val;
 }
 
-static void database_set (sqlite3 *db, char *sha, char *key, char *val)
-{
-	char *err;
-	char *cmd = NULL;
-
-	asprintf (&cmd, "UPDATE Files SET %s = '%s' WHERE sha1=\"%s\";", key, val, sha);
-
-	sqlite3_exec (db, cmd, NULL, NULL, &err);
-	free (cmd);
-	if (err)
-	{
-		tmplog ("database_set: %s\n", err);
-		sqlite3_free (err);
-	}
-}
-
 static void entrydb_ensure_exists (char *sha1)
 {
 	char *val = database_get (entrydb, sha1, "sha1");
@@ -131,9 +115,6 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 
 		entrydb_ensure_exists (sha1);
 		val = database_get (entrydb, sha1, attr);
-
-		/* Debugging... */
-		tmplog ("entrydb_get: %s: %s\n", attr, val);
 	}
 
 	return val;
@@ -144,8 +125,17 @@ void entrydb_put (struct atrfs_entry *ent, char *attr, char *val)
 	if (entrydb)
 	{
 		char *sha1 = get_sha1 (REAL_NAME(ent));
+		char *err, *cmd = NULL;
 
 		entrydb_ensure_exists (sha1);
-		database_set (entrydb, sha1, attr, val);
+
+		asprintf (&cmd, "UPDATE Files SET %s = \"%s\" WHERE sha1=\"%s\";", attr, val, sha1);
+		sqlite3_exec (entrydb, cmd, NULL, NULL, &err);
+		free (cmd);
+		if (err)
+		{
+			tmplog ("entrydb_put: %s\n", err);
+			sqlite3_free (err);
+		}
 	}
 }
