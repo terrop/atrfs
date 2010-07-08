@@ -37,7 +37,7 @@ double get_watchtime(struct atrfs_entry *ent)
 double get_length(struct atrfs_entry *ent)
 {
 	double value = get_dvalue (ent, "length", -1.0);
-	if (value < 0.0)
+	if (value <= 0.0)
 	{
 		char buf[256];
 		FILE *in;
