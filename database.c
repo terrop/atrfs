@@ -23,8 +23,7 @@ struct database *open_database (char *filename)
 	if (must_create)
 	{
 		sqlite3_exec (handle,
-			      "CREATE TABLE Files (sha1 TEXT);"
-			      "ALTER TABLE Files ADD count INT DEFAULT 0;"
+			      "CREATE TABLE Files (sha1 TEXT, count INT DEFAULT 0);"
 			      "ALTER TABLE Files ADD watchtime REAL DEFAULT 0.0;"
 			      "ALTER TABLE Files ADD length REAL DEFAULT 0.0;"
 //			      "INSERT INTO Files (File) VALUES (\"oma.flv\");"
@@ -69,7 +68,7 @@ char *database_get (struct database *db, char *sha, char *key)
 		return 0;
 	}
 
-	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\";", key, sha);
+	asprintf (&cmd, "SELECT %s FROM Files WHERE sha1=\"%s\" limit 1;", key, sha);
 
 	sqlite3_exec (db->handle, cmd, get_callback, NULL, &err);
 	free (cmd);
