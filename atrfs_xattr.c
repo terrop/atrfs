@@ -84,10 +84,7 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
 //	tmplog("getxattr('%s', '%s', size=%lu)\n", ent->name, name, size);
 
 	if (ent->e_type != ATRFS_FILE_ENTRY)
-	{
-		fuse_reply_err(req, ENOATTR);
-		return;
-	}
+		goto out_noattr;
 
 	int i;
 	for (i = 0; atrfs_attributes[i].name; i++)
@@ -109,6 +106,7 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
 		return;
 	}
 
+out_noattr:
 	fuse_reply_err(req, ENOATTR);
 }
 
@@ -136,6 +134,12 @@ void atrfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t siz
  */
 void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
+	struct atrfs_entry *ent = ino_to_entry(ino);
+//	tmplog("listxattr('%s')\n", ent->name);
+
+	if (ent->e_type != ATRFS_FILE_ENTRY)
+		goto out_noattr;
+
 	static size_t attr_len;
 	if (attr_len == 0)
 	{
@@ -144,31 +148,28 @@ void atrfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 			attr_len += strlen(atrfs_attributes[i].name) + 1;
 	}
 
-	struct atrfs_entry *ent = ino_to_entry(ino);
-//	tmplog("listxattr('%s')\n", ent->name);
-	if (ent->e_type == ATRFS_FILE_ENTRY)
+	if (size == 0)
 	{
-		if (size == 0)
-		{
-			fuse_reply_xattr(req, attr_len);
-		} else if (size < attr_len) {
-			fuse_reply_err(req, ERANGE);
-		} else {
-			char buf[size];
-			int pos = 0;
-			int i;
-			for (i = 0; atrfs_attributes[i].name; i++)
-			{
-				int l = strlen(atrfs_attributes[i].name) + 1;
-				memcpy(buf + pos, atrfs_attributes[i].name, l);
-				pos += l;
-			}
-
-			fuse_reply_buf(req, buf, pos);
-		}
+		fuse_reply_xattr(req, attr_len);
+	} else if (size < attr_len) {
+		fuse_reply_err(req, ERANGE);
 	} else {
-		fuse_reply_err(req, ENOATTR);
+		char buf[size];
+		int pos = 0;
+		int i;
+		for (i = 0; atrfs_attributes[i].name; i++)
+		{
+			int l = strlen(atrfs_attributes[i].name) + 1;
+			memcpy(buf + pos, atrfs_attributes[i].name, l);
+			pos += l;
+		}
+
+		fuse_reply_buf(req, buf, pos);
 	}
+
+	return;
+out_noattr:
+	fuse_reply_err(req, ENOATTR);
 }
 
 /*
