@@ -380,6 +380,15 @@ class FLVStatistics(FLVDirectory):
 
 	def get_category_name(self, entry):
 		global filters
+
+		fname = entry.get_real_name()
+		idx = fname.rindex(os.sep)
+		catfile = "%s%s" % (fname[:idx + 1], "cat.txt")
+		if os.access(catfile, os.R_OK):
+			with file(catfile) as f:
+				cat = f.readline().split("\n")[0]
+			return cat
+
 		for filt in filters:
 			cat = filter_entry(entry, filt)
 			if not cat is None:
