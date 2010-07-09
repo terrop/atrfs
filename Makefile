@@ -16,4 +16,4 @@ sha1: sha1.c
 
 .PHONY: clean
 clean:
-	rm -f oma database sha1 *.o filter_lex.c
+	rm -f oma database sha1 *.o
