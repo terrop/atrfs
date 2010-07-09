@@ -77,8 +77,8 @@ static void add_file_when_supported(const char *filename)
 	if (!ext)
 		return;
 
-	/* Currently we support only flv-files. */
-	if (strcmp (ext, ".flv"))
+	/* Currently we support only files of type .flv and .webm. */
+	if (strcmp (ext, ".flv") && strcmp(ext, ".webm"))
 		return;
 
 	uniq_name = uniquify_name(basename(filename), root);
