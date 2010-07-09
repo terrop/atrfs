@@ -109,17 +109,6 @@ void update_stats (void)
 	}
 }
 
-static void move_to_named_subdir (struct atrfs_entry *ent, char *subdir)
-{
-	struct atrfs_entry *dir = lookup_entry_by_name (root, subdir);
-	if (! dir)
-	{
-		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
-		attach_entry (root, dir, subdir);
-	}
-	move_entry (ent, dir);
-}
-
 void categorize_file_entry (struct atrfs_entry *ent)
 {
 	ASSERT_TYPE (ent, ATRFS_FILE_ENTRY);
@@ -146,9 +135,15 @@ void categorize_file_entry (struct atrfs_entry *ent)
 		}
 	}
 
-	char *dir = get_category (ent);
-	move_to_named_subdir (ent, dir);
+	char *dirname = get_category (ent);
+	struct atrfs_entry *dir = lookup_entry_by_name (root, dirname);
+	if (! dir)
+	{
+		dir = create_entry (ATRFS_DIRECTORY_ENTRY);
+		attach_entry (root, dir, dirname);
+	}
+	move_entry (ent, dir);
 	if (conf)
-		move_to_named_subdir (conf, dir);
-	free (dir);
+		move_entry (conf, dir);
+	free (dirname);
 }

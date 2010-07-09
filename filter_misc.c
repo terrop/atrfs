@@ -8,46 +8,12 @@ char *filter_result;
 static double count, length, watchtime;
 static char *name, *catfile;
 
-static char *get_catfile (struct atrfs_entry *ent)
-{
-	static char *catfile = NULL;
-	if (catfile)
-	{
-		free (catfile);
-		catfile = NULL;
-	}
-
-	char buf[256];
-	char *s;
-	strcpy (buf, REAL_NAME(ent));
-	s = strrchr (buf, '/');
-	if (s)
-	{
-		strcpy (s + 1, "cat.txt");
-		if (access (buf, R_OK) == 0)
-		{
-			FILE *fp = fopen (buf, "r");
-			if (fp)
-			{
-				if (fgets (buf, sizeof (buf), fp))
-				{
-					catfile = strndup (buf, strlen (buf) - 1);
-				}
-				fclose (fp);
-			}
-		}
-	}
-
-	return catfile;
-}
-
 void filter_init (struct atrfs_entry *ent)
 {
 #ifndef FILTER_TEST
 	count = get_watchcount (ent);
 	length = get_length (ent);
 	watchtime = get_watchtime (ent);
-	catfile = get_catfile (ent);
 	name = ent->name;
 	filter_result = NULL;
 #else

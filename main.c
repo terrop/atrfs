@@ -146,7 +146,9 @@ static void parse_config_file (char *datafile, struct atrfs_entry *root)
 				if (! open_entrydb (buf + 9))
 					printf ("Can't open %s\n", buf + 9);
 			} else if (strncmp (buf, "filter=", 7) == 0) {
-				add_filter (buf + 7);
+				tmplog("Warning: ignoring old style filter: %s\n", buf);
+			} else if (strncmp (buf, "select ", 7) == 0) {
+				add_filter (buf);
 			}
 		}
 	}
