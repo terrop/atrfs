@@ -1,6 +1,6 @@
 # FLVTree.py - 2.5.2009 - 19.12.2009 Ari & Tero Roponen -*- coding: utf-8 -*-
 from hashlib import sha1
-import anydbm
+import sqlite3
 import os
 import xattr
 
@@ -48,27 +48,24 @@ class DirStatFile(VirtualFile):
 			time = time + ent.get_length()
 		self.set_contents("Total time: %s\n" % self.timestr(time))
 
+
 class FLVDatabase():
 	def __init__(self, filename):
-		self.db = anydbm.open(filename, "c")
+		self.filename = filename
 
 	def get_attr(self, sha1, attr, default=None):
-		data = self.db.get(sha1, "")
-		pref = "%s:" % attr
-		l = len(pref)
-		for items in data.split("\x00"):
-			if items[:l] == pref:
-				return items[l:]
+		conn = sqlite3.connect(self.filename)
+		curs = conn.cursor()
+		curs.execute("SELECT %s FROM Files WHERE sha1 = \"%s\"" % (attr, sha1))
+		for line in curs:
+			return unicode(line[0])
 		return default
 
 	def set_attr(self, sha1, attr, value):
-		data = self.db.get(sha1, "")
-		pref = "%s:" % attr
-		l = len(pref)
-		items = filter(lambda (name): not name[:l] == pref, data.split("\x00"))
-		items.insert(0, "%s:%s" % (attr, value))
-		self.db[sha1] = "\x00".join(items)
-		self.db.sync()
+		conn = sqlite3.connect(self.filename)
+		curs = conn.cursor()
+		curs.execute("UPDATE Files SET %s = \"%s\" WHERE sha1 = \"%s\"" % (attr, value, sha1))
+		conn.commit()
 
 class FLVFile(BaseFile):
 	flv_dirs = []
@@ -91,27 +88,27 @@ class FLVFile(BaseFile):
 		FLVFile.db.set_attr(self.get_sha1(), attr, value)
 
 	def get_count(self):
-		return int(self.get_attr("user.count", "0"))
+		return int(self.get_attr("count", "0"))
 
 	def set_count(self, count):
-		self.set_attr("user.count", "%d" % count)
+		self.set_attr("count", "%d" % count)
 
 	def get_watchtime(self):
-		return int(float(self.get_attr("user.watchtime", "0")))
+		return int(float(self.get_attr("watchtime", "0")))
 
 	def set_watchtime(self, time):
-		self.set_attr("user.watchtime", "%2.2f" % time)
+		self.set_attr("watchtime", "%2.2f" % time)
 
 	def get_length(self):
-		lenstr = self.get_attr("user.length")
-		if not lenstr:
+		lenstr = self.get_attr("length")
+		if not lenstr or lenstr == "0.0":
 			name = self.get_real_name()
 			cmd = "mplayer -identify -frames 0 -ao null -vo null 2>/dev/null -- \"%s\"" % name
 			f = os.popen(cmd)
 			lines = f.readlines()
 			f.close()
 			lenstr = filter(lambda(line):line[:10]=="ID_LENGTH=", lines)[0][10:-1]
-			self.set_attr("user.length", lenstr)
+			self.set_attr("length", lenstr)
 		return int(float(lenstr))
 
 	# sha1 is always put into xattr

@@ -154,7 +154,7 @@ class FLVFuseFile():
 
 		srt_name = "%s_%d_virt.srt" % (name[:-4], idx)
 		title = "%s\n%2.2f × %s" % (name[:-4], val, timestr)
-		singer = self.entry.get_attr("user.singer", None)
+		singer = None #self.entry.get_attr("singer", None)
 		text = asc_fake_subtitles(title, length, singer)
 		subtitle = VirtualFile()
 		subtitle.set_contents(text)
@@ -312,16 +312,19 @@ class PlaylistFile(VirtualFile):
 		stats.update_helper(self, self.playlist, stats.entry_to_timed_str)
 
 	def refresh_list(self, new_list):
-		playlist = []
-		playlist.extend(new_list[10: 10 + 40]) # 40 good files
-		shuffle(playlist)
-		playlist = playlist[:20] # 20 good files
-		other = new_list[50:]
-		l = len(other)
-		for c in range(0, 10): # 10 random files.
-			playlist.append(other[randint(0, l)])
-		shuffle(playlist)
-		self.playlist = playlist
+		try:
+			playlist = []
+			playlist.extend(new_list[10: 10 + 40]) # 40 good files
+			shuffle(playlist)
+			playlist = playlist[:20] # 20 good files
+			other = new_list[50:]
+			l = len(other)
+			for c in range(0, 10): # 10 random files.
+				playlist.append(other[randint(0, l)])
+			shuffle(playlist)
+			self.playlist = playlist
+		except Error, e:
+			pass
 
 class FLVStatistics(FLVDirectory):
 	def __init__(self):
