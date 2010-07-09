@@ -1,4 +1,4 @@
-/* entrydb.c - 10.5.2010 - 10.5.2010 Ari & Tero Roponen */
+/* entrydb.c - 10.5.2010 - 9.7.2010 Ari & Tero Roponen */
 #include <sqlite3.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -107,7 +107,7 @@ static char *database_get (sqlite3 *db, char *sha, char *key)
 	return val;
 }
 
-static void entrydb_ensure_exists (char *sha1)
+void entrydb_ensure_exists (char *sha1)
 {
 	char *val = database_get (entrydb, sha1, "sha1");
 	if (! val)
@@ -126,7 +126,6 @@ char *entrydb_get (struct atrfs_entry *ent, char *attr)
 		if (! sha1)
 			abort ();
 
-		entrydb_ensure_exists (sha1);
 		val = database_get (entrydb, sha1, attr);
 	}
 
@@ -139,7 +138,6 @@ void entrydb_put (struct atrfs_entry *ent, char *attr, char *val)
 	{
 		char *sha1 = get_sha1 (REAL_NAME(ent));
 
-		entrydb_ensure_exists (sha1);
 		entrydb_exec (NULL, "UPDATE Files SET %s = \"%s\" WHERE sha1=\"%s\";", attr, val, sha1);
 	}
 }

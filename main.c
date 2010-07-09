@@ -1,4 +1,4 @@
-/* main.c - 20.7.2008 - 29.7.2008 Ari & Tero Roponen */
+/* main.c - 20.7.2008 - 9.7.2010 Ari & Tero Roponen */
 #include <sys/inotify.h>
 #include <errno.h>
 #include <ftw.h>
@@ -18,6 +18,11 @@
 
 /* In statistics.c. */
 extern struct atrfs_entry *statroot;
+
+GHashTable *sha1_to_entry_map;
+
+extern char *get_sha1 (char *filename);
+extern char *get_sha1_fast (char *filename);
 
 struct pollfd pfd[2];
 static sigset_t sigs;
@@ -83,6 +88,10 @@ static void add_file_when_supported(const char *filename)
 
 	REAL_NAME(ent) = strdup(filename);
 	free(uniq_name);
+
+	char *sha1 = get_sha1_fast (REAL_NAME(ent));
+	entrydb_ensure_exists (sha1);
+	g_hash_table_replace (sha1_to_entry_map, strdup(sha1), ent);
 }
 
 static void for_each_file (char *dir_or_file, void (*file_handler)(const char *filename))
@@ -188,11 +197,6 @@ static void populate_stat_dir(struct atrfs_entry *statroot)
 	update_stats();
 }
 
-GHashTable *sha1_to_entry_map;
-
-extern char *get_sha1 (char *filename);
-extern char *get_sha1_fast (char *filename);
-
 int main(int argc, char *argv[])
 {
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
@@ -200,19 +204,6 @@ int main(int argc, char *argv[])
 	char *mountpoint;
 	int foreground;
 	int err = -1;
-
-	sha1_to_entry_map = g_hash_table_new (g_str_hash, g_str_equal);
-
-	int categorize_file_helper (struct atrfs_entry *ent)
-	{
-		if (ent->e_type == ATRFS_FILE_ENTRY)
-		{
-			categorize_file_entry (ent);
-			char *sha1 = get_sha1_fast (REAL_NAME(ent));
-			g_hash_table_replace (sha1_to_entry_map, strdup(sha1), ent);
-		}
-		return 0;
-	}
 
 	char *pwd = get_current_dir_name();
 	tmplog("init(pwd='%s')\n", pwd);
@@ -225,11 +216,27 @@ int main(int argc, char *argv[])
 	statroot = create_entry (ATRFS_DIRECTORY_ENTRY);
 	attach_entry (root, statroot, "stats");
 
+	/* Create a mapping from SHA1 to file entry. */
+	sha1_to_entry_map = g_hash_table_new (g_str_hash, g_str_equal);
+
 	parse_config_file (canonicalize_file_name("atrfs.conf"), root);
 
-	/* Put file into right category directory. */
-	map_leaf_entries (root, categorize_file_helper);
 	tmplog("Hash size: %d\n", g_hash_table_size (sha1_to_entry_map));
+
+	/* Categorize file entries. */
+	struct atrfs_entry **entries;
+	size_t count;
+	int i;
+
+	tmplog("cat begins\n");
+
+	/* This gives a list of sorted entries. */
+	get_all_file_entries (&entries, &count);
+
+	for (i = 0; i < count; i++)
+		categorize_file_entry (entries[i]);
+	free (entries);
+	tmplog("cat ends\n");
 
 	populate_stat_dir (statroot);
 
