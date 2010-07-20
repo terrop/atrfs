@@ -58,7 +58,11 @@ class FLVDatabase():
 		curs = conn.cursor()
 		curs.execute("SELECT %s FROM Files WHERE sha1 = \"%s\"" % (attr, sha1))
 		for line in curs:
+			curs.close()
+			conn.close()
 			return unicode(line[0])
+		curs.close()
+		conn.close()
 		return default
 
 	def set_attr(self, sha1, attr, value):
@@ -66,6 +70,8 @@ class FLVDatabase():
 		curs = conn.cursor()
 		curs.execute("UPDATE Files SET %s = \"%s\" WHERE sha1 = \"%s\"" % (attr, value, sha1))
 		conn.commit()
+		curs.close()
+		conn.close()
 
 class FLVFile(BaseFile):
 	flv_dirs = []
