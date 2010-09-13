@@ -23,17 +23,8 @@ void add_filter (char *str)
 	if (filt)
 	{
 		filt->str = strdup (str);
-		filt->next = NULL;
-
-		/* Order matters. */
-		if (! filters)
-			filters = filt;
-		else {
-			struct filter *last = filters;
-			while (last->next)
-				last = last->next;
-			last->next = filt;
-		}
+		filt->next = filters;
+		filters = filt;
 	}
 }
 
